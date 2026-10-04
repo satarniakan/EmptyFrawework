@@ -143,6 +143,142 @@ dotnet new install .
 | خطای اتصال SQL هنگام `run` | رشتهٔ اتصال در `appsettings.json` را چک کنید و مطمئن شوید SQL Server بالاست |
 | `dotnet-ef` شناخته نمی‌شود | گام پیش‌نیازها (نصب global) را انجام دهید |
 
+## نگه‌داری نسخه‌ها (به‌روزرسانی وابستگی‌ها)
+
+وابستگی‌های این ریپو سه جنس‌اند و هر کدام روش به‌روزرسانی خودش را دارد.
+قاعدهٔ کلی: اول در همین ریپو به‌روز کن و تست بگیر، بعد قالب را دوباره نصب کن تا
+پروژه‌های تازه از نسخهٔ جدید ساخته شوند.
+
+### ۱. بسته‌های NuGet (ساده‌ترین)
+
+```bash
+# دیدن همهٔ نسخه‌های جدید در کل حل
+dotnet list Platform.slnx package --outdated
+
+# به‌روزرسانی یک بسته در همهٔ پروژه‌ها
+dotnet add src/Platform.Infrastructure/Platform.Infrastructure.csproj \
+    package Microsoft.EntityFrameworkCore.SqlServer
+
+# به‌روزرسانی همه‌چیز به آخرین نسخهٔ پایدار (با احتیاط، یکی‌یکی تست کنید)
+dotnet outdated --upgrade  # نیاز به ابزار: dotnet tool install -g dotnet-outdated-tool
+```
+
+بعد از هر به‌روزرسانی:
+
+```bash
+dotnet build Platform.slnx
+dotnet test tests/Platform.Tests/Platform.Tests.csproj
+```
+
+نکتهٔ مهم: بسته‌های `Microsoft.EntityFrameworkCore*` (نسخهٔ ۱۰.۰.۹ در این ریپو)
+باید **همه با هم و هم‌نسخه** به‌روز شوند؛ وگرنه خطای ناسازگاری runtime می‌گیرید.
+ابزار `dotnet-ef` را هم هم‌نسخه نگه دارید:
+
+```bash
+dotnet tool update --global dotnet-ef
+```
+
+### ۲. خودِ ‎.NET SDK
+
+نسخهٔ فعلی: `net10.0` (در همهٔ `*.csproj`ها، کلید `TargetFramework`).
+
+برای ارتقا به نسخهٔ اصلی بعدی (مثلاً ۱۱):
+
+۱. جدیدترین SDK را از [dotnet.microsoft.com](https://dotnet.microsoft.com/download) نصب کنید
+۲. در همهٔ `*.csproj`ها `net10.0` را عوض کنید:
+
+```bash
+# ویندوز (PowerShell) — از ریشهٔ ریپو اجرا شود
+Get-ChildItem -Recurse -Filter *.csproj |
+    ForEach-Object {
+        $t = [IO.File]::ReadAllText($_.FullName)
+        [IO.File]::WriteAllText($_.FullName, $t.Replace('net10.0', 'net11.0'))
+    }
+```
+
+۳. بسته‌های NuGet را هم به نسخه‌های سازگار با SDK جدید ببرید (بخش ۱)
+۴. `dotnet build` و `dotnet test` بگیرید و migration تازه بسازید تا snapshot مدل با
+   نسخهٔ جدید EF هم‌خوان شود
+
+برای **قفل‌کردن نسخهٔ SDK** در تیم (که همه با همان SDK بسازند)، یک فایل `global.json`
+در ریشه بسازید:
+
+```json
+{
+  "sdk": {
+    "version": "10.0.303",
+    "rollForward": "latestFeature"
+  }
+}
+```
+
+`rollForward: latestFeature` یعنی وصله‌های امنیتی خودکار می‌آیند ولی نسخهٔ اصلی عوض
+نمی‌شود.
+
+### ۳. Bootstrap و فایل‌های `wwwroot/lib` (حساس‌ترین)
+
+نسخهٔ فعلی Bootstrap: **۵.۳.۳** (داخل `wwwroot/lib/bootstrap` به‌صورت vendored کپی
+شده). فایل `src/Platform.Web/libman.json` دقیقاً مشخص می‌کند هر کتابخانه از کجا آمده
+و کدام فایل‌ها کپی شده‌اند — قبل از هر به‌روزرسانی اول آن را بخوانید.
+
+دو راه برای به‌روزرسانی هست — راه اول (LibMan) تمیزتر است:
+
+**راه اول — با LibMan (پیشنهاد):**
+
+۱. در `libman.json` شمارهٔ نسخه را عوض کنید (مثلاً `bootstrap@5.3.3` به `bootstrap@5.3.8`)
+۲. restore کنید تا فایل‌ها دوباره دانلود شوند:
+
+```bash
+cd src/Platform.Web
+dotnet tool install -g Microsoft.Web.LibraryManager.Cli
+libman restore
+```
+
+۳. اگر پوشهٔ `lib` فایل‌های اضافی دستی هم دارد (مثل `bootstrap.bundle.min.js` که در
+   فهرست libman نیست)، آن‌ها را دستی از بستهٔ دانلودشده کپی کنید
+۴. نسخهٔ جدید را در جدول «نسخه‌های فعلی» پایین همین بخش ثبت کنید
+۵. سایت را با چشم بازبینی کنید: منوی راست‌چین، مودال‌ها، فرم‌ها و حالت موبایل —
+   تست خودکار برای CSS نداریم و regression بصری فقط با چشم گرفته می‌شود
+   (فایل‌های `*.rtl.css` برای راست‌چین حیاتی‌اند)
+
+**راه دوم — دستی:**
+
+۱. نسخهٔ جدید را از [getbootstrap.com](https://getbootstrap.com) دانلود کنید
+   (فایل `bootstrap-5.x.x-dist.zip`) و جایگزین پوشهٔ `wwwroot/lib/bootstrap` کنید
+۲. `libman.json` را هم به همان نسخه به‌روز کنید تا سند و واقعیت یکی بمانند
+
+قانون: **Bootstrap را هیچ‌وقت هم‌زمان با ارتقای ‎.NET به‌روز نکنید.** یکی را ببرید
+بالا، تست بگیرید، کامیت کنید، بعد سراغ دومی بروید تا اگر چیزی شکست بدانید مقصر کدام است.
+
+### ۴. نسخه‌های فعلی (هنگام به‌روزرسانی این جدول را هم عوض کنید)
+
+| وابستگی | نسخهٔ فعلی | کجا ثبت شده |
+|---|---|---|
+| .NET / TargetFramework | `net10.0` | همهٔ `*.csproj`ها |
+| EF Core | ۱۰.۰.۹ | `Platform.Infrastructure.csproj` + `dotnet-ef` |
+| Bootstrap | ۵.۳.۳ | `src/Platform.Web/wwwroot/lib/bootstrap` |
+| bootstrap-icons | ۱.۱۱.۳ | `src/Platform.Web/wwwroot/lib/bootstrap-icons` |
+| QuestPDF | ۲۰۲۶.۹.۱ | `Platform.Application.csproj` |
+| ClosedXML | ۰.۱۰۴.۲ | `Platform.Application.csproj` |
+| xunit | ۲.۹.۳ | `Platform.Tests.csproj` |
+
+### ۵. خودکارسازی (پیشنهاد برای بعد)
+
+اگر خواستید به‌روزرسانی‌ها خودکار یادآوری شوند، **Dependabot** گیت‌هاب را فعال کنید
+(فایل `.github/dependabot.yml` در همین ریپو). آن‌وقت هر هفته PR خودکار برای نسخه‌های
+جدید NuGet می‌آید؛ شما فقط build و test می‌گیرید و merge می‌کنید. برای Bootstrap
+چون دستی است، Dependabot فقط خبر می‌دهد و جایگزینی همچنان دستی است.
+
+```yaml
+version: 2
+updates:
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+```
+
 ## قراردادها
 
 - همهٔ متون فارسی، سمت راست‌به‌چپ؛ تاریخ شمسی و اعداد فارسی در UI.
