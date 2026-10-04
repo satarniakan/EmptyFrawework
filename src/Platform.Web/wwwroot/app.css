@@ -1,0 +1,735 @@
+:root {
+    --brand-primary: #2563eb;
+    --brand-primary-hover: #1d4ed8;
+    --brand-bg: #f8f9fb;
+    --brand-surface: #ffffff;
+    --brand-border: #e5e7eb;
+    --brand-text: #1f2937;
+    --brand-text-muted: #6b7280;
+    --brand-danger: #dc2626;
+    --brand-success: #16a34a;
+    --brand-thead-bg: #f3f4f6;
+    --brand-row-hover: #f9fafb;
+    --brand-danger-bg: #fef2f2;
+    --brand-focus-ring: rgba(37, 99, 235, 0.1);
+    --radius: 10px;
+}
+
+/* تم تاریک: فقط متغیرها عوض می‌شوند؛ بقیه استایل‌ها از همین‌ها تغذیه می‌کنند */
+html[data-theme="dark"] {
+    --brand-primary: #3b82f6;
+    --brand-primary-hover: #60a5fa;
+    --brand-bg: #0f172a;
+    --brand-surface: #1e293b;
+    --brand-border: #334155;
+    --brand-text: #e2e8f0;
+    --brand-text-muted: #94a3b8;
+    --brand-danger: #f87171;
+    --brand-success: #4ade80;
+    --brand-thead-bg: #243247;
+    --brand-row-hover: #26334a;
+    --brand-danger-bg: #2b1618;
+    --brand-focus-ring: rgba(59, 130, 246, 0.25);
+    color-scheme: dark;
+}
+
+html, body {
+    font-family: 'Vazirmatn', Tahoma, sans-serif !important;
+    background-color: var(--brand-bg);
+    color: var(--brand-text);
+}
+
+* {
+    font-family: 'Vazirmatn', Tahoma, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6,
+.btn, .form-control, .form-label,
+input, textarea, select, button, table, th, td {
+    font-family: 'Vazirmatn', Tahoma, sans-serif !important;
+}
+
+h3 {
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+}
+
+.card-panel {
+    background: var(--brand-surface);
+    border: 1px solid var(--brand-border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.btn-primary {
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+    border-radius: 8px;
+    padding: 0.5rem 1.25rem;
+    font-weight: 500;
+}
+
+    .btn-primary:hover {
+        background-color: var(--brand-primary-hover);
+        border-color: var(--brand-primary-hover);
+    }
+
+.form-control {
+    border-radius: 8px;
+    border: 1px solid var(--brand-border);
+    padding: 0.6rem 0.9rem;
+}
+
+    .form-control:focus {
+        border-color: var(--brand-primary);
+        box-shadow: 0 0 0 3px var(--brand-focus-ring);
+    }
+
+.form-label {
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--brand-text-muted);
+    margin-bottom: 0.35rem;
+}
+
+.table {
+    background: var(--brand-surface);
+    border-radius: var(--radius);
+    overflow: hidden;
+    /* جلوگیری از پس‌زمینه سفید پیش‌فرض سلول‌های بوت‌استرپ در تم تاریک */
+    --bs-table-bg: var(--brand-surface);
+    --bs-table-color: var(--brand-text);
+}
+
+    .table thead {
+        background-color: var(--brand-thead-bg);
+    }
+
+        .table thead th {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--brand-text-muted);
+            border-bottom: none;
+            padding: 0.9rem 1rem;
+        }
+
+    .table tbody td {
+        padding: 0.9rem 1rem;
+        vertical-align: middle;
+        border-color: var(--brand-border);
+    }
+
+    .table tbody tr:hover {
+        background-color: var(--brand-row-hover);
+    }
+
+.alert-danger {
+    border-radius: 8px;
+    border: none;
+    background-color: var(--brand-danger-bg);
+    color: var(--brand-danger);
+}
+
+a {
+    color: var(--brand-primary);
+}
+
+.content {
+    max-width: 1100px;
+}
+
+#blazor-error-ui {
+    color-scheme: light dark;
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        inset-inline-end: 0.75rem;
+        top: 0.5rem;
+    }
+@media print {
+    .sidebar,
+    .top-row,
+    .no-print,
+    .store-header,
+    .store-footer {
+        display: none !important;
+    }
+
+    main, .content, article.content {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .card-panel {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+        break-inside: avoid;
+    }
+
+    /* سربرگ چاپ مشترک گزارش‌ها فقط هنگام چاپ دیده می‌شود */
+    .print-header {
+        display: block !important;
+    }
+
+    table {
+        font-size: 0.85rem;
+    }
+
+    /* در چاپ، اسکرول افقی معنا ندارد؛ جدول کامل روی کاغذ بیاید */
+    .table-responsive {
+        overflow: visible !important;
+    }
+
+    a {
+        text-decoration: none !important;
+        color: inherit !important;
+    }
+}
+
+/* سربرگ چاپ در حالت عادی صفحه پنهان است */
+.print-header {
+    display: none;
+}
+/* احترام به کاربرهایی که ترجیح می‌دن حرکت کمتری ببینن */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* دکمه‌ها: واکنش نرم به هاور و کلیک */
+.btn {
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease;
+}
+
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }
+
+    .btn:active {
+        transform: translateY(0);
+        box-shadow: none;
+    }
+
+/* کارت‌ها: کمی عمق موقع هاور، فقط جایی که واقعاً کلیک‌پذیرن */
+.card-panel {
+    transition: box-shadow 0.15s ease;
+}
+
+    a .card-panel:hover, .card-panel.clickable:hover {
+        box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+    }
+
+/* ورودی‌ها: فوکوس نرم‌تر */
+.form-control, .form-select {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* محو‌شدن ملایم محتوای هر صفحه هنگام بارگذاری اولیه */
+.content {
+    animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+.toast-container {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 1.5rem;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.toast-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+    animation: toastIn 0.25s ease, toastOut 0.25s ease 3.25s;
+    min-width: 240px;
+}
+
+.toast-success {
+    background-color: #16a34a;
+}
+
+.toast-error {
+    background-color: #dc2626;
+}
+
+.toast-info {
+    background-color: #2563eb;
+}
+
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes toastOut {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+/* ============================================================
+   استایل‌های مشترک فرم‌ها (سبک صفحه‌ی «افزودن محصول»)
+   ============================================================ */
+
+/* عنوان بخش‌های فرم */
+.form-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--brand-text);
+    margin: 0 0 1rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--brand-border);
+}
+
+    .form-section-title i {
+        color: var(--brand-primary);
+        font-size: 1.05rem;
+    }
+
+/* بخش تاشو داخل فرم */
+details > summary.form-section-title {
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+    details > summary.form-section-title .section-caret {
+        font-size: 0.75rem;
+        color: var(--brand-text-muted);
+        transition: transform 0.2s ease;
+    }
+
+details[open] > summary.form-section-title .section-caret {
+    transform: rotate(180deg);
+}
+
+/* ناحیه‌ی انتخاب عکس */
+.image-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 2.25rem 1rem;
+    border: 2px dashed var(--brand-border);
+    border-radius: var(--radius);
+    background-color: var(--brand-bg);
+    color: var(--brand-text-muted);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+    .image-dropzone:hover {
+        border-color: var(--brand-primary);
+        color: var(--brand-primary);
+    }
+
+.image-preview img {
+    display: block;
+    width: 100%;
+    max-height: 260px;
+    object-fit: contain;
+    border: 1px solid var(--brand-border);
+    border-radius: var(--radius);
+    background-color: var(--brand-bg);
+}
+
+/* نمایش حاشیه سود / پیام‌های کوچک کنار قیمت */
+.price-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+/* نوار عملیات چسبان پایین فرم */
+.form-actions {
+    position: sticky;
+    bottom: 0.75rem;
+    z-index: 5;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+/* کارت راهنما */
+.tips-panel ul li::marker {
+    color: var(--brand-primary);
+}
+
+/* ===== دیالوگ تایید مشترک ===== */
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.confirm-dialog {
+    background: var(--brand-surface);
+    border: 1px solid var(--brand-border);
+    border-radius: var(--radius);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+    padding: 1.75rem 1.5rem 1.5rem;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    animation: fadeIn 0.15s ease;
+}
+
+.confirm-icon {
+    font-size: 2.25rem;
+    line-height: 1;
+    margin-bottom: 0.75rem;
+}
+
+.confirm-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--brand-text);
+}
+
+.confirm-message {
+    color: var(--brand-text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 0;
+}
+
+/* ===== Skeleton loading ===== */
+.skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--brand-border);
+    border-radius: 6px;
+    pointer-events: none;
+}
+
+    .skeleton::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        transform: translateX(-100%);
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+        animation: skeletonShimmer 1.4s infinite;
+    }
+
+html[data-theme="dark"] .skeleton::after {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+}
+
+@keyframes skeletonShimmer {
+    100% {
+        transform: translateX(100%);
+    }
+}
+/* ===== زنگ اعلان‌ها (سبک Tabler) ===== */
+.notification-bell {
+    position: relative;
+}
+
+.bell-btn {
+    appearance: none;
+    background: none;
+    border: none;
+    color: var(--brand-text-muted);
+    font-size: 1.15rem;
+    line-height: 1;
+    padding: 0.45rem;
+    border-radius: 8px;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+    .bell-btn:hover {
+        color: var(--brand-text);
+        background-color: var(--brand-row-hover);
+    }
+
+.bell-badge {
+    position: absolute;
+    top: 0;
+    inset-inline-end: -0.15rem;
+    min-width: 1rem;
+    height: 1rem;
+    padding: 0 0.2rem;
+    border-radius: 999px;
+    background-color: #d63939;
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    line-height: 1rem;
+    text-align: center;
+}
+
+.notification-panel {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    inset-inline-end: 0;
+    width: 22rem;
+    background: var(--brand-surface);
+    border: 1px solid var(--brand-border);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
+    z-index: 1050;
+    font-size: 0.85rem;
+    overflow: hidden;
+}
+
+.notif-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    font-weight: 600;
+    color: var(--brand-text);
+    border-bottom: 1px solid var(--brand-border);
+}
+
+.notif-mark-all {
+    background: none;
+    border: none;
+    color: var(--brand-primary);
+    font-size: 0.75rem;
+    cursor: pointer;
+    padding: 0;
+}
+
+.notif-list {
+    max-height: 24rem;
+    overflow-y: auto;
+}
+
+.notif-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 2.25rem 1rem;
+    color: var(--brand-text-muted);
+}
+
+    .notif-empty i {
+        font-size: 1.6rem;
+        opacity: 0.6;
+    }
+
+    .notif-empty div {
+        font-size: 0.8rem;
+    }
+
+.notif-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--brand-border);
+    text-decoration: none;
+    color: var(--brand-text);
+}
+
+    .notif-item:last-child {
+        border-bottom: none;
+    }
+
+    .notif-item:hover {
+        background-color: var(--brand-row-hover);
+        color: var(--brand-text);
+        text-decoration: none;
+    }
+
+    .notif-item.is-unread {
+        background-color: color-mix(in srgb, var(--brand-primary) 6%, transparent);
+    }
+
+.notif-icon {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: color-mix(in srgb, var(--brand-primary) 12%, transparent);
+    color: var(--brand-primary);
+    font-size: 0.9rem;
+}
+
+.notif-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.notif-title {
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.notif-body {
+    font-size: 0.75rem;
+    color: var(--brand-text-muted);
+}
+
+.notif-time {
+    font-size: 0.68rem;
+    color: var(--brand-text-muted);
+}
+
+.notif-dot {
+    flex-shrink: 0;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background-color: var(--brand-primary);
+    margin-top: 0.45rem;
+}
+
+.notif-footer {
+    display: block;
+    text-align: center;
+    padding: 0.6rem;
+    font-size: 0.78rem;
+    color: var(--brand-primary);
+    text-decoration: none;
+    border-top: 1px solid var(--brand-border);
+}
+
+    .notif-footer:hover {
+        background-color: var(--brand-row-hover);
+        color: var(--brand-primary);
+        text-decoration: none;
+    }
+
+/* ============================================================
+   تنظیمات موبایل (تا ۶۴۰px — هم‌راستا با breakpoint چیدمان)
+   ============================================================ */
+@media (max-width: 640.98px) {
+    /* عناوین و فاصله‌ها جمع‌وجورتر */
+    h3 {
+        font-size: 1.3rem;
+        margin-bottom: 1rem;
+    }
+
+    .card-panel {
+        padding: 1rem;
+    }
+
+    /* اعداد بزرگ KPI در کارت‌های نصفه‌موبایل سرریز نکنند */
+    .card-panel .fs-4.fw-bold {
+        font-size: 1.05rem !important;
+        overflow-wrap: anywhere;
+    }
+
+    /* جدول‌ها: سلول‌های فشرده‌تر؛ اسکرول افقی را .table-responsive تأمین می‌کند */
+    .table thead th {
+        padding: 0.6rem 0.65rem;
+        font-size: 0.78rem;
+        white-space: nowrap;
+    }
+
+    .table tbody td {
+        padding: 0.6rem 0.65rem;
+        font-size: 0.85rem;
+    }
+
+    /* پنل اعلان‌ها از عرض صفحه بیرون نزند */
+    .notification-panel {
+        width: min(22rem, calc(100vw - 2rem));
+    }
+
+    /* هدف لمسی بزرگ‌تر برای زنگ و کلید تم (حداقل ~۴۲px) */
+    .bell-btn {
+        padding: 0.65rem;
+        font-size: 1.2rem;
+    }
+
+    .theme-toggle {
+        width: 2.6rem;
+        height: 2.6rem;
+        margin-inline-start: 0.75rem;
+    }
+
+    /* تست‌ها: تمام عرض، چسبیده به پایین صفحه */
+    .toast-container {
+        left: 1rem;
+        right: 1rem;
+        bottom: 1rem;
+    }
+
+    .toast-item {
+        min-width: 0;
+        width: 100%;
+    }
+
+    /* دیالوگ تایید و نوار عملیات چسبان */
+    .confirm-dialog {
+        padding: 1.25rem 1rem 1rem;
+    }
+
+    .form-actions {
+        bottom: 0.5rem;
+    }
+
+    .form-actions .btn {
+        flex: 1 1 auto;
+    }
+
+    /* ناحیه‌ی انتخاب عکس کوتاه‌تر */
+    .image-dropzone {
+        padding: 1.5rem 0.75rem;
+    }
+}

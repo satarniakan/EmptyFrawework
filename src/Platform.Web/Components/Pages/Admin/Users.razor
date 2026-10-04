@@ -1,0 +1,87 @@
+﻿@* Dashboard.Web/Components/Pages/Admin/Users.razor *@
+@page "/admin/users"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = Platform.Domain.Identity.Roles.Admin)]
+@using Microsoft.AspNetCore.Authorization
+@using Platform.Application.Services
+@using Platform.Application.DTOs
+<PageTitle>مدیریت کاربران</PageTitle>
+
+
+@if (Success is not null)
+{
+    <div class="alert alert-success">نقش کاربر با موفقیت به‌روزرسانی شد.</div>
+}
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">مدیریت کاربران و نقش‌ها</h3>
+        <div class="text-body-secondary small">فهرست کاربران سیستم و نقش‌های آن‌ها</div>
+    </div>
+    <a href="/admin/users/add" class="btn btn-primary btn-sm">افزودن کاربر جدید</a>
+</div>
+<div class="card-panel">
+    @if (users is null)
+    {
+        <LoadingSkeleton />
+    }
+    else if (!users.Any())
+    {
+        <div class="text-center text-body-secondary py-4">
+            <i class="bi bi-people fs-3 d-block mb-2"></i>
+            <span class="small">هنوز کاربری ثبت نشده است.</span>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>شماره موبایل</th>
+                    <th>نام کامل</th>
+                    <th>ایمیل</th>
+                    <th>نقش فعلی</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in users)
+                {
+                    <tr>
+                        <td>@u.PhoneNumber</td>
+                        <td>@u.FullName</td>
+                        <td>@u.Email</td>
+                        <td>
+                            @if (u.Roles.Any())
+                            {
+                                @string.Join("، ", u.Roles.Select(r => Platform.Domain.Identity.Roles.ToPersian(r)))
+                            }
+                            else
+                            {
+                                <span class="text-body-secondary">بدون نقش</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <a href="/admin/users/@u.UserId" class="btn btn-sm btn-outline-primary">تغییر نقش</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "success")]
+    private string? Success { get; set; }
+
+    private List<UserListItemDto>? users;
+
+    [Inject] private IUserAdminService UserAdminService { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        users = (await UserAdminService.GetAllUsersAsync()).ToList();
+    }
+}

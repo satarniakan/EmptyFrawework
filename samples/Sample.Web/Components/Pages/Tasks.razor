@@ -1,0 +1,96 @@
+﻿@page "/tasks"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@using SampleDomain
+@inject IWorkTaskService TaskService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>وظایف من</PageTitle>
+
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">وظایف من</h3>
+        <div class="text-body-secondary small">
+            صفحهٔ نمونهٔ پروژهٔ جدید — هیچ ربطی به حسابداری/انبار ندارد و با همان
+            فریم‌ورک (ورود، مجوز، منو، اعلان) کار می‌کند.
+        </div>
+    </div>
+</div>
+
+@if (items is null)
+{
+    <LoadingSkeleton />
+}
+else
+{
+    <div class="card-panel mb-3" style="max-width: 640px;">
+        <div class="mb-2">
+            <AppTextField Value="@newTitle" ValueChanged="@((string? v) => newTitle = v ?? string.Empty)"
+                          Label="وظیفهٔ جدید" WrapperClass="" />
+        </div>
+        <button class="btn btn-primary btn-sm" @onclick="Add" disabled="@isSaving">
+            افزودن
+        </button>
+    </div>
+
+    <div class="card-panel" style="max-width: 640px;">
+        @if (!items.Any())
+        {
+            <div class="text-center text-body-secondary py-4">هنوز وظیفه‌ای ندارید.</div>
+        }
+        @foreach (var item in items)
+        {
+            <div class="d-flex align-items-center gap-2 py-2 border-bottom">
+                <input type="checkbox" class="form-check-input" checked="@item.IsDone"
+                       @onchange="@(() => Toggle(item.Id))" />
+                <span class="@(item.IsDone ? "text-decoration-line-through text-body-secondary" : "")">
+                    @item.Title
+                </span>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<WorkTask>? items;
+    private string newTitle = string.Empty;
+    private string? userId;
+    private bool isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null) return;
+
+        items = await TaskService.GetMineAsync(userId);
+    }
+
+    private async Task Add()
+    {
+        if (userId is null || string.IsNullOrWhiteSpace(newTitle)) return;
+
+        isSaving = true;
+        try
+        {
+            var created = await TaskService.CreateAsync(userId, newTitle, null);
+            items?.Insert(0, created);
+            newTitle = string.Empty;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task Toggle(int id)
+    {
+        if (userId is null) return;
+        if (!await TaskService.ToggleDoneAsync(userId, id)) return;
+
+        var item = items?.FirstOrDefault(t => t.Id == id);
+        if (item is not null) item.IsDone = !item.IsDone;
+    }
+}

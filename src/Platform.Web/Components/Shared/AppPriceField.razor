@@ -1,0 +1,148 @@
+﻿@* Dashboard.Web/Components/Shared/AppPriceField.razor *@
+@* ورودی مبلغ/قیمت با جداسازی سه‌رقمی هنگام تایپ (فرمت در priceInput.js انجام می‌شود) *@
+@using System.Globalization
+@using System.Linq.Expressions
+@using System.Numerics
+@using System.Text
+@using Platform.Application.Helpers
+@inject IJSRuntime JS
+@typeparam TValue where TValue : struct, INumber<TValue>
+
+<div class="@WrapperClass">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="form-label">@Label @if (IsRequired) { <span class="text-danger" title="الزامی">*</span> }</label>
+    }
+    <input type="text" class="form-control text-end" inputmode="decimal" autocomplete="off"
+           value="@DisplayText" @oninput="HandleInput" @onblur="HandleBlur"
+           placeholder="@Placeholder" disabled="@Disabled" @ref="InputElement" />
+    @if (CascadedEditContext is not null && ValueExpression is not null)
+    {
+        <ValidationMessage For="@ValueExpression" class="text-danger small mt-1 d-block" />
+    }
+    @if (WordsText is not null)
+    {
+        <div class="form-text small text-muted">@WordsText</div>
+    }
+    @if (!string.IsNullOrEmpty(Hint))
+    {
+        <div class="form-text">@Hint</div>
+    }
+    @if (QuickAmounts is { Length: > 0 } && !Disabled)
+    {
+        <div class="d-flex gap-2 mt-2">
+            @foreach (var q in QuickAmounts)
+            {
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                        @onclick="() => SetValue(q)">
+                    @CurrencyFormatter.ToToman(q)
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.Forms.EditContext? CascadedEditContext { get; set; }
+
+    // هماهنگ با CurrencyFormatter: جداکننده‌ی «,» و اعشار «.» بدون اتکا به fa-IR
+    private static readonly CultureInfo Cn = CultureInfo.InvariantCulture;
+
+    private ElementReference InputElement;
+    private string? DisplayText;
+    private string _lastParsed = ""; // جلوی بازنویسی متنِ وسط تایپ کاربر هنگام رندر مجدد
+
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string? Hint { get; set; }
+    [Parameter] public string WrapperClass { get; set; } = "mb-3";
+    [Parameter] public bool ShowWords { get; set; }
+    [Parameter] public long[]? QuickAmounts { get; set; }
+
+    private string? WordsText
+    {
+        get
+        {
+            if (!ShowWords || Value.Equals(default(TValue))) return null;
+            // چرا نه (long)CreateChecked: آن کست بخش اعشاری را بی‌صدا حذف می‌کرد و در مقادیر
+            // خارج از بازهٔ long می‌چرخید (wrap). اینجا از روی رشته parse می‌کنیم (جلوگیری از
+            // سرریز decimal برای double بزرگ)، به نزدیک‌ترین عدد صحیح گرد می‌کنیم، و محدودهٔ long را چک می‌کنیم.
+            if (!decimal.TryParse(Value.ToString("0.################", Cn), NumberStyles.Number, Cn, out var amount))
+                return null;
+            amount = Math.Round(amount, 0, MidpointRounding.AwayFromZero);
+            if (amount < long.MinValue || amount > long.MaxValue) return null;
+            return PersianNumberToWords.ToTomanWords((long)amount);
+        }
+    }
+
+    [Parameter] public TValue Value { get; set; }
+    [Parameter] public EventCallback<TValue> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<TValue>>? ValueExpression { get; set; }
+
+    // ستاره‌ی «الزامی» هم از پارامتر явیِ Required و هم از attribute های DTO مشتق می‌شود.
+    private bool IsRequired => Required || ValidationAttributeInspector.IsRequired(ValueExpression);
+
+    protected override void OnParametersSet()
+    {
+        var incoming = Value.ToString("0.##", Cn);
+        if (incoming != _lastParsed) // فقط تغییرِ از بیرون را روی نمایش اعمال کن
+        {
+            _lastParsed = incoming;
+            // صفرِ اولیه/بعد از پاک‌کردن، فیلد را خالی نشان بده نه «0»
+            DisplayText = string.IsNullOrEmpty(DisplayText) && incoming == "0"
+                ? string.Empty
+                : Value.ToString("#,0.##", Cn);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !Disabled)
+            await JS.InvokeVoidAsync("dashboardPriceInput.attach", InputElement);
+    }
+
+    private async Task HandleInput(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString() ?? string.Empty;
+        TValue? parsed = Parse(raw);
+        var value = parsed ?? default; // فیلد خالی → صفر
+        _lastParsed = value.ToString("0.##", Cn);
+        DisplayText = parsed is null ? string.Empty : value.ToString("#,0.##", Cn);
+        if (!EqualityComparer<TValue>.Default.Equals(value, Value))
+            await ValueChanged.InvokeAsync(value);
+    }
+
+    private void HandleBlur()
+    {
+        DisplayText = string.IsNullOrEmpty(DisplayText) ? string.Empty : Value.ToString("#,0.##", Cn);
+    }
+
+    private async Task SetValue(long q)
+    {
+        var v = TValue.CreateChecked(q);
+        _lastParsed = v.ToString("0.##", Cn);
+        DisplayText = v.ToString("#,0.##", Cn);
+        if (!EqualityComparer<TValue>.Default.Equals(v, Value))
+            await ValueChanged.InvokeAsync(v);
+    }
+
+    // ارقام فارسی/عربی → لاتین، حذف کاما و کاراکترهای اضافه
+    private static TValue? Parse(string raw)
+    {
+        var sb = new StringBuilder();
+        var dotSeen = false;
+        foreach (var ch in raw.Trim())
+        {
+            var c = ch;
+            var code = (int)c;
+            if (code >= 0x06F0 && code <= 0x06F9) c = (char)(code - 0x06F0 + '0');
+            else if (code >= 0x0660 && code <= 0x0669) c = (char)(code - 0x0660 + '0');
+            if (char.IsAsciiDigit(c)) sb.Append(c);
+            else if (c == '.' && !dotSeen) { dotSeen = true; sb.Append(c); }
+        }
+        return TValue.TryParse(sb.ToString(), NumberStyles.Number, Cn, out var v) ? v : null;
+    }
+}

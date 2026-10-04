@@ -1,0 +1,29 @@
+## Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+
+## Build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+
+## Local secrets and logs
+*.log
+Logs/
+appsettings.Local.json
+appsettings.*.Local.json
+src/**/appsettings.Development.local.json
+secrets.json
+
+## OS noise
+.DS_Store
+Thumbs.db
+# Real connection strings stay on the machine, never in git
+/src/Platform.Web/appsettings.json
+/src/Platform.Web/appsettings.Development.json
+/samples/Sample.Web/appsettings.json
+/samples/Sample.Web/appsettings.Development.json

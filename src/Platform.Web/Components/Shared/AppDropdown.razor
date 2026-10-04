@@ -1,0 +1,42 @@
+@* Dashboard.Web/Components/Shared/AppDropdown.razor *@
+@using System.Linq.Expressions
+@typeparam TValue
+
+<div class="mb-3">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="form-label">@Label @if (IsRequired) { <span class="text-danger" title="الزامی">*</span> }</label>
+    }
+    <InputSelect class="form-select" Value="@Value" ValueChanged="@ValueChanged" ValueExpression="@ValueExpression">
+        @if (!string.IsNullOrEmpty(Placeholder))
+        {
+            <option value="">@Placeholder</option>
+        }
+        @ChildContent
+    </InputSelect>
+    @if (CascadedEditContext is not null && ValueExpression is not null)
+    {
+        <ValidationMessage For="@ValueExpression" class="text-danger small mt-1 d-block" />
+    }
+    @if (!string.IsNullOrEmpty(Hint))
+    {
+        <div class="form-text">@Hint</div>
+    }
+</div>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.Forms.EditContext? CascadedEditContext { get; set; }
+
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string? Hint { get; set; }
+    [Parameter] public TValue? Value { get; set; }
+    [Parameter] public EventCallback<TValue?> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<TValue?>>? ValueExpression { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    // ستاره‌ی «الزامی» هم از پارامتر явیِ Required و هم از attribute های DTO مشتق می‌شود.
+    private bool IsRequired => Required || ValidationAttributeInspector.IsRequired(ValueExpression);
+}

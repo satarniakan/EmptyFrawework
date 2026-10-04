@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="src/Platform.Domain/Platform.Domain.csproj" />
+  <Project Path="src/Platform.Application/Platform.Application.csproj" />
+  <Project Path="src/Platform.Infrastructure/Platform.Infrastructure.csproj" />
+  <Project Path="src/Platform.Web/Platform.Web.csproj" />
+  <Project Path="samples/Sample.Module/Sample.Module.csproj" />
+  <Project Path="samples/Sample.Web/Sample.Web.csproj" />
+  <Project Path="tests/Platform.Tests/Platform.Tests.csproj" />
+</Solution>

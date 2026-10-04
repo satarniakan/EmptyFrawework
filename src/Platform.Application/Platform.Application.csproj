@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
+    <PackageReference Include="QuestPDF" Version="2026.9.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Platform.Domain\Platform.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- فونت وزیرمتن برای خروجی PDF. بدون آن، متن فارسی در PDF به‌صورت
+         حروف جدا از هم و بدون شکل‌دهی (shaping) چاپ می‌شود و ناخوانا است.
+         نسخهٔ woff2 که در wwwroot است برای PDF کار نمی‌کند؛ PDF به TTF نیاز دارد. -->
+    <EmbeddedResource Include="Assets\Fonts\*.ttf" />
+  </ItemGroup>
+
+</Project>

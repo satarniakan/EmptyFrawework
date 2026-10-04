@@ -1,0 +1,11 @@
+@page "/register"
+@attribute [ExcludeFromInteractiveRouting]
+@inject NavigationManager NavigationManager
+
+@code {
+    protected override void OnInitialized()
+    {
+        // صفحه ثبت‌نام جداگانه دیگر استفاده نمی‌شود؛ ثبت‌نام و ورود هر دو از صفحه /login انجام می‌شود.
+        NavigationManager.NavigateTo("/login");
+    }
+}

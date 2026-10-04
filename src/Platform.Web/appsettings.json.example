@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json.schemastore.org/appsettings.json",
+
+  "//": "Copy this file to appsettings.json and fill in the blanks. Secrets never belong in a tracked file.",
+
+  "ConnectionStrings": {
+    "Default": "Server=localhost,1433;Database=PlatformDb;User Id=sa;Password=CHANGE_ME;TrustServerCertificate=True"
+  },
+  "AllowedHosts": "*",
+
+  "Identity": {
+    "//": "Seeds the very first admin account on an empty database. Unset means no admin is seeded.",
+    "FirstAdminPhoneNumber": ""
+  },
+  "Sms": {
+    "//": "Provider Fake keeps messages in the log instead of calling a real gateway.",
+    "Provider": "Fake",
+    "Kavenegar": {
+      "ApiKey": "",
+      "Sender": null
+    },
+    "MaxAttempts": 3,
+    "BatchSize": 20
+  },
+  "Email": {
+    "Smtp": {
+      "Host": "",
+      "Port": 587,
+      "Username": null,
+      "Password": null,
+      "FromAddress": "no-reply@localhost",
+      "FromName": "Platform"
+    }
+  },
+  "ForwardedHeaders": {
+    "//": "Behind a reverse proxy keep this false, or every client shares one IP and rate limiting locks out everyone.",
+    "TrustAllProxies": false
+  }
+}

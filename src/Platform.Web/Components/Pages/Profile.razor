@@ -1,0 +1,182 @@
+@page "/profile"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Platform.Application.DTOs
+@using Platform.Application.Services
+@using System.Security.Claims
+@inject IAuthService AuthService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>پروفایل کاربری</PageTitle>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">پروفایل کاربری</h3>
+        <div class="text-body-secondary small">اطلاعات حساب خود را ویرایش کنید.</div>
+    </div>
+</div>
+
+@if (Welcome)
+{
+    <div class="alert alert-success">
+        خوش آمدید! برای دسترسی کامل به امکانات، لطفاً پروفایل خود را تکمیل کنید.
+    </div>
+}
+
+@if (successMessage is not null)
+{
+    <div class="alert alert-success">@successMessage</div>
+}
+
+@if (errorMessage is not null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+@if (profile is null)
+{
+    <LoadingSkeleton Table="false" Rows="6" />
+}
+else
+{
+    <div style="max-width: 560px;">
+
+        @* ===== اطلاعات حساب ===== *@
+        <div class="card-panel mb-3">
+            <h6 class="form-section-title"><i class="bi bi-person"></i>اطلاعات حساب</h6>
+
+            @* شماره موبایل فقط نمایشی است و قابل ویرایش نیست *@
+            <div class="mb-3">
+                <label class="form-label">شماره موبایل</label>
+                <input type="text" class="form-control" value="@profile.PhoneNumber" disabled />
+            </div>
+
+            <div class="mb-3">
+                <AppTextField Value="@fullName" ValueChanged="@((string? v) => fullName = v ?? string.Empty)"
+                              Label="نام و نام خانوادگی" WrapperClass="" />
+            </div>
+
+            <AppTextField Value="@email" ValueChanged="@((string? v) => email = v)"
+                          Label="ایمیل" InputType="email" Placeholder="ایمیل خود را وارد کنید"
+                          WrapperClass="mb-0" />
+        </div>
+
+        @* ===== رمز عبور ===== *@
+        <div class="card-panel mb-3">
+            <h6 class="form-section-title"><i class="bi bi-key"></i>رمز عبور</h6>
+
+            @if (!profile.HasPassword)
+            {
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <AppTextField Value="@password" ValueChanged="@((string? v) => password = v)"
+                                      Label="رمز عبور" InputType="password" Placeholder="حداقل ۳ کاراکتر" WrapperClass="" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <AppTextField Value="@confirmPassword" ValueChanged="@((string? v) => confirmPassword = v)"
+                                      Label="تکرار رمز عبور" InputType="password" WrapperClass="" />
+                    </div>
+                </div>
+                <div class="form-text mb-0">اگر رمز عبور را تعیین کنید، در ورود بعدی از شما پرسیده می‌شود.</div>
+            }
+            else
+            {
+                <div class="alert alert-info mb-0" style="font-size: 0.85rem;">
+                    رمز عبور شما قبلاً تنظیم شده است.
+                </div>
+            }
+        </div>
+
+        @* ===== نوار عملیات ===== *@
+        <div class="card-panel form-actions mt-3 d-flex align-items-center gap-2">
+
+@code {
+    [SupplyParameterFromQuery(Name = "welcome")]
+    private bool Welcome { get; set; }
+
+    private UserProfileDto? profile;
+
+    private string fullName = string.Empty;
+    private string? email;
+    private string? password;
+    private string? confirmPassword;
+
+    private bool isSaving;
+    private string? successMessage;
+    private string? errorMessage;
+
+    private string? _userId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (_userId is null) return;
+
+        profile = await AuthService.GetProfileAsync(_userId);
+        if (profile is null) return;
+
+        fullName = profile.FullName ?? string.Empty;
+        email = profile.Email;
+    }
+
+    private async Task HandleSave()
+    {
+        if (_userId is null) return;
+
+        isSaving = true;
+        successMessage = null;
+        errorMessage = null;
+
+        try
+        {
+            var result = await AuthService.UpdateProfileAsync(
+                _userId, fullName, email, password, confirmPassword);
+
+            if (result.Status == ProfileUpdateStatus.Success)
+            {
+                successMessage = "تغییرات ذخیره شد.";
+                password = null;
+                confirmPassword = null;
+                profile = await AuthService.GetProfileAsync(_userId);
+            }
+            else
+            {
+                errorMessage = result.Status switch
+                {
+                    ProfileUpdateStatus.EmailAlreadyExists => "این ایمیل قبلاً توسط کاربر دیگری استفاده شده است.",
+                    ProfileUpdateStatus.EmailUpdateFailed => "به‌روزرسانی ایمیل ناموفق بود.",
+                    ProfileUpdateStatus.PasswordAlreadySet => "رمز عبور قبلاً تنظیم شده است.",
+                    ProfileUpdateStatus.PasswordMismatch => "رمز عبور و تکرار آن یکسان نیستند.",
+                    ProfileUpdateStatus.PasswordUpdateFailed => "ذخیرهٔ رمز عبور ناموفق بود.",
+                    ProfileUpdateStatus.UserNotFound => "کاربر یافت نشد؛ لطفاً دوباره وارد شوید.",
+                    _ => "خطای ناشناخته‌ای رخ داد."
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطا در ذخیرهٔ تغییرات: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}
+            <button class="btn btn-primary" disabled="@isSaving" @onclick="HandleSave">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-check-lg me-1"></i>
+                }
+                ذخیره تغییرات
+            </button>
+        </div>
+    </div>
+}

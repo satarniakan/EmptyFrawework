@@ -1,0 +1,169 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using Platform.Web.Components.Layout
+@inject INavProvider NavProvider
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">داشبورد</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+@* منو فقط وقتی بسته می‌شود که روی لینک/دکمهٔ واقعی کلیک شده باشد —
+   کلیک روی سربرگ بخش‌های کشویی باید زیرمنو را باز کند، نه اینکه منو را ببندد *@
+<div class="nav-scrollable" onclick="if (event.target.closest('a.nav-link, button.nav-link')) { document.querySelector('.navbar-toggler').click(); }">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All"><i class="bi bi-house-door"></i>خانه</NavLink>
+        </div>
+
+        <AuthorizeView>
+            <Authorized>
+                @foreach (var item in visibleItems)
+                {
+                    @RenderItem(item)
+                }
+            </Authorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    private List<NavItem> visibleItems = [];
+    private HashSet<string> grantedPermissions = new(StringComparer.Ordinal);
+    private bool permissionsLoaded;
+
+    // شناسهٔ بخش‌های باز/بسته — به‌جای bool جدا برای هر بخش
+    private readonly HashSet<string> openSections = new(StringComparer.Ordinal);
+
+    protected override void OnInitialized()
+    {
+        // حفظ «باز بودنِ بخش متناسب با مسیر جاری» هنگام ساخت کامپوننت
+        // (مثلاً بعد از ریلود کامل صفحه‌ای مثل پروفایل)
+        var path = new Uri(NavigationManager.Uri).AbsolutePath.Trim('/');
+        foreach (var item in NavProvider.GetRootItems())
+        {
+            if (item.Children is null) continue;
+            if (item.Children.Any(c => c.Href is not null &&
+                                       path.StartsWith(c.Href, StringComparison.OrdinalIgnoreCase)))
+            {
+                openSections.Add(SectionKey(item));
+            }
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (permissionsLoaded) return;
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        grantedPermissions = state.User
+            .FindAll(Platform.Domain.Identity.Permissions.ClaimType)
+            .Select(c => c.Value)
+            .ToHashSet(StringComparer.Ordinal);
+        permissionsLoaded = true;
+
+        visibleItems = NavProvider.GetRootItems().Where(CanSee).ToList();
+    }
+
+    private RenderFragment RenderItem(NavItem item) => builder =>
+    {
+        var seq = 0;
+
+        // آیتم تکی → یک لینک ساده
+        if (item.Children is null)
+        {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "nav-item px-3");
+
+            builder.OpenComponent<NavLink>(seq++);
+            builder.AddAttribute(seq++, "class", "nav-link");
+            builder.AddAttribute(seq++, "href", item.Href ?? "#");
+            builder.AddAttribute(seq++, "ChildContent", (RenderFragment)(b =>
+            {
+                var s = 0;
+                if (!string.IsNullOrEmpty(item.Icon))
+                {
+                    b.OpenElement(s++, "i");
+                    b.AddAttribute(s++, "class", $"bi {item.Icon}");
+                    b.CloseElement();
+                }
+                b.AddContent(s++, item.Title);
+            }));
+            builder.CloseComponent();
+
+            builder.CloseElement();
+            return;
+        }
+
+        // گروه بازشونده → سربرگ + زیرآیتم‌ها
+        var key = SectionKey(item);
+        var isOpen = openSections.Contains(key);
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "nav-section");
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "nav-section-header");
+        builder.AddAttribute(seq++, "onclick",
+            EventCallback.Factory.Create(this, () => Toggle(key)));
+
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "nav-section-title");
+        builder.OpenElement(seq++, "i");
+        builder.AddAttribute(seq++, "class", $"bi {item.Icon}");
+        builder.CloseElement();
+        builder.AddContent(seq++, item.Title);
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "nav-caret");
+        builder.AddAttribute(seq++, "style",
+            $"transform: rotate({(isOpen ? "90deg" : "0deg")});");
+        builder.AddContent(seq++, "›");
+        builder.CloseElement();
+
+        builder.CloseElement(); // nav-section-header
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class",
+            isOpen ? "nav-section-body" : "nav-section-body d-none");
+        foreach (var child in item.Children.Where(CanSee))
+        {
+            builder.AddContent(seq++, RenderItem(child));
+        }
+        builder.CloseElement();
+
+        builder.CloseElement(); // nav-section
+    };
+
+    private void Toggle(string key)
+    {
+        if (!openSections.Remove(key)) openSections.Add(key);
+    }
+
+    private static string SectionKey(NavItem item) => item.Title;
+
+    private bool CanSee(NavItem item)
+    {
+        // گروه: اگر حتی یک زیرآیتم قابل‌مشاهده داشت، خودش هم دیده می‌شود
+        if (item.Children is not null)
+            return item.Children.Any(CanSee);
+
+        if (string.IsNullOrEmpty(item.RequiredPermission)) return true;
+
+        if (grantedPermissions.Contains(item.RequiredPermission)) return true;
+
+        var viewPermission = ViewOf(item.RequiredPermission);
+        return viewPermission is not null && grantedPermissions.Contains(viewPermission);
+    }
+
+    /// <summary>
+    /// نگاشت مجوز «مدیریتی» به مجوز «مشاهدهٔ» همان بخش. پروژهٔ مصرف‌کننده در صورت نیاز
+    /// این را با یک سرویس جایگزین می‌کند؛ این نسخهٔ پیش‌فرض فقط مجوز دقیق را می‌سنجد.
+    /// </summary>
+    private static string? ViewOf(string permission) => null;
+}
