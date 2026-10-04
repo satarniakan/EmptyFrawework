@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "satarniakan",
+  "classifications": ["Web", "Blazor", "Blazor Server"],
+  "name": "Empty Platform (Persian RTL Blazor)",
+  "description": "Reusable Persian RTL Blazor Server platform: Identity + OTP login, users and roles, permission-gated data-driven menu, audit log, notifications, outbox, Persian helpers and Excel/PDF exports. Domain ships only as a Sample module.",
+  "groupIdentity": "EmptyFrawework.Platform",
+  "precedence": "100",
+  "identity": "EmptyFrawework.Platform.Blazor",
+  "shortName": "empty-platform",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "sourceName": "Platform",
+  "preferNameDirectory": true,
+  "symbols": {
+    "SampleName": {
+      "type": "parameter",
+      "description": "Name of the sample domain module shipped as the wiring example (rename or delete it in your project).",
+      "datatype": "string",
+      "defaultValue": "Sample",
+      "replaces": "Sample",
+      "fileRename": "Sample"
+    },
+    "includeSample": {
+      "type": "parameter",
+      "datatype": "bool",
+      "description": "Keep the Sample domain module and its host web project as a wiring example.",
+      "defaultValue": "true"
+    }
+  },
+  "sources": [
+    {
+      "exclusions": [
+        ".git/**",
+        ".vs/**",
+        "bin/**",
+        "obj/**",
+        "artifacts/**",
+        "TestResults/**",
+        "content/**",
+        "push.out.log",
+        "push.err.log"
+      ],
+      "modifiers": [
+        {
+          "condition": "(!includeSample)",
+          "exclude": [
+            "samples/**",
+            "tools/Copy-PlatformFiles.ps1",
+            "tools/Restructure.ps1"
+          ]
+        }
+      ]
+    }
+  ]
+}

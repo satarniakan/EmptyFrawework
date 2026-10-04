@@ -15,6 +15,32 @@
 | `samples/Sample.Module` | ماژول دامنهٔ نمونه: «وظایف» — هیچ ربطی به حسابداری ندارد؛ الگوی اتصال دامنه است |
 | `samples/Sample.Web` | میزبان نمونه که ثابت می‌کند پایه به‌تنهایی بالا می‌آید |
 
+## ساخت پروژهٔ جدید از این قالب
+
+روی همین ریپو (فقط یک‌بار در هر دستگاه):
+
+```bash
+dotnet new install .
+```
+
+بعد، برای هر پروژهٔ تازه در پوشهٔ خالی مقصد:
+
+```bash
+mkdir MyShop && cd MyShop
+dotnet new empty-platform -n MyShop
+dotnet build MyShop.slnx
+dotnet test tests/MyShop.Tests/MyShop.Tests.csproj
+```
+
+نکته‌ها:
+
+- نام داده‌شده با `-n` جای همهٔ `Platform`ها (پوشه‌ها، فایل‌ها، namespaceها) و
+  فایل `Platform.slnx` می‌نشیند.
+- بدون ماژول نمونه: `dotnet new empty-platform -n MyShop --includeSample false`
+- نام ماژول نمونه را هم می‌شود عوض کرد: `--SampleName Orders`
+- `.git`، `bin`، `obj` و لاگ‌ها به خروجی قالب نمی‌آیند.
+- برای به‌روزرسانی قالب پس از pull تازه: `dotnet new install .` را دوباره بزنید.
+
 ## سه نقطهٔ اتصال دامنه (تغییرناپذیرِ پایه)
 
 پروژهٔ جدید **پایه را ویرایش نمی‌کند**؛ فقط این سه چیز را می‌دهد:
