@@ -1,4 +1,4 @@
-﻿@* Dashboard.Web/Components/Shared/NotificationBell.razor *@
+@* Platform.Web/Components/Shared/NotificationBell.razor *@
 @* زنگ اعلان‌ها به سبک Tabler — جزیره‌ی تعاملی؛ داده از fetch به endpoint سبک JSON می‌آید
    (نه از سرویس مدار) تا هم‌روندی DbContext با صفحات تعاملی پیش نیاید *@
 @rendermode InteractiveServer
@@ -120,7 +120,7 @@
 
     private async Task LoadFeed(CancellationToken ct)
     {
-        var feed = await JS.InvokeAsync<NotificationFeedDto>("dashboardApi.get", "/notifications/recent");
+        var feed = await JS.InvokeAsync<NotificationFeedDto>("platformApi.get", "/notifications/recent");
         if (ct.IsCancellationRequested) return;
 
         UnreadCount = feed.UnreadCount;
@@ -147,7 +147,7 @@
     {
         if (!n.IsRead)
         {
-            await JS.InvokeVoidAsync("dashboardApi.post", $"/notifications/{n.Id}/read");
+            await JS.InvokeVoidAsync("platformApi.post", $"/notifications/{n.Id}/read");
             UnreadCount = Math.Max(0, UnreadCount - 1);
             n.IsRead = true;
         }
@@ -161,7 +161,7 @@
 
     private async Task MarkAllRead()
     {
-        await JS.InvokeVoidAsync("dashboardApi.post", "/notifications/read-all");
+        await JS.InvokeVoidAsync("platformApi.post", "/notifications/read-all");
         UnreadCount = 0;
         if (items is not null)
             foreach (var n in items) n.IsRead = true;

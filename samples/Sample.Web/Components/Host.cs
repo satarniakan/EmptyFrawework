@@ -13,7 +13,7 @@ public static class SampleRoutes
 }
 
 /// <summary>
-/// ریدایرکت ریشه به صفحهٔ نمونه.
+/// ریدایرکت ریشه به داشبورد جلسات.
 /// </summary>
 [Route("/")]
 public class HomeRedirector : ComponentBase
@@ -21,5 +21,5 @@ public class HomeRedirector : ComponentBase
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
 
-    protected override void OnInitialized() => Navigation.NavigateTo("/tasks", replace: true);
+    protected override void OnInitialized() => Navigation.NavigateTo("/my-meetings", replace: true);
 }

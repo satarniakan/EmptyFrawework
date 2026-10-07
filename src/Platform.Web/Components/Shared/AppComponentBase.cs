@@ -1,4 +1,4 @@
-﻿// Dashboard.Web/Components/Shared/AppComponentBase.cs
+// Platform.Web/Components/Shared/AppComponentBase.cs
 using Microsoft.AspNetCore.Components;
 
 namespace Platform.Web.Components.Shared;

@@ -1,4 +1,4 @@
-@page "/profile"
+﻿@page "/profile"
 @attribute [Authorize]
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
@@ -91,6 +91,21 @@ else
         @* ===== نوار عملیات ===== *@
         <div class="card-panel form-actions mt-3 d-flex align-items-center gap-2">
 
+            <button class="btn btn-primary" disabled="@isSaving" @onclick="HandleSave">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-check-lg me-1"></i>
+                }
+                ذخیره تغییرات
+            </button>
+        </div>
+    </div>
+}
+
 @code {
     [SupplyParameterFromQuery(Name = "welcome")]
     private bool Welcome { get; set; }
@@ -165,18 +180,4 @@ else
             isSaving = false;
         }
     }
-}
-            <button class="btn btn-primary" disabled="@isSaving" @onclick="HandleSave">
-                @if (isSaving)
-                {
-                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                }
-                else
-                {
-                    <i class="bi bi-check-lg me-1"></i>
-                }
-                ذخیره تغییرات
-            </button>
-        </div>
-    </div>
 }

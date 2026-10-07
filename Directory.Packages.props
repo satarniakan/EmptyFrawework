@@ -1,0 +1,33 @@
+<Project>
+
+  <!-- مدیریت متمرکز نسخهٔ بسته‌ها. دیگر هیچ csproj نسخه‌ی خودش را نمی‌نویسد؛
+       همهٔ بسته‌های یک خانواده (EF Core، Identity، Extensions) هم‌نسخه می‌مانند. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- خروجی اکسل/PDF -->
+    <PackageVersion Include="ClosedXML" Version="0.104.2" />
+    <PackageVersion Include="QuestPDF" Version="2026.9.1" />
+
+    <!-- Identity / EF Core — همه روی یک نسخه‌ی وصله -->
+    <PackageVersion Include="Microsoft.Extensions.Identity.Stores" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.12" />
+
+    <!-- میزبان نمونه -->
+    <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
+
+    <!-- تست -->
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="Moq" Version="4.20.72" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+</Project>

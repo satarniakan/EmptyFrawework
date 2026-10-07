@@ -1,0 +1,235 @@
+@page "/meetings/new"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Meetings.MeetingPermissions.Manage)]
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@inherits Platform.Web.Components.Shared.AppComponentBase
+@inject IMeetingService MeetingService
+@inject IUserAdminService UserAdminService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+<PageTitle>تعریف جلسهٔ جدید</PageTitle>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">تعریف جلسهٔ جدید</h3>
+        <div class="text-body-secondary small">مشخصات جلسه را کامل کنید و مدعوین را انتخاب کنید؛ دعوت‌نامه با ایمیل و پیامک ارسال می‌شود.</div>
+    </div>
+    <a href="/meetings" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+    </a>
+</div>
+
+<div style="max-width: 720px;">
+    <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="CreateMeetingForm">
+        <DataAnnotationsValidator />
+
+        @* ===== مشخصات جلسه ===== *@
+        <div class="card-panel mb-3">
+            <h6 class="form-section-title"><i class="bi bi-calendar2-plus"></i>مشخصات جلسه</h6>
+
+            <AppTextField @bind-Value="model.Title" Label="موضوع جلسه" Required="true"
+                          Placeholder="مثال: جلسهٔ هم‌راستایی تیم محصول" />
+
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label">زمان برگزاری <span class="text-danger" title="الزامی">*</span></label>
+                    <PersianDateTimePicker @bind-Value="model.StartAt" ShowTime="true"
+                                           Placeholder="تاریخ و ساعت را انتخاب کنید" />
+                    <ValidationMessage For="() => model.StartAt" class="text-danger small d-block" />
+                </div>
+                <div class="col-md-6">
+                    <AppRadioGroup @bind-Value="model.Kind" Label="نوع برگزاری"
+                                   Options="@(new List<(MeetingKind, string)> { (MeetingKind.InPerson, "حضوری"), (MeetingKind.Virtual, "غیرحضوری") })" />
+                </div>
+            </div>
+
+            @if (model.Kind == MeetingKind.InPerson)
+            {
+                <AppTextField @bind-Value="model.Location" Label="مکان جلسه"
+                              Placeholder="مثال: اتاق جلسات طبقهٔ دوم" Hint="این مکان در دعوت‌نامه اعلام می‌شود." />
+            }
+            else
+            {
+                <AppTextField @bind-Value="model.MeetingLink" Label="لینک فضای جلسه" Required="true"
+                              Placeholder="مثال: https://meet.example.com/abc-defg-hij"
+                              Hint="این لینک همراه دعوت‌نامه برای مدعوین ارسال می‌شود." />
+            }
+
+            <AppTextArea @bind-Value="model.Description" Label="توضیحات / دستور جلسه (اختیاری)" Rows="3"
+                         Placeholder="مواردی که مدعوین باید بدانند یا آماده بیایند" />
+        </div>
+
+        @* ===== مدعوین ===== *@
+        <div class="card-panel mb-3">
+            <h6 class="form-section-title">
+                <i class="bi bi-people"></i>مدعوین
+                <span class="text-body-secondary small fw-normal">(انتخاب‌شده: @SelectedCount نفر)</span>
+            </h6>
+
+            @if (users is null)
+            {
+                <LoadingSkeleton Table="false" Rows="4" />
+            }
+            else if (users.Count == 0)
+            {
+                <div class="text-body-secondary small">
+                    هنوز کاربری ثبت نشده است. ابتدا از بخش «کاربران» افراد را اضافه کنید.
+                </div>
+            }
+            else
+            {
+                <div class="border rounded-2 p-2" style="max-height: 320px; overflow-y: auto;">
+                    @foreach (var u in users)
+                    {
+                        <div class="form-check py-1">
+                            <input class="form-check-input" type="checkbox" id="@("inv_" + u.UserId)"
+                                   checked="@model.InviteeUserIds.Contains(u.UserId)"
+                                   @onchange="@(e => ToggleInvitee(u.UserId, (bool)e.Value!))" />
+                            <label class="form-check-label" for="@("inv_" + u.UserId)">
+                                @if (string.IsNullOrWhiteSpace(u.FullName))
+                                {
+                                    @u.PhoneNumber
+                                }
+                                else
+                                {
+                                    @u.FullName
+                                }
+                                <span class="text-body-secondary small">— @u.PhoneNumber</span>
+                                @if (!string.IsNullOrEmpty(u.Email))
+                                {
+                                    <span class="text-body-secondary small">— @u.Email</span>
+                                }
+                                else
+                                {
+                                    <span class="text-danger small">(بدون ایمیل)</span>
+                                }
+                            </label>
+                        </div>
+                    }
+                </div>
+                <ValidationMessage For="() => model.InviteeUserIds" class="text-danger small d-block" />
+                <div class="form-text">به هر مدعو انتخاب‌شده، دعوت‌نامه با ایمیل (در صورت داشتن ایمیل) و پیامک ارسال می‌شود.</div>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mb-0">
+                <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
+            </div>
+        }
+
+        @* ===== نوار عملیات ===== *@
+        <div class="card-panel form-actions mt-3 d-flex align-items-center gap-2">
+            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-send me-1"></i>
+                }
+                ثبت جلسه و ارسال دعوت‌نامه
+            </button>
+            <a href="/meetings" class="btn btn-outline-secondary">انصراف</a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private CreateMeetingDto model = new();
+    private List<UserListItemDto>? users;
+    private bool isSaving;
+    private string? errorMessage;
+
+    private int SelectedCount => model.InviteeUserIds.Count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RunSafe(async () =>
+        {
+            users = (await UserAdminService.GetAllUsersAsync()).ToList();
+        });
+    }
+
+    private void ToggleInvitee(string userId, bool isChecked)
+    {
+        if (isChecked)
+        {
+            if (!model.InviteeUserIds.Contains(userId))
+                model.InviteeUserIds.Add(userId);
+        }
+        else
+        {
+            model.InviteeUserIds.Remove(userId);
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        errorMessage = null;
+        if (model.StartAt == default)
+        {
+            errorMessage = "زمان برگزاری را انتخاب کنید.";
+            return;
+        }
+        if (model.StartAt <= DateTime.UtcNow)
+        {
+            errorMessage = "زمان جلسه باید در آینده باشد.";
+            return;
+        }
+        if (model.Kind == MeetingKind.Virtual && string.IsNullOrWhiteSpace(model.MeetingLink))
+        {
+            errorMessage = "برای جلسهٔ غیرحضوری، لینک فضای جلسه الزامی است.";
+            return;
+        }
+        if (model.InviteeUserIds.Count == 0)
+        {
+            errorMessage = "حداقل یک مدعو انتخاب کنید.";
+            return;
+        }
+
+        await RunSafe(async () =>
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? throw new InvalidOperationException("کاربر شناسایی نشد.");
+
+            isSaving = true;
+            var created = await MeetingService.CreateAsync(new MeetingCreateRequest(
+                model.Title, model.Description, model.Kind, model.Location,
+                model.MeetingLink, model.StartAt, userId, model.InviteeUserIds));
+
+            Toast.ShowSuccess($"جلسه ثبت شد و دعوت‌نامه برای {created.Invitees.Count} نفر ارسال گردید.");
+            NavigationManager.NavigateTo("/meetings");
+        }, "خطا در ثبت جلسه.");
+        isSaving = false;
+    }
+
+    private class CreateMeetingDto
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "موضوع جلسه الزامی است.")]
+        [System.ComponentModel.DataAnnotations.StringLength(200, ErrorMessage = "موضوع جلسه نمی‌تواند بیشتر از ۲۰۰ کاراکتر باشد.")]
+        public string Title { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "زمان برگزاری الزامی است.")]
+        public DateTime StartAt { get; set; }
+
+        public MeetingKind Kind { get; set; } = MeetingKind.InPerson;
+
+        [System.ComponentModel.DataAnnotations.StringLength(300, ErrorMessage = "مکان نمی‌تواند بیشتر از ۳۰۰ کاراکتر باشد.")]
+        public string? Location { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(1000, ErrorMessage = "لینک جلسه نمی‌تواند بیشتر از ۱۰۰۰ کاراکتر باشد.")]
+        public string? MeetingLink { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(2000, ErrorMessage = "توضیحات نمی‌تواند بیشتر از ۲۰۰۰ کاراکتر باشد.")]
+        public string? Description { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MinLength(1, ErrorMessage = "حداقل یک مدعو انتخاب کنید.")]
+        public List<string> InviteeUserIds { get; set; } = [];
+    }
+}

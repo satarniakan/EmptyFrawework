@@ -1,8 +1,8 @@
 {
-  "name": "فروشگاه من",
-  "short_name": "فروشگاه",
-  "description": "ویترین فروشگاه اینترنتی",
-  "start_url": "/shop",
+  "name": "سامانه",
+  "short_name": "سامانه",
+  "description": "برنامهٔ وب فارسی راست‌به‌چپ",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f8f9fb",

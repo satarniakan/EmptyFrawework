@@ -1,4 +1,4 @@
-﻿// Dashboard.Web/Services/OutboxProcessor.cs
+// Platform.Web/Services/OutboxProcessor.cs
 using Platform.Domain.Entities;
 using Platform.Domain.Enums;
 using Platform.Domain.Interfaces;

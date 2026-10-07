@@ -1,4 +1,4 @@
-﻿// Dashboard.Web/Endpoints/NotificationsEndpoints.cs
+// Platform.Web/Endpoints/NotificationsEndpoints.cs
 using System.Security.Claims;
 using Platform.Application.Services;
 using Microsoft.AspNetCore.Authorization;

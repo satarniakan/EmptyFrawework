@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- میزبان پایه: DI، endpointها، سرویس‌های پس‌زمینه و دارایی‌های سطح اپ (PWA، آیکون).
+       کامپوننت‌ها و دارایی‌های ظاهری در Platform.Web (Razor Class Library) می‌مانند؛
+       این پروژه فقط «زیرساخت اجرا» را در اختیار هر میزبانی می‌گذارد. -->
+
+  <PropertyGroup>
+    <!-- کتابخانهٔ زیرساخت اجراست (نقطهٔ ورود ندارد)؛ میزبان واقعی Sample.Web است.
+         اگر روزی بخواهد به‌تنهایی بالا بیاید، Program.cs اضافه کنید و به Exe برگردانید. -->
+    <OutputType>Library</OutputType>
+    <RootNamespace>Platform.Web.Hosting</RootNamespace>
+    <!-- فایل‌های .razor این پروژه (در صورت اضافه شدن) در wwwroot/_content/Platform.Web.Hosting سرو می‌شوند. -->
+    <StaticWebAssetBasePath Condition="'$(StaticWebAssetBasePath)' == ''">/</StaticWebAssetBasePath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Platform.Web\Platform.Web.csproj" />
+  </ItemGroup>
+
+</Project>

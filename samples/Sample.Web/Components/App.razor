@@ -14,28 +14,22 @@
     <link rel="stylesheet" href="_content/Platform.Web/lib/bootstrap/dist/css/bootstrap.rtl.min.css" />
     <link rel="stylesheet" href="_content/Platform.Web/lib/bootstrap-icons/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="_content/Platform.Web/app.css" />
+    <link rel="stylesheet" href="_content/Platform.Web/Platform.Web.bundle.scp.css" />
 
     <link rel="stylesheet" href="_content/Platform.Web/lib/datepicker/datepicker.min.css">
     <script src="_content/Platform.Web/lib/datepicker/datepicker.min.js"></script>
     <script src="_content/Platform.Web/persian-datepicker-interop.js"></script>
     <script src="_content/Platform.Web/priceInput.js"></script>
+    <script src="rtleditor.js"></script>
 
     <link rel="icon" type="image/png" href="favicon.png" />
     <HeadOutlet />
 </head>
 <body>
-    <Routes AdditionalAssemblies="SampleRoutes.AdditionalAssemblies" @rendermode="RenderModeForPage" />
+    @* خودِ Routes استاتیک رندر می‌شود؛ حالت تعاملی هر صفحه با @rendermode خودش تعیین می‌شود
+       (الگوی پیش‌فرض Blazor Web App). رندر تعاملی روی Routes، پارامتر AdditionalAssemblies
+       (آرایهٔ Assembly) را قابل serialize نمی‌کند و prerender ریشه را با NotSupportedException می‌شکند. *@
+    <Routes AdditionalAssemblies="SampleRoutes.AdditionalAssemblies" />
     <script src="_framework/blazor.web.js"></script>
 </body>
 </html>
-
-@code {
-    [CascadingParameter]
-    private HttpContext HttpContext { get; set; } = default!;
-
-    // صفحاتی که [ExcludeFromInteractiveRouting] دارند (مثل Login و VerifyOtp) به HttpContext
-    // نیاز دارند تا AntiforgeryToken و فرم‌های POST کار کنند. برای آن‌ها رندرمود را null
-    // می‌گذاریم تا کاملاً استاتیک رندر شوند؛ بقیه صفحات تعاملی باقی می‌مانند.
-    private IComponentRenderMode? RenderModeForPage =>
-        HttpContext.AcceptsInteractiveRouting() ? InteractiveServer : null;
-}

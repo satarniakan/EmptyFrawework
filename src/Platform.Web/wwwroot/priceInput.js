@@ -1,6 +1,6 @@
 // جداسازی سه‌رقمی مبلغ هنگام تایپ + تبدیل ارقام فارسی/عربی به لاتین
-// استفاده: dashboardPriceInput.attach(elementReference) — از AppPriceField.razor صدا زده می‌شود
-window.dashboardPriceInput = {
+// استفاده: priceInput.attach(elementReference) — از AppPriceField/AppNumberField صدا زده می‌شود
+window.priceInput = {
     format: function (el) {
         var raw = el.value;
         var caret = el.selectionStart ?? raw.length;
@@ -39,7 +39,7 @@ window.dashboardPriceInput = {
         }
     },
     attach: function (el) {
-        el.addEventListener('input', function () { dashboardPriceInput.format(el); });
+        el.addEventListener('input', function () { priceInput.format(el); });
         // بعد از خروج از فیلد، صفرهای انتهایی اعشار حذف می‌شوند: 1,000.00 → 1,000
         el.addEventListener('blur', function () {
             if (el.value.indexOf('.') === -1) return;

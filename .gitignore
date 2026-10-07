@@ -10,6 +10,11 @@
 [Dd]ebug/
 [Rr]elease/
 artifacts/
+## Test output
+TestResults/
+*.trx
+
+
 
 ## Local secrets and logs
 *.log
@@ -23,7 +28,8 @@ secrets.json
 .DS_Store
 Thumbs.db
 # Real connection strings stay on the machine, never in git
-/src/Platform.Web/appsettings.json
-/src/Platform.Web/appsettings.Development.json
 /samples/Sample.Web/appsettings.json
 /samples/Sample.Web/appsettings.Development.json
+
+# Data Protection keys (created at runtime by the sample host)
+DataProtection-Keys/

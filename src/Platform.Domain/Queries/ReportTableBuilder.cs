@@ -1,6 +1,5 @@
 ﻿using System.Globalization;
 using System.Reflection;
-using Platform.Domain.Queries;
 
 namespace Platform.Domain.Queries;
 

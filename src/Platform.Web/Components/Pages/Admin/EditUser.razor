@@ -1,0 +1,140 @@
+@* Platform.Web/Components/Pages/Admin/EditUser.razor *@
+@page "/admin/users/{UserId}/edit"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = Platform.Domain.Identity.Roles.Admin)]
+@using Microsoft.AspNetCore.Authorization
+@using Platform.Application.DTOs
+@using Platform.Application.Services
+@inject IUserAdminService UserAdminService
+@inject NavigationManager NavigationManager
+@inject ILogger<Platform.Web.Components.Pages.Admin.EditUser> Logger
+@inject Platform.Web.Services.ToastService ToastService
+<PageTitle>ویرایش کاربر</PageTitle>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">ویرایش کاربر</h3>
+        <div class="text-body-secondary small">نام، شماره موبایل و ایمیل کاربر را ویرایش کنید؛ نقش‌ها از صفحهٔ «تغییر نقش» مدیریت می‌شوند.</div>
+    </div>
+    <a href="/admin/users" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+    </a>
+</div>
+
+@if (model is null)
+{
+    <LoadingSkeleton Table="false" Rows="5" />
+}
+else
+{
+    <div style="max-width: 560px;">
+        <div class="card-panel mb-3">
+            <h6 class="form-section-title"><i class="bi bi-person"></i>اطلاعات کاربر</h6>
+
+            <AppTextField @bind-Value="model.FullName" Label="نام کامل" Required="true"
+                          Placeholder="نام و نام خانوادگی" />
+
+            <div class="row">
+                <div class="col-md-6">
+                    <AppTextField @bind-Value="model.PhoneNumber" Label="شماره موبایل" Required="true"
+                                  Placeholder="مثال: 09123456789" Hint="همان نام کاربری کاربر است؛ ورود با OTP از همین شماره انجام می‌شود." />
+                </div>
+                <div class="col-md-6">
+                    <AppTextField @bind-Value="model.Email" Label="ایمیل (اختیاری)"
+                                  Placeholder="example@domain.com" Hint="برای دعوت‌نامه‌ها و اطلاع‌رسانی ایمیل استفاده می‌شود." />
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mb-0">
+                <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
+            </div>
+        }
+
+        <div class="card-panel form-actions mt-3 d-flex align-items-center gap-2">
+            <button class="btn btn-primary" @onclick="Save" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-check-lg me-1"></i>
+                }
+                ذخیره تغییرات
+            </button>
+            <a href="/admin/users" class="btn btn-outline-secondary">انصراف</a>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string UserId { get; set; } = string.Empty;
+
+    private UpdateUserDto? model;
+    private bool isSaving;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await UserAdminService.GetUserAsync(UserId);
+        if (user is null)
+        {
+            ToastService.ShowError("کاربر یافت نشد.");
+            NavigationManager.NavigateTo("/admin/users");
+            return;
+        }
+
+        model = new UpdateUserDto
+        {
+            UserId = user.UserId,
+            FullName = user.FullName ?? string.Empty,
+            PhoneNumber = user.PhoneNumber ?? string.Empty,
+            Email = user.Email
+        };
+    }
+
+    private async Task Save()
+    {
+        if (model is null) return;
+
+        errorMessage = null;
+        if (string.IsNullOrWhiteSpace(model.FullName))
+        {
+            errorMessage = "نام کامل الزامی است.";
+            return;
+        }
+        if (!System.Text.RegularExpressions.Regex.IsMatch(model.PhoneNumber ?? string.Empty, @"^09\d{9}$"))
+        {
+            errorMessage = "شماره موبایل معتبر نیست (مثال: 09123456789).";
+            return;
+        }
+
+        isSaving = true;
+        try
+        {
+            var result = await UserAdminService.UpdateUserAsync(model);
+            if (result.Succeeded)
+            {
+                ToastService.ShowSuccess("اطلاعات کاربر به‌روزرسانی شد.");
+                NavigationManager.NavigateTo("/admin/users");
+            }
+            else
+            {
+                errorMessage = string.Join("، ", result.Errors.Select(e => e.Description));
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در ویرایش کاربر {UserId}", UserId);
+            errorMessage = Platform.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

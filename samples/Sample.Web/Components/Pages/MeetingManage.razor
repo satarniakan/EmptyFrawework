@@ -1,0 +1,291 @@
+@page "/meetings/{Id:int}/manage"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Meetings.MeetingPermissions.Manage)]
+@using Microsoft.AspNetCore.Authorization
+@inherits Platform.Web.Components.Shared.AppComponentBase
+@inject IMeetingService MeetingService
+@inject NavigationManager NavigationManager
+<PageTitle>مدیریت جلسه</PageTitle>
+
+@if (meeting is null && loadFailed)
+{
+    <div class="alert alert-danger">جلسه یافت نشد.</div>
+}
+else if (meeting is null)
+{
+    <LoadingSkeleton Table="false" Rows="8" />
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h3 class="mb-1">@meeting.Title</h3>
+            <div class="text-body-secondary small">
+                <i class="bi bi-calendar3 me-1"></i>@meeting.StartAt.ToPersianDateTime()
+                @if (meeting.Kind == MeetingKind.InPerson)
+                {
+                    <span class="ms-3"><i class="bi bi-geo-alt me-1"></i>حضوری — @meeting.Location</span>
+                }
+                else
+                {
+                    <span class="ms-3"><i class="bi bi-camera-video me-1"></i>غیرحضوری — <a href="@meeting.MeetingLink" target="_blank" rel="noopener">لینک جلسه</a></span>
+                }
+            </div>
+        </div>
+        <a href="/meetings" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+        </a>
+    </div>
+
+    @* ===== پیشنهادهای زمان ===== *@
+    @if (proposals is { Count: > 0 })
+    {
+        <div class="card-panel mb-3 border-warning">
+            <h6 class="form-section-title"><i class="bi bi-hourglass-split"></i>پیشنهادهای زمان جدید</h6>
+            @foreach (var p in proposals)
+            {
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 border-bottom">
+                    <div>
+                        <span class="fw-semibold">@p.ProposerName</span>
+                        <span class="mx-1">زمان</span>
+                        <span class="fw-semibold">@p.ProposedStartAt.ToPersianDateTime()</span>
+                        را پیشنهاد داد.
+                        @if (!string.IsNullOrWhiteSpace(p.Note))
+                        {
+                            <div class="small text-body-secondary">«@p.Note»</div>
+                        }
+                    </div>
+                    <div>
+                        @if (p.Status == ProposalStatus.Pending)
+                        {
+                            <button class="btn btn-sm btn-success" @onclick="@(async () => await DecideAsync(p.Id, true))">
+                                <i class="bi bi-check-lg me-1"></i>پذیرش و جابه‌جایی جلسه
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="@(async () => await DecideAsync(p.Id, false))">رد</button>
+                        }
+                        else if (p.Status == ProposalStatus.Accepted)
+                        {
+                            <span class="badge text-bg-success">پذیرفته شد</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-secondary">رد شد</span>
+                        }
+                    </div>
+                </div>
+            }
+            <div class="form-text mt-2">با پذیرش یک پیشنهاد، زمان جلسه تغییر می‌کند و پاسخ قبلی همهٔ مدعوین به «در انتظار» برمی‌گردد.</div>
+        </div>
+    }
+
+    @* ===== مدعوین و حضور و غیاب ===== *@
+    <div class="card-panel mb-3">
+        <h6 class="form-section-title"><i class="bi bi-people"></i>مدعوین و حضور و غیاب</h6>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>نام</th>
+                        <th>تلفن</th>
+                        <th>پاسخ به دعوت</th>
+                        <th>حضور</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (invitees is null)
+                    {
+                        <tr><td colspan="4"><LoadingSkeleton Table="false" Rows="3" /></td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var i in invitees)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@i.FullName</td>
+                                <td>@i.PhoneNumber</td>
+                                <td>
+                                    @switch (i.Response)
+                                    {
+                                        case InviteResponse.Accepted:
+                                            <span class="badge text-bg-success">پذیرفته</span>
+                                            break;
+                                        case InviteResponse.Declined:
+                                            <span class="badge text-bg-danger">رد کرده</span>
+                                            break;
+                                        default:
+                                            <span class="badge text-bg-secondary">در انتظار پاسخ</span>
+                                            break;
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="علامت حضور">
+                                        <button class="btn @(i.Attendance == AttendanceMark.Attended ? "btn-success" : "btn-outline-success")"
+                                                @onclick="@(async () => await SetAttendanceAsync(i.UserId, AttendanceMark.Attended))">حاضر</button>
+                                        <button class="btn @(i.Attendance == AttendanceMark.Absent ? "btn-danger" : "btn-outline-danger")"
+                                                @onclick="@(async () => await SetAttendanceAsync(i.UserId, AttendanceMark.Absent))">غایب</button>
+                                        @if (i.Attendance is not null)
+                                        {
+                                            <button class="btn btn-outline-secondary" title="پاک کردن علامت"
+                                                    @onclick="@(async () => await SetAttendanceAsync(i.UserId, null))">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @* ===== صورت‌جلسه ===== *@
+    <div class="card-panel">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+            <h6 class="form-section-title mb-0"><i class="bi bi-journal-text"></i>صورت‌جلسه</h6>
+            <span class="small">
+                @if (meeting.MinutesSentAt is not null)
+                {
+                    <span class="badge text-bg-success">در @(meeting.MinutesSentAt.Value.ToPersianDateTime()) به کارتابل اعضا ارسال شد</span>
+                }
+                else
+                {
+                    <span class="text-body-secondary">هنوز برای اعضا ارسال نشده است</span>
+                }
+            </span>
+        </div>
+
+        <RtlEditor @ref="minutesEditor" Placeholder="صورت‌جلسه را اینجا بنویسید..." MinHeight="300" />
+        <div class="form-text mb-3">متن فارسی و راست‌چین؛ با نوار ابزار بالا می‌توانید متن را قالب‌بندی کنید.</div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-primary" @onclick="SaveMinutes" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-save me-1"></i>
+                }
+                ذخیرهٔ صورت‌جلسه
+            </button>
+            <button class="btn btn-success" @onclick="SendMinutes" disabled="@isSending">
+                @if (isSending)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-send me-1"></i>
+                }
+                ارسال به کارتابل اعضا
+            </button>
+        </div>
+    </div>
+}
+
+<AppConfirmDialog @ref="confirmDialog" />
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Meeting? meeting;
+    private List<InviteeInfo>? invitees;
+    private List<ProposalInfo>? proposals;
+    private RtlEditor minutesEditor = default!;
+    private AppConfirmDialog confirmDialog = default!;
+    private bool isSaving;
+    private bool isSending;
+    private bool loadFailed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RunSafe(async () =>
+        {
+            meeting = await MeetingService.GetMeetingAsync(Id);
+            if (meeting is null)
+            {
+                loadFailed = true;
+                return;
+            }
+            invitees = await MeetingService.GetInviteeDetailsAsync(Id);
+            proposals = await MeetingService.GetProposalDetailsAsync(Id);
+        });
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // متن موجود باید «بعد از» اولین رندر داخل ویرایشگر گذاشته شود (المان هنوز در DOM نیست اگر زودتر بزنیم)
+        if (firstRender && meeting?.MinutesHtml is { Length: > 0 })
+        {
+            await RunSafe(async () => await minutesEditor.SetHtmlAsync(meeting.MinutesHtml));
+        }
+    }
+
+    private async Task SetAttendanceAsync(string userId, AttendanceMark? mark) => await RunSafe(async () =>
+    {
+        await MeetingService.SetAttendanceAsync(Id, userId, mark);
+        invitees = await MeetingService.GetInviteeDetailsAsync(Id);
+        Toast.ShowSuccess("علامت حضور ثبت شد.");
+    });
+
+    private async Task DecideAsync(int proposalId, bool accept) => await RunSafe(async () =>
+    {
+        var decided = await MeetingService.DecideProposalAsync(proposalId, accept);
+        if (!decided)
+        {
+            Toast.ShowError("این پیشنهاد قبلاً تصمیم‌گیری شده است.");
+            return;
+        }
+
+        if (accept)
+        {
+            Toast.ShowSuccess("پیشنهاد پذیرفته شد؛ زمان جلسه جابه‌جا شد و به مدعوین اطلاع داده شد.");
+        }
+        else
+        {
+            Toast.ShowSuccess("پیشنهاد رد شد.");
+        }
+
+        meeting = await MeetingService.GetMeetingAsync(Id);
+        proposals = await MeetingService.GetProposalDetailsAsync(Id);
+    });
+
+    private async Task SaveMinutes() => await RunSafe(async () =>
+    {
+        isSaving = true;
+        try
+        {
+            var html = await minutesEditor.GetHtmlAsync();
+            await MeetingService.SaveMinutesAsync(Id, html);
+            Toast.ShowSuccess("صورت‌جلسه ذخیره شد.");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }, "خطا در ذخیرهٔ صورت‌جلسه.");
+
+    private async Task SendMinutes() => await RunSafe(async () =>
+    {
+        var confirmed = await confirmDialog.ShowAsync(
+            "ارسال صورت‌جلسه",
+            "صورت‌جلسه برای کارتابل همهٔ مدعوین ارسال شود؟",
+            danger: false);
+        if (!confirmed) return;
+
+        isSending = true;
+        try
+        {
+            var count = await MeetingService.SendMinutesAsync(Id);
+            Toast.ShowSuccess($"صورت‌جلسه برای کارتابل {count} نفر ارسال شد.");
+            meeting = await MeetingService.GetMeetingAsync(Id);
+        }
+        finally
+        {
+            isSending = false;
+        }
+    }, "خطا در ارسال صورت‌جلسه.");
+}

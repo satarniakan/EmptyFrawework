@@ -41,21 +41,22 @@ cd MyShop
 dotnet new empty-platform -n MyShop
 ```
 
-دو حالت کم‌حجم‌تر هم هست:
+اگر اسم ماژول دامنهٔ نمونه را می‌خواهید عوض کنید:
 
 ```bash
-# بدون ماژول نمونه (پروژهٔ کاملاً تمیز)
-dotnet new empty-platform -n MyShop --includeSample false
-
-# با ماژول نمونه ولی با اسم دلخواه
 dotnet new empty-platform -n MyShop --SampleName Orders
 ```
 
+> ماژول نمونه (`samples/`) بخشی از خروجی قالب است. برای حذف کامل آن، پوشهٔ
+> `samples/` را پاک کنید و دو خط `<Project Path="samples/..." />` را از
+> `MyShop.slnx` بردارید؛ بقیهٔ پایه کاملاً مستقل بالا می‌آید.
+
 ## گام ۳ — تنظیم اتصال دیتابیس
 
-فایل `src/MyShop.Web/appsettings.json.example` را به `appsettings.json` کپی کنید و
-مقادیر واقعی (نام دیتابیس و رمز `sa`) را بگذارید. خودِ `appsettings.json` عمداً در
-`.gitignore` است و هیچ‌وقت در گیت ثبت نمی‌شود.
+میزبان اجراشونده، پروژهٔ `samples/Sample.Web` است. فایل
+`samples/Sample.Web/appsettings.json.example` را به `appsettings.json` (کنار خودش)
+کپی کنید و مقادیر واقعی (نام دیتابیس و رمز `sa`) را بگذارید. خودِ `appsettings.json`
+عمداً در `.gitignore` است و هیچ‌وقت در گیت ثبت نمی‌شود.
 
 ## گام ۴ — ساخت و تست
 
@@ -70,13 +71,14 @@ dotnet test tests/MyShop.Tests/MyShop.Tests.csproj
 ## گام ۵ — اولین اجرا
 
 ```bash
-cd src/MyShop.Web
-dotnet run
+dotnet run --project samples/Sample.Web
 ```
 
 جدول‌های پایه (کاربران، نقش‌ها، OTP، اعلان‌ها، لاگ‌ها، Outbox) با `MigrateAsync`
 هنگام startup خودکار ساخته می‌شوند. مرورگر را روی همان آدرسی که در ترمینال چاپ شد
-باز کنید و با شمارهٔ ادمینی که در تنظیمات گذاشتید وارد شوید.
+باز کنید. برای اینکه خودتان ادمین شوید، قبلاً `Identity:FirstAdminPhoneNumber` را
+روی شمارهٔ خودتان گذاشته باشید؛ آن شماره با اولین ورودِ OTP نقش «ادمین» می‌گیرد
+و همهٔ کاربران تازه نقش «کاربر» می‌گیرند.
 
 ## گام ۶ — نسخهٔ خودتان را در گیت ثبت کنید
 
@@ -110,6 +112,32 @@ git push -u origin master
 dotnet ef migrations add <Name> --project src/MyShop.Infrastructure
 ```
 
+## سامانهٔ مدیریت جلسات (ماژول `samples/Meetings`)
+
+یک ماژول دامنهٔ کامل روی همین نقاط اتصال است — هم به‌عنوان محصول آماده و هم الگوی
+«ماژول واقعی با UI». مسیرهای اصلی:
+
+| مسیر | چه کاری؟ | دسترسی |
+|---|---|---|
+| `/my-meetings` | داشبورد جلسات من: پذیرش/رد دعوت، پیشنهاد زمان جدید، مشاهده صورت‌جلسه | همهٔ کاربران واردشده |
+| `/meetings` | فهرست جلسات و ورود به مدیریت هر جلسه | مجوز `meetings.manage` یا ادمین |
+| `/meetings/new` | تعریف جلسه (موضوع، زمان شمسی، حضوری/غیرحضوری، مکان یا لینک) و انتخاب مدعوین | همان |
+| `/meetings/{id}/manage` | مدیریت جلسه: علامت‌زدن حاضر/غایب، تصمیم دربارهٔ پیشنهادهای زمان، نوشتن صورت‌جلسه در ویرایشگر فارسی راست‌چین و ارسال آن به کارتابل اعضا | همان |
+| `/admin/users` | مدیریت افراد: درج، ویرایش، حذف و نقش‌ها | ادمین |
+
+جریان دعوت: ثبت جلسه → دعوت‌نامهٔ هر مدعو هم‌زمان به کارتابل اعلان‌ها + صف ایمیل و
+پیامک (Outbox؛ ارسال واقعی با `OutboxProcessor` بر اساس `Email:Smtp:*` و `Sms:Provider`)
+می‌رود. اگر مدعو زمان دیگری پیشنهاد دهد، مسئول جلسه در کارتابلش خبر می‌شود؛ پذیرش
+پیشنهاد، زمان جلسه را جابه‌جا می‌کند و پاسخ‌های قبلی را به «در انتظار» برمی‌گرداند.
+
+جدول‌های جلسات با مایگریشن `AddMeetings` ساخته می‌شوند (جدول `WorkTask` ماژول نمونه هم
+که قبلاً جا مانده بود، همین‌جا جبران شده). برای مایگریشن‌های بعدیِ ماژول‌ها حتماً با
+پروژهٔ میزبان بزنید تا ماژول‌ها وارد مدل شوند:
+
+```bash
+dotnet ef migrations add <Name> --project src/Platform.Infrastructure --startup-project samples/Sample.Web
+```
+
 ## به‌روزرسانی قالب در آینده
 
 وقتی این ریپو به‌روز شد، روی دستگاه خودتان:
@@ -130,7 +158,9 @@ dotnet new install .
 | `src/Platform.Domain` | هویت (`ApplicationUser`)، مجوز (`Permissions` فقط `ClaimType` دارد)، نقش‌های پایه + `IPermissionCatalog`، انتیتی‌های پایه (AuditLog، OtpCode، OutboxMessage، Notification)، `IPlatformUnitOfWork` |
 | `src/Platform.Application` | سرویس‌های پایه (Auth، Otp، Audit، Permission، UserAdmin، Notification، Outbox) + Helpers فارسی + Exports اکسل/PDF |
 | `src/Platform.Infrastructure` | `PlatformDbContext` (ماژولار با `IPlatformModule`) + `PlatformUnitOfWork`، `RoleSeeder`، فرستنده‌های پیامک/ایمیل |
-| `src/Platform.Web` | کتابخانهٔ Razor: صفحات ورود/OTP/پروفایل/ادمین، `MainLayout`، `NavMenu` داده‌محور (`INavProvider`)، `Routes`، کامپوننت‌های `Shared/App*`، endpointهای auth و اعلان، `Setup` |
+| `src/Platform.Web` | کتابخانهٔ Razor: صفحات ورود/OTP/پروفایل/ادمین، `MainLayout`، `NavMenu` داده‌محور (`INavProvider`)، `Routes`، کامپوننت‌های `Shared/App*` |
+| `src/Platform.Web.Hosting` | زیرساخت اجرای پایه: `PlatformSetup` (ثبت سرویس‌ها، endpointها، سرویس‌های پس‌زمینه) + دارایی‌های سطح اپ (PWA، آیکون) |
+| `samples/Meetings` | ماژول دامنهٔ «مدیریت جلسات»: تعریف جلسه (حضوری/غیرحضوری)، دعوت با ایمیل/پیامک (Outbox) و اعلان کارتابل، داشبورد «جلسات من» (پذیرش/رد/پیشنهاد زمان)، حضور و غیاب و صورت‌جلسهٔ فارسی راست‌چین |
 | `samples/Sample.Module` | ماژول دامنهٔ نمونه: «وظایف» — هیچ ربطی به حسابداری ندارد؛ الگوی اتصال دامنه است |
 | `samples/Sample.Web` | میزبان نمونه که ثابت می‌کند پایه به‌تنهایی بالا می‌آید |
 
@@ -142,6 +172,9 @@ dotnet new install .
 | خروجی قالب پوشهٔ تودرتو ساخت (`MyShop/MyShop`) | طبیعی است (`preferNameDirectory`)؛ داخل پوشهٔ داخلی کار کنید |
 | خطای اتصال SQL هنگام `run` | رشتهٔ اتصال در `appsettings.json` را چک کنید و مطمئن شوید SQL Server بالاست |
 | `dotnet-ef` شناخته نمی‌شود | گام پیش‌نیازها (نصب global) را انجام دهید |
+| خطای «رکورد ساختار پیکربندی» یا رشتهٔ اتصالِ خالی هنگام `run` | `samples/<Name>.Web/appsettings.json` ساخته نشده؛ از `appsettings.json.example` کپی کنید |
+| ماژول نمونه را نمی‌خواهم | پوشهٔ `samples/` را پاک کنید و دو `<Project Path="samples/..."/>` را از `*.slnx` بردارید |
+| وابستگی‌های NuGet گزارش `NU1510`/`NU1605` می‌دهند | نسخه‌ها را فقط از `Directory.Packages.props` عوض کنید و یک‌بار `dotnet restore` بگیرید |
 
 ## نگه‌داری نسخه‌ها (به‌روزرسانی وابستگی‌ها)
 
@@ -170,9 +203,10 @@ dotnet build Platform.slnx
 dotnet test tests/Platform.Tests/Platform.Tests.csproj
 ```
 
-نکتهٔ مهم: بسته‌های `Microsoft.EntityFrameworkCore*` (نسخهٔ ۱۰.۰.۹ در این ریپو)
-باید **همه با هم و هم‌نسخه** به‌روز شوند؛ وگرنه خطای ناسازگاری runtime می‌گیرید.
-ابزار `dotnet-ef` را هم هم‌نسخه نگه دارید:
+نکتهٔ مهم: نسخهٔ همهٔ بسته‌های NuGet از یک جا، یعنی `Directory.Packages.props`
+خوانده می‌شود (مدیریت متمرکز نسخه). پس بسته‌های `Microsoft.EntityFrameworkCore*`،
+Identity و `Microsoft.Extensions.*` **همه با هم و هم‌نسخه** به‌روز می‌شوند؛ وگرنه
+خطای ناسازگاری runtime می‌گیرید. ابزار `dotnet-ef` را هم هم‌نسخه نگه دارید:
 
 ```bash
 dotnet tool update --global dotnet-ef
@@ -200,13 +234,13 @@ Get-ChildItem -Recurse -Filter *.csproj |
 ۴. `dotnet build` و `dotnet test` بگیرید و migration تازه بسازید تا snapshot مدل با
    نسخهٔ جدید EF هم‌خوان شود
 
-برای **قفل‌کردن نسخهٔ SDK** در تیم (که همه با همان SDK بسازند)، یک فایل `global.json`
-در ریشه بسازید:
+برای **قفل‌کردن نسخهٔ SDK** در تیم (که همه با همان SDK بسازند)، این ریپو از قبل
+فایل `global.json` دارد:
 
 ```json
 {
   "sdk": {
-    "version": "10.0.303",
+    "version": "10.0.100",
     "rollForward": "latestFeature"
   }
 }
@@ -254,20 +288,24 @@ libman restore
 
 | وابستگی | نسخهٔ فعلی | کجا ثبت شده |
 |---|---|---|
-| .NET / TargetFramework | `net10.0` | همهٔ `*.csproj`ها |
-| EF Core | ۱۰.۰.۹ | `Platform.Infrastructure.csproj` + `dotnet-ef` |
+| .NET / TargetFramework | `net10.0` | `Directory.Build.props` |
+| همهٔ نسخه‌های NuGet | — | `Directory.Packages.props` (مدیریت متمرکز نسخه) |
+| EF Core / Identity / Extensions | ۱۰.۰.۱۲ | `Directory.Packages.props` + `dotnet-ef` |
 | Bootstrap | ۵.۳.۳ | `src/Platform.Web/wwwroot/lib/bootstrap` |
 | bootstrap-icons | ۱.۱۱.۳ | `src/Platform.Web/wwwroot/lib/bootstrap-icons` |
-| QuestPDF | ۲۰۲۶.۹.۱ | `Platform.Application.csproj` |
-| ClosedXML | ۰.۱۰۴.۲ | `Platform.Application.csproj` |
-| xunit | ۲.۹.۳ | `Platform.Tests.csproj` |
+| QuestPDF | ۲۰۲۶.۹.۱ | `Directory.Packages.props` |
+| ClosedXML | ۰.۱۰۴.۲ | `Directory.Packages.props` |
+| xunit | ۲.۹.۳ | `Directory.Packages.props` |
 
-### ۵. خودکارسازی (پیشنهاد برای بعد)
+### ۵. خودکارسازی
 
-اگر خواستید به‌روزرسانی‌ها خودکار یادآوری شوند، **Dependabot** گیت‌هاب را فعال کنید
-(فایل `.github/dependabot.yml` در همین ریپو). آن‌وقت هر هفته PR خودکار برای نسخه‌های
-جدید NuGet می‌آید؛ شما فقط build و test می‌گیرید و merge می‌کنید. برای Bootstrap
-چون دستی است، Dependabot فقط خبر می‌دهد و جایگزینی همچنان دستی است.
+این ریپو از قبل دو فایل برای این کار دارد:
+
+- `.github/workflows/ci.yml` — روی هر push/PR یک `dotnet restore`، `dotnet build`
+  و `dotnet test` می‌گیرد. کافی است ریپو را به گیت‌هاب بدهید.
+- `.github/dependabot.yml` — هر هفته PR خودکار برای نسخه‌های جدید NuGet و
+  اکشن‌ها می‌آورد؛ شما فقط build/test بگیرید و merge کنید. برای Bootstrap چون
+  دستی وارد می‌شود، Dependabot فقط خبر می‌دهد و جایگزینی همچنان دستی است.
 
 ```yaml
 version: 2

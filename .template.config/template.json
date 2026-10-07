@@ -22,36 +22,24 @@
       "defaultValue": "Sample",
       "replaces": "Sample",
       "fileRename": "Sample"
-    },
-    "includeSample": {
-      "type": "parameter",
-      "datatype": "bool",
-      "description": "Keep the Sample domain module and its host web project as a wiring example.",
-      "defaultValue": "true"
     }
   },
   "sources": [
     {
-      "exclusions": [
+      "exclude": [
         ".git/**",
         ".vs/**",
-        "bin/**",
-        "obj/**",
+        ".idea/**",
+        "**/bin/**",
+        "**/obj/**",
         "artifacts/**",
         "TestResults/**",
         "content/**",
+        "DataProtection-Keys/**",
+        "samples/*/appsettings.json",
+        "samples/*/appsettings.Development.json",
         "push.out.log",
         "push.err.log"
-      ],
-      "modifiers": [
-        {
-          "condition": "(!includeSample)",
-          "exclude": [
-            "samples/**",
-            "tools/Copy-PlatformFiles.ps1",
-            "tools/Restructure.ps1"
-          ]
-        }
       ]
     }
   ]

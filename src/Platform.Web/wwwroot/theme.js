@@ -1,6 +1,6 @@
 // تم روشن/تاریک — باید در <head> و قبل از رندر بدنه بارگذاری شود تا صفحه بدون پرش رنگ بالا بیاید
 (function () {
-    const KEY = 'dashboard-theme';
+    const KEY = 'platform-theme';
 
     function apply(theme) {
         document.documentElement.setAttribute('data-theme', theme);
@@ -35,24 +35,8 @@ if (saved !== 'dark' && saved !== 'light') {
     };
 })();
 
-// خواندن کوکی با نام — برای کامپوننت‌های تعاملی که به کوکی سبد نیاز دارند
-window.getCookie = (name) =>
-    document.cookie.split('; ').find(c => c.startsWith(name + '='))?.split('=')[1] ?? null;
-
-// شمارنده‌ی سبد خرید — بَج را با fetch از endpoint سبک به‌روز می‌کند
-window.dashboardCartBadge = {
-    refresh: async function (el) {
-        try {
-            const r = await fetch('/shop/cart/count');
-            const d = await r.json();
-            el.textContent = d.count > 0 ? d.count : '';
-            el.style.display = d.count > 0 ? '' : 'none';
-        } catch (e) { /*offline*/ }
-    }
-};
-
-// فراخوانی ساده‌ی endpoint های JSON برای کامپوننت‌های تعاملی
-window.dashboardApi = {
+// فراخوانی ساده‌ی endpoint های JSON برای کامپوننت‌های تعاملی (مثل زنگ اعلان‌ها)
+window.platformApi = {
     get: async (url) => (await fetch(url)).json(),
     post: async (url) => { await fetch(url, { method: 'POST' }); }
 };

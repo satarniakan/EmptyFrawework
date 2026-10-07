@@ -29,6 +29,11 @@ public static class PlatformSetup
 
         services.AddCascadingAuthenticationState();
 
+        // پایه خودش سرویس‌های مجوزدهی را ثبت می‌کند تا به «تصادفی» بودنِ
+        // AddRazorComponents در میزبان وابسته نباشد (وگرنه هر میزبانی که
+        // Razor Components اضافه نکند، هنگام UseAuthorization خطا می‌گیرد).
+        services.AddAuthorization();
+
         services.AddScoped<ToastService>();
         services.AddHostedService<OtpCleanupService>();
         services.AddHostedService<OutboxProcessor>();

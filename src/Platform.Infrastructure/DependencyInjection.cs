@@ -55,10 +55,24 @@ public static class DependencyInjection
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IOutboxRepository, OutboxRepository>();
 
-        // پیامک: بر اساس «Sms:Provider» — Kavenegar واقعی یا Fake (پیش‌فرض Development).
+        // پیامک: بر اساس «Sms:Provider» — Kavenegar واقعی یا Fake.
         // FakeSmsSender فقط در Development متن پیامک (شامل کد OTP) را لاگ می‌کند.
+        services.AddHttpClient();
         services.AddScoped<ISmsSender>(sp =>
-            new FakeSmsSender(sp.GetRequiredService<ILogger<FakeSmsSender>>(), logMessageBody: isDevelopment));
+        {
+            if (string.Equals(configuration["Sms:Provider"], "Kavenegar", StringComparison.OrdinalIgnoreCase))
+            {
+                var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("kavenegar");
+                return new KavenegarSmsSender(
+                    http,
+                    configuration["Sms:Kavenegar:ApiKey"] ?? string.Empty,
+                    configuration["Sms:Kavenegar:Sender"],
+                    sp.GetRequiredService<ILogger<KavenegarSmsSender>>());
+            }
+
+            return new FakeSmsSender(
+                sp.GetRequiredService<ILogger<FakeSmsSender>>(), logMessageBody: isDevelopment);
+        });
 
         // ایمیل تراکنشی — SMTP از «Email:Smtp:*»؛ Host خالی یعنی ارسال با خطای روشن در Outbox ثبت می‌شود
         services.AddScoped<IEmailSender>(sp =>

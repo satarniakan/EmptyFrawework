@@ -1,0 +1,13 @@
+<Project>
+
+  <!-- خصوصیات مشترک همهٔ پروژه‌ها؛ csprojها دیگر این‌ها را تکرار نمی‌کنند. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

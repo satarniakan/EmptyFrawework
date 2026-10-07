@@ -1,4 +1,4 @@
-﻿@* Dashboard.Web/Components/Shared/AppPriceField.razor *@
+@* Platform.Web/Components/Shared/AppPriceField.razor *@
 @* ورودی مبلغ/قیمت با جداسازی سه‌رقمی هنگام تایپ (فرمت در priceInput.js انجام می‌شود) *@
 @using System.Globalization
 @using System.Linq.Expressions
@@ -101,7 +101,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && !Disabled)
-            await JS.InvokeVoidAsync("dashboardPriceInput.attach", InputElement);
+            await JS.InvokeVoidAsync("priceInput.attach", InputElement);
     }
 
     private async Task HandleInput(ChangeEventArgs e)

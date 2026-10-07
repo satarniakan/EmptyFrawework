@@ -28,10 +28,24 @@
         <p class="text-center text-muted mt-3 mb-0" style="font-size: 0.9rem;">
             <a href="/login-password">ورود از طریق نام کاربری و رمز عبور</a>
         </p>
+
+        @if (showDevLogin)
+        {
+            <a href="/dev-login" class="btn btn-outline-secondary w-100 mt-2" data-enhance="false">
+                <i class="bi bi-lightning-charge me-1"></i>ورود مستقیم ادمین (حالت توسعه)
+            </a>
+        }
     </div>
 </div>
 
 @code {
     [SupplyParameterFromQuery(Name = "error")]
     private string? Error { get; set; }
+
+    [Inject] private IConfiguration Configuration { get; set; } = default!;
+    [Inject] private IWebHostEnvironment Environment { get; set; } = default!;
+
+    private bool showDevLogin =>
+        Environment.IsDevelopment() &&
+        !string.IsNullOrWhiteSpace(Configuration["Dev:AutoLoginPhone"]);
 }

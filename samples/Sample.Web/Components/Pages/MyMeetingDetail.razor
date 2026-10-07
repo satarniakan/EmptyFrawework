@@ -1,0 +1,120 @@
+@page "/my-meetings/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@inherits Platform.Web.Components.Shared.AppComponentBase
+@inject IMeetingService MeetingService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+<PageTitle>جزئیات جلسه</PageTitle>
+
+@if (meeting is null && !canView)
+{
+    <div class="alert alert-danger">به این جلسه دسترسی ندارید یا جلسه وجود ندارد.</div>
+}
+else if (meeting is null)
+{
+    <LoadingSkeleton Table="false" Rows="6" />
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h3 class="mb-1">@meeting.Title</h3>
+            <div class="text-body-secondary small">
+                <i class="bi bi-calendar3 me-1"></i>@meeting.StartAt.ToPersianDateTime()
+                @if (meeting.Kind == MeetingKind.InPerson)
+                {
+                    <span class="ms-3"><i class="bi bi-geo-alt me-1"></i>حضوری — @(meeting.Location ?? "نامشخص")</span>
+                }
+                else
+                {
+                    <span class="ms-3"><i class="bi bi-camera-video me-1"></i>غیرحضوری —
+                        <a href="@meeting.MeetingLink" target="_blank" rel="noopener">ورود به فضای جلسه</a>
+                    </span>
+                }
+            </div>
+        </div>
+        <a href="/my-meetings" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-right me-1"></i>بازگشت به جلسات من
+        </a>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(meeting.Description))
+    {
+        <div class="card-panel mb-3">
+            <h6 class="form-section-title"><i class="bi bi-card-text"></i>توضیحات</h6>
+            <div class="small">@meeting.Description</div>
+        </div>
+    }
+
+    @if (myProposals.Count > 0)
+    {
+        <div class="card-panel mb-3">
+            <h6 class="form-section-title"><i class="bi bi-clock-history"></i>پیشنهادهای زمان شما برای این جلسه</h6>
+            @foreach (var p in myProposals)
+            {
+                <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                    <span>@p.ProposedStartAt.ToPersianDateTime()</span>
+                    @switch (p.Status)
+                    {
+                        case ProposalStatus.Accepted:
+                            <span class="badge text-bg-success">پذیرفته شد</span>
+                            break;
+                        case ProposalStatus.Rejected:
+                            <span class="badge text-bg-secondary">پذیرفته نشد</span>
+                            break;
+                        default:
+                            <span class="badge text-bg-warning">در انتظار تصمیم</span>
+                            break;
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    @if (meeting.MinutesSentAt is not null && !string.IsNullOrWhiteSpace(meeting.MinutesHtml))
+    {
+        <div class="card-panel">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="form-section-title mb-0"><i class="bi bi-journal-text"></i>صورت‌جلسه</h6>
+                <span class="small text-body-secondary">ارسال شده در @meeting.MinutesSentAt!.Value.ToPersianDateTime()</span>
+            </div>
+            <div class="border rounded-2 p-3 minutes-view">
+                @((MarkupString)meeting.MinutesHtml)
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center text-body-secondary py-4">
+            <i class="bi bi-journal d-block mb-2" style="font-size: 1.6rem;"></i>
+            <span class="small">صورت‌جلسه هنوز تنظیم و ارسال نشده است؛ پس از ارسال در کارتابل شما اطلاع داده می‌شود.</span>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Meeting? meeting;
+    private bool canView;
+    private List<MeetingTimeProposal> myProposals = [];
+
+    protected override async Task OnInitializedAsync() => await RunSafe(async () =>
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId is null) return;
+
+        canView = await MeetingService.CanViewAsync(Id, userId);
+        if (!canView) return;
+
+        meeting = await MeetingService.GetMeetingAsync(Id);
+        myProposals = meeting?.TimeProposals
+            .Where(p => p.ProposedByUserId == userId)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToList() ?? [];
+    });
+}

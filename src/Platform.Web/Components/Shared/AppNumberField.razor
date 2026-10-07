@@ -1,4 +1,4 @@
-@* Dashboard.Web/Components/Shared/AppNumberField.razor *@
+@* Platform.Web/Components/Shared/AppNumberField.razor *@
 @* فیلد عددی با جداسازی سه‌رقمی هنگام تایپ (فرمت زنده در priceInput.js و نهایی در همین کامپوننت).
    هم int و هم decimal? را پشتیبانی می‌کند: پاک‌کردن فیلد در نوع nullable مقدار null می‌دهد و در
    نوع غیر nullable مقدار 0 (مطابق رفتار AppPriceField). *@
@@ -63,7 +63,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && !Disabled)
-            await JS.InvokeVoidAsync("dashboardPriceInput.attach", InputElement);
+            await JS.InvokeVoidAsync("priceInput.attach", InputElement);
     }
 
     private async Task HandleInput(ChangeEventArgs e)

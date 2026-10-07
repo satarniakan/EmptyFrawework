@@ -11,6 +11,8 @@ public interface IUserAdminService
     Task<IdentityResult> SetRolesAsync(string userId, List<string> roleNames);
 
     Task<IdentityResult> CreateUserAsync(CreateUserDto model);
+    Task<IdentityResult> UpdateUserAsync(UpdateUserDto model);
+    Task<IdentityResult> DeleteUserAsync(string userId, string currentUserId);
     Task<List<RoleDto>> GetAllRolesAsync();
 }
 
@@ -138,6 +140,59 @@ public class UserAdminService : IUserAdminService
         }
 
         return result;
+    }
+
+    public async Task<IdentityResult> UpdateUserAsync(UpdateUserDto model)
+    {
+        var user = await _userManager.FindByIdAsync(model.UserId);
+        if (user is null)
+            return IdentityResult.Failed(new IdentityError { Description = "کاربر یافت نشد." });
+
+        var phone = model.PhoneNumber.Trim();
+        var phoneOwner = await _userManager.FindByNameAsync(phone);
+        if (phoneOwner is not null && phoneOwner.Id != user.Id)
+            return IdentityResult.Failed(new IdentityError { Description = "این شماره موبایل برای کاربر دیگری ثبت شده است." });
+
+        var email = model.Email?.Trim();
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var emailOwner = await _userManager.FindByEmailAsync(email);
+            if (emailOwner is not null && emailOwner.Id != user.Id)
+                return IdentityResult.Failed(new IdentityError { Description = "این ایمیل قبلاً استفاده شده است." });
+        }
+
+        user.FullName = model.FullName.Trim();
+        user.PhoneNumber = phone;
+        // ورود با OTP و نام کاربری بر اساس شماره است؛ شماره و UserName باید با هم بمانند
+        user.UserName = phone;
+        user.Email = string.IsNullOrWhiteSpace(email) ? null : email;
+
+        return await _userManager.UpdateAsync(user);
+    }
+
+    public async Task<IdentityResult> DeleteUserAsync(string userId, string currentUserId)
+    {
+        // گارد «حذف خود»: ادمینی که خودش را حذف کند راهی برای بازگشت ندارد
+        if (userId == currentUserId)
+            return IdentityResult.Failed(new IdentityError { Description = "نمی‌توانید حساب کاربری خودتان را حذف کنید." });
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+            return IdentityResult.Failed(new IdentityError { Description = "کاربر یافت نشد." });
+
+        // گارد «آخرین ادمین» — همان منطق SetRolesAsync
+        if (await _userManager.IsInRoleAsync(user, Roles.Admin))
+        {
+            var otherAdmins = (await _userManager.GetUsersInRoleAsync(Roles.Admin))
+                .Count(u => u.Id != userId);
+            if (otherAdmins == 0)
+                return IdentityResult.Failed(new IdentityError
+                {
+                    Description = "نمی‌توان تنها ادمین سیستم را حذف کرد؛ ابتدا یک ادمین دیگر اضافه کنید."
+                });
+        }
+
+        return await _userManager.DeleteAsync(user);
     }
 
     public async Task<List<RoleDto>> GetAllRolesAsync()

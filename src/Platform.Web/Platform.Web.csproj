@@ -1,13 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
-  </PropertyGroup>
-
-    <!-- Sdk.Razor alone does not bring in the implicit usings of a web project; the Using items below restore them. -->
+  <!-- Sdk.Razor به‌تنهایی usingهای ضمنی پروژهٔ وب را نمی‌آورد؛ ItemGroupهای Using زیر آن‌ها را برمی‌گردانند. -->
   <ItemGroup>
     <Using Include="System.Net.Http" />
     <Using Include="System.Net.Http.Json" />
@@ -24,7 +17,6 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <SupportedPlatform Include="browser" />
   </ItemGroup>
 
   <ItemGroup>

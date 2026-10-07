@@ -8,9 +8,9 @@ namespace Platform.Application.Validators;
 public static class CommonValidations
 {
     /// <summary>
-    /// بررسی اینکه لیست اقلام خالی نباشد
+    /// بررسی اینکه لیست حداقل یک عضو داشته باشد
     /// </summary>
-    public static void ValidateItemsNotEmpty<T>(List<T> items, string message = "حداقل یک قلم کالا لازم است.")
+    public static void ValidateItemsNotEmpty<T>(List<T> items, string message = "حداقل یک مورد لازم است.")
     {
         if (items.Count == 0)
             throw new BusinessRuleException(message);

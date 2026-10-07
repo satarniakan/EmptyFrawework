@@ -1,0 +1,80 @@
+@* samples/Sample.Web/Components/Shared/RtlEditor.razor *@
+@* ویرایشگر متن سادهٔ راست‌چین برای صورت‌جلسه: contenteditable + نوار ابزار فرمت فارسی.
+   خروجی HTML است و پیش از ذخیره، MinutesSanitizer در سمت سرویس آن را پاک می‌کند. *@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="rtl-editor border rounded-2">
+    <div class="rtl-editor-toolbar d-flex flex-wrap gap-1 border-bottom p-2 bg-body-tertiary">
+        <button type="button" class="btn btn-sm btn-outline-secondary" title="بولد"
+                @onclick="@(async () => await ExecAsync("bold"))"><i class="bi bi-type-bold"></i></button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" title="ایتالیک"
+                @onclick="@(async () => await ExecAsync("italic"))"><i class="bi bi-type-italic"></i></button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" title="زیرخط"
+                @onclick="@(async () => await ExecAsync("underline"))"><i class="bi bi-type-underline"></i></button>
+        <span class="vr mx-1"></span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" title="فهرست نقطه‌ای"
+                @onclick="@(async () => await ExecAsync("insertUnorderedList"))"><i class="bi bi-list-ul"></i></button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" title="فهرست شماره‌ای"
+                @onclick="@(async () => await ExecAsync("insertOrderedList"))"><i class="bi bi-list-ol"></i></button>
+        <span class="vr mx-1"></span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" title="حذف قالب‌بندی"
+                @onclick="@(async () => await ExecAsync("removeFormat"))"><i class="bi bi-eraser"></i></button>
+    </div>
+    <div id="@_elementId" class="rtl-editor-content p-3" contenteditable="true"
+         dir="rtl" style="min-height:@(MinHeight)px;" role="textbox" aria-multiline="true"
+         data-placeholder="@Placeholder"></div>
+</div>
+
+<style>
+    .rtl-editor-content.is-empty::before {
+        content: attr(data-placeholder);
+        color: var(--bs-secondary-color, #6c757d);
+        pointer-events: none;
+        display: block;
+    }
+
+    .rtl-editor-content:focus {
+        outline: 2px solid var(--bs-primary);
+        outline-offset: -2px;
+    }
+</style>
+
+@code {
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public int MinHeight { get; set; } = 260;
+
+    private readonly string _elementId = $"rtlEditor_{Guid.NewGuid():N}";
+    private bool _initialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_initialized)
+        {
+            _initialized = true;
+            await JS.InvokeVoidAsync("rtlEditor.init", _elementId, (string?)null, MinHeight);
+        }
+    }
+
+    /// <summary>خواندن HTML جاری ویرایشگر (قبل از ذخیره صدا زده می‌شود).</summary>
+    public Task<string?> GetHtmlAsync() => _initialized
+        ? JS.InvokeAsync<string?>("rtlEditor.getHtml", _elementId).AsTask()
+        : Task.FromResult<string?>(null);
+
+    /// <summary>گذاشتن HTML در ویرایشگر (بارگذاری متن موجود).</summary>
+    public async Task SetHtmlAsync(string? html)
+    {
+        if (!_initialized)
+        {
+            _initialized = true;
+            await JS.InvokeVoidAsync("rtlEditor.init", _elementId, html ?? string.Empty, MinHeight);
+            return;
+        }
+        await JS.InvokeVoidAsync("rtlEditor.setHtml", _elementId, html ?? string.Empty);
+    }
+
+    private Task ExecAsync(string command) =>
+        JS.InvokeVoidAsync("rtlEditor.exec", _elementId, command).AsTask();
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+}

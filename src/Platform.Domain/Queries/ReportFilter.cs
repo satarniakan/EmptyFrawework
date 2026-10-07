@@ -14,7 +14,7 @@ public class ReportFilter
     /// <summary>تا این تاریخ (شامل، تا پایان روز)</summary>
     public DateTime? ToDate { get; set; }
 
-    /// <summary>جست‌وجوی متنی آزاد در شماره/نام/نام کالا</summary>
+    /// <summary>جست‌وجوی متنی آزاد روی ستون‌های متنی</summary>
     public string? Search { get; set; }
 
     public bool HasDateRange => FromDate.HasValue || ToDate.HasValue;

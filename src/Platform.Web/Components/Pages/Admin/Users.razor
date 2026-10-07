@@ -1,4 +1,4 @@
-﻿@* Dashboard.Web/Components/Pages/Admin/Users.razor *@
+@* Platform.Web/Components/Pages/Admin/Users.razor *@
 @page "/admin/users"
 @rendermode InteractiveServer
 @attribute [Authorize(Roles = Platform.Domain.Identity.Roles.Admin)]
@@ -15,7 +15,7 @@
 <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
     <div>
         <h3 class="mb-1">مدیریت کاربران و نقش‌ها</h3>
-        <div class="text-body-secondary small">فهرست کاربران سیستم و نقش‌های آن‌ها</div>
+        <div class="text-body-secondary small">فهرست افراد سامانه؛ درج، ویرایش، حذف و نقش‌ها</div>
     </div>
     <a href="/admin/users/add" class="btn btn-primary btn-sm">افزودن کاربر جدید</a>
 </div>
@@ -62,7 +62,12 @@
                             }
                         </td>
                         <td class="text-end">
-                            <a href="/admin/users/@u.UserId" class="btn btn-sm btn-outline-primary">تغییر نقش</a>
+                            <div class="d-inline-flex gap-1">
+                                <a href="/admin/users/@u.UserId" class="btn btn-sm btn-outline-primary">تغییر نقش</a>
+                                <a href="/admin/users/@u.UserId/edit" class="btn btn-sm btn-outline-secondary">ویرایش</a>
+                                <button class="btn btn-sm btn-outline-danger" disabled="@(u.UserId == currentUserId)"
+                                        @onclick="@(async () => await AskDelete(u))">حذف</button>
+                            </div>
                         </td>
                     </tr>
                 }
@@ -72,16 +77,43 @@
     }
 </div>
 
+<AppConfirmDialog @ref="confirmDialog" />
+
 @code {
     [SupplyParameterFromQuery(Name = "success")]
     private string? Success { get; set; }
 
     private List<UserListItemDto>? users;
+    private string? currentUserId;
+    private AppConfirmDialog confirmDialog = default!;
 
     [Inject] private IUserAdminService UserAdminService { get; set; } = default!;
+    [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
+    [Inject] private Platform.Web.Services.ToastService ToastService { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        currentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         users = (await UserAdminService.GetAllUsersAsync()).ToList();
+    }
+
+    private async Task AskDelete(UserListItemDto user)
+    {
+        var confirmed = await confirmDialog.ShowAsync(
+            "حذف کاربر",
+            $"کاربر «{(string.IsNullOrWhiteSpace(user.FullName) ? user.PhoneNumber : user.FullName)}» برای همیشه حذف شود؟ این عملیات بازگشت‌پذیر نیست.");
+        if (!confirmed) return;
+
+        var result = await UserAdminService.DeleteUserAsync(user.UserId, currentUserId ?? string.Empty);
+        if (result.Succeeded)
+        {
+            ToastService.ShowSuccess("کاربر حذف شد.");
+            users = (await UserAdminService.GetAllUsersAsync()).ToList();
+        }
+        else
+        {
+            ToastService.ShowError(string.Join("، ", result.Errors.Select(e => e.Description)));
+        }
     }
 }

@@ -1,4 +1,4 @@
-﻿// Dashboard.Web/Endpoints/AccountEndpoints.cs
+// Platform.Web/Endpoints/AccountEndpoints.cs
 using System.Security.Claims;
 using Platform.Application.DTOs;
 using Platform.Application.Services;

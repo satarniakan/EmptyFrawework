@@ -1,10 +1,11 @@
 // samples/Sample.Web/Program.cs
 // میزبان نمونه: ثابت می‌کند پایه بدون هیچ مفهوم حسابداری/انباری کار می‌کند.
-using System.Globalization;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Localization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.DataProtection;
+using Meetings;
+using Platform.Domain.Identity;
 using Platform.Infrastructure;
 using Platform.Infrastructure.Data;
 using Platform.Web;
@@ -41,6 +42,16 @@ builder.Services.AddDataProtection()
 // هر لایه تنظیمات سرویس‌های خودش را رجیستر می‌کند؛ نمونهٔ دامنه بعد از پایه می‌آید
 builder.Services.AddPlatform(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddSampleModule();
+builder.Services.AddMeetingsModule();
+
+// مجوز «مدیریت جلسات»: ادمین همیشه، و هر نقشی که این مجوز رویش claim شده باشد.
+// نام سیاست عمداً همان کلید مجوز است تا صفحات با [Authorize(Policy = MeetingPermissions.Manage)] بسته شوند.
+builder.Services.AddAuthorization(options =>
+    options.AddPolicy(Meetings.MeetingPermissions.Manage, policy =>
+        policy.RequireAssertion(ctx =>
+            ctx.User.IsInRole(Platform.Domain.Identity.Roles.Admin) ||
+            ctx.User.HasClaim(Platform.Domain.Identity.Permissions.ClaimType, Meetings.MeetingPermissions.Manage))));
+
 builder.Services.AddHealthChecks().AddDbContextCheck<PlatformDbContext>();
 
 var app = builder.Build();
@@ -67,14 +78,15 @@ using (var scope = app.Services.CreateScope())
 
 // مجوزها و نقش‌های پایه + مجوزهای نمونه
 await app.Services.InitializePlatformAsync();
+
+// حالت توسعه: ساخت کاربر «ورود مستقیم» ادمین (Dev:AutoLoginPhone) برای /dev-login
+if (app.Environment.IsDevelopment())
+{
+    await app.Services.EnsureDevAdminAsync();
+}
 app.UseSerilogRequestLogging();
 
-app.UseRequestLocalization(new RequestLocalizationOptions
-{
-    DefaultRequestCulture = new RequestCulture("fa-IR"),
-    SupportedCultures = [new CultureInfo("fa-IR")],
-    SupportedUICultures = [new CultureInfo("fa-IR")]
-});
+app.UseRequestLocalization(PlatformSetup.PersianLocalization());
 
 if (!app.Environment.IsDevelopment())
 {
@@ -98,7 +110,29 @@ app.UseRateLimiter();
 app.MapPlatform();
 app.MapHealthChecks("/health");
 
+// ورود مستقیم بدون OTP — فقط در Development و فقط برای شمارهٔ Dev:AutoLoginPhone.
+// در Production همین مسیر ۴۰۴ می‌دهد و سیدینگ EnsureDevAdminAsync هم اجرا نمی‌شود.
+app.MapGet("/dev-login", async (
+    UserManager<ApplicationUser> users,
+    SignInManager<ApplicationUser> signIn,
+    IConfiguration configuration) =>
+{
+    if (!app.Environment.IsDevelopment()) return Results.NotFound();
+
+    var phone = configuration["Dev:AutoLoginPhone"];
+    if (string.IsNullOrWhiteSpace(phone)) return Results.NotFound();
+
+    var user = await users.FindByNameAsync(phone);
+    if (user is null) return Results.NotFound();
+
+    await signIn.SignInAsync(user, isPersistent: true);
+    return Results.Redirect("/my-meetings");
+});
+
 app.MapRazorComponents<Sample.Web.Components.App>()
+    // صفحات پایه (login، profile، admin و…) در مونتاژ Platform.Web هستند؛
+    // بدون این، فقط صفحات میزبان به‌عنوان endpoint نگاشت می‌شوند.
+    .AddAdditionalAssemblies(typeof(Platform.Web.Components.Routes).Assembly)
     .AddInteractiveServerRenderMode();
 
 try

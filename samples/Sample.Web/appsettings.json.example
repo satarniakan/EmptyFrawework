@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json.schemastore.org/appsettings.json",
+
+  "//": "این فایل را به appsettings.json کپی کنید و مقادیر واقعی را بگذارید. خودِ appsettings.json عمداً در git نیست.",
+
+  "ConnectionStrings": {
+    "Default": "Server=(localdb)\\mssqllocaldb;Database=EmptyFrameworkDev;Trusted_Connection=True;TrustServerCertificate=True"
+  },
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Information",
+      "Override": {
+        "Microsoft": "Warning",
+        "Microsoft.Hosting.Lifetime": "Information",
+        "System": "Warning"
+      }
+    }
+  },
+  "Identity": {
+    "//": "شماره‌ی ادمین اول روی دیتابیس خالی. خالی یعنی هیچ‌کس خودکار ادمین نمی‌شود و کاربران تازه نقش «کاربر» می‌گیرند.",
+    "FirstAdminPhoneNumber": ""
+  },
+  "Sms": {
+    "//": "Provider: Fake (لاگ) یا Kavenegar (واقعی).",
+    "Provider": "Fake",
+    "Kavenegar": {
+      "ApiKey": "",
+      "Sender": null
+    },
+    "MaxAttempts": 3,
+    "BatchSize": 20
+  },
+  "Email": {
+    "Smtp": {
+      "Host": "",
+      "Port": 587,
+      "Username": null,
+      "Password": null,
+      "FromAddress": "no-reply@localhost",
+      "FromName": "سامانه"
+    }
+  },
+  "ForwardedHeaders": {
+    "//": "پشت reverse proxy این را false نگه دارید، وگرنه همهٔ کاربران یک IP می‌گیرند و rate limit همه را قفل می‌کند.",
+    "TrustAllProxies": false
+  },
+  "AllowedHosts": "*"
+}

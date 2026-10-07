@@ -10,13 +10,27 @@ public static class Roles
     /// <summary>مدیر کامل سامانه.</summary>
     public const string Admin = "Admin";
 
+    /// <summary>کاربر عادی؛ نقش پیش‌فرضِ کاربری که تازه با OTP ثبت‌نام می‌کند.</summary>
+    public const string User = "User";
+
     /// <summary>نقش‌هایی که پایه به‌صورت پیش‌فرض می‌سازد.</summary>
-    public static readonly string[] Default = [Admin];
+    public static readonly string[] Default = [Admin, User];
+
+    /// <summary>
+    /// نقشی که به کاربر تازه‌وارد داده می‌شود: «کاربر» — مگر آنکه شماره‌اش همان
+    /// «ادمین اول» تنظیم‌شده باشد. این تنها نقطهٔ تصمیمِ ثبت‌نام خودکار است، پس
+    /// قابل‌تست و قابل‌بازبینی نگه داشته شده.
+    /// </summary>
+    public static string DefaultRoleFor(string? firstAdminPhoneNumber, string phoneNumber) =>
+        !string.IsNullOrWhiteSpace(firstAdminPhoneNumber) && phoneNumber == firstAdminPhoneNumber
+            ? Admin
+            : User;
 
     /// <summary>نام فارسی نقش، اگر پروژه برایش تعریف کرده باشد.</summary>
     public static string ToPersian(string roleName) => roleName switch
     {
         Admin => "ادمین",
+        User => "کاربر",
         _ => roleName
     };
 }

@@ -1,4 +1,4 @@
-﻿// Dashboard.Web/Services/OtpCleanupService.cs
+// Platform.Web/Services/OtpCleanupService.cs
 using Platform.Application.Services;
 
 namespace Platform.Web.Services;

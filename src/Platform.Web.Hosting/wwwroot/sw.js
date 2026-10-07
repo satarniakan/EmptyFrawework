@@ -1,14 +1,13 @@
-// سرویس‌ورکر سبک فروشگاه:
+// سرویس‌ورکر سبک سامانه:
 // - ناوبری‌ها همیشه network-first (صفحات SSR هرگز کش نمی‌شوند)؛ فقط هنگام آفلاین‌بودن صفحه‌ی جایگزین
 // - فایل‌های استاتیک (css/js/فونت/تصویر) stale-while-revalidate
 // - endpoint های JSON و درخواست‌های POST هرگز کش نمی‌شوند
-const CACHE = 'dashboard-store-v1';
+const CACHE = 'platform-cache-v1';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
     OFFLINE_URL,
-    '/app.css?v=20260926c',
-    '/store.css?v=20260926b',
+    '/app.css',
     '/icons/icon-192.png',
     '/icons/icon-512.png'
 ];

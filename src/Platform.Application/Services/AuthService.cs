@@ -76,7 +76,7 @@ public class AuthService : IAuthService
 
         var user = await _userManager.FindByNameAsync(phoneNumber);
         var isNewUser = user is null;
-if (user is null)
+        if (user is null)
         {
             user = new ApplicationUser
             {
@@ -107,9 +107,12 @@ if (user is null)
 
             if (isNewUser)
             {
-                // نقش پیش‌فرضِ کاربر تازه‌وارد. اگر پروژهٔ شما نقش عمومی دیگری دارد،
-                // همین یک خط را تغییر دهید.
-                await _userManager.AddToRoleAsync(user, Roles.Admin);
+                // نقش پیش‌فرضِ کاربر تازه‌وارد «کاربر» است، نه ادمین. تنها استثنا شماره‌ای
+                // است که در «Identity:FirstAdminPhoneNumber» تنظیم شده — همان «ادمین اول»
+                // روی دیتابیس خالی. بدون این گارد، هر شماره‌ای که OTP را تأیید می‌کرد
+                // خودکار ادمین می‌شد (نقص امنیتی). قانون در Roles.DefaultRoleFor است.
+                await _userManager.AddToRoleAsync(
+                    user, Roles.DefaultRoleFor(_firstAdminPhoneNumber, phoneNumber));
 
                 await _notifications.NotifyRoleAsync(Roles.Admin, "کاربر جدید ثبت‌نام کرد",
                     $"شماره {phoneNumber}", NotificationType.System, "/admin/users");
@@ -134,7 +137,8 @@ if (user is null)
             user.Email,
             await _userManager.HasPasswordAsync(user));
     }
-public async Task<ProfileUpdateResult> UpdateProfileAsync(
+
+    public async Task<ProfileUpdateResult> UpdateProfileAsync(
         string userId, string? fullName, string? email, string? password, string? confirmPassword)
     {
         var user = await _userManager.FindByIdAsync(userId);
