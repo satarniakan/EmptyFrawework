@@ -21,6 +21,12 @@ public class MeetingsDomainModule : IPlatformModule
             e.Property(m => m.MeetingLink).HasMaxLength(1000);
             e.Property(m => m.CreatedByUserId).HasMaxLength(450).IsRequired();
             // MinutesHtml عمداً بدون سقف طول است (nvarchar(max)) — متن صورت‌جلسه از ویرایشگر می‌آید.
+            e.Property(m => m.AudioFileName).HasMaxLength(260);
+            e.Property(m => m.AudioContentType).HasMaxLength(100);
+            e.Property(m => m.AudioUploadedByUserId).HasMaxLength(450);
+            e.Property(m => m.PhotoFileName).HasMaxLength(260);
+            e.Property(m => m.PhotoContentType).HasMaxLength(100);
+            e.Property(m => m.PhotoUploadedByUserId).HasMaxLength(450);
             e.HasIndex(m => m.StartAt);
             e.HasIndex(m => m.CreatedByUserId);
         });
@@ -35,6 +41,19 @@ public class MeetingsDomainModule : IPlatformModule
             e.HasOne(i => i.Meeting)
                 .WithMany(m => m.Invitees)
                 .HasForeignKey(i => i.MeetingId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<MeetingDecision>(e =>
+        {
+            e.HasKey(d => d.Id);
+            e.Property(d => d.Content).HasMaxLength(1000).IsRequired();
+            e.Property(d => d.AssigneeUserIds).HasMaxLength(2000);
+            e.Property(d => d.AssigneeNames).HasMaxLength(500);
+            e.HasIndex(d => new { d.MeetingId, d.IsDone });
+            e.HasOne(d => d.Meeting)
+                .WithMany(m => m.Decisions)
+                .HasForeignKey(d => d.MeetingId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

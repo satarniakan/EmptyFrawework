@@ -1,0 +1,196 @@
+@page "/meetings/attendance-report"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Meetings.MeetingPermissions.Manage)]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Platform.Application.Helpers
+@inherits Platform.Web.Components.Shared.AppComponentBase
+@inject IMeetingService MeetingService
+@inject IUserAdminService UserAdminService
+<PageTitle>گزارش حضور افراد</PageTitle>
+
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">گزارش حضور در جلسات</h3>
+        <div class="text-body-secondary small">حضور یا عدم حضور یک فرد در جلساتِ بازهٔ زمانی انتخابی</div>
+    </div>
+    <a href="/meetings" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+    </a>
+</div>
+
+@* ===== فیلترها ===== *@
+<div class="card-panel mb-3">
+    <div class="row align-items-end">
+        <div class="col-md-4">
+            <label class="form-label">فرد مورد نظر</label>
+            <select class="form-select" value="@selectedUserId" @onchange="@(e => selectedUserId = e.Value?.ToString())">
+                <option value="">انتخاب کنید...</option>
+                @if (users is not null)
+                {
+                    @foreach (var u in users)
+                    {
+                        <option value="@u.UserId">@u.FullName (@u.PhoneNumber)</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">از تاریخ</label>
+            <PersianDateTimePicker @bind-Value="fromDate" ShowTime="false" Placeholder="تاریخ شروع" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">تا تاریخ</label>
+            <PersianDateTimePicker @bind-Value="toDate" ShowTime="false" Placeholder="تاریخ پایان" />
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-primary" disabled="@isLoading" @onclick="LoadReportAsync">
+                @if (isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-funnel me-1"></i>
+                }
+                نمایش
+            </button>
+            <PrintButton CssClass="btn btn-outline-secondary no-print" />
+        </div>
+    </div>
+</div>
+
+@if (!hasSearched)
+{
+    <div class="text-center text-body-secondary py-4">
+        <i class="bi bi-clipboard-data d-block mb-2" style="font-size: 1.6rem;"></i>
+        فرد و بازهٔ زمانی را انتخاب و «نمایش» را بزنید.
+    </div>
+}
+else if (rows is null)
+{
+    <LoadingSkeleton />
+}
+else if (rows.Count == 0)
+{
+    <div class="text-center text-body-secondary py-4">
+        <i class="bi bi-calendar-x d-block mb-2" style="font-size: 1.6rem;"></i>
+        در این بازه جلسه‌ای برای این فرد یافت نشد.
+    </div>
+}
+else
+{
+    @* خلاصه *@
+    var attended = rows.Count(r => r.Attendance == AttendanceMark.Attended);
+    var absent = rows.Count(r => r.Attendance == AttendanceMark.Absent);
+    var unmarked = rows.Count(r => r.Attendance is null);
+
+    <div class="card-panel mb-3">
+        <div class="d-flex flex-wrap gap-2">
+            <span class="badge text-bg-primary p-2">@rows.Count جلسه</span>
+            <span class="badge text-bg-success p-2">@attended حاضر</span>
+            <span class="badge text-bg-danger p-2">@absent غایب</span>
+            <span class="badge text-bg-secondary p-2">@unmarked بدون علامت</span>
+        </div>
+    </div>
+
+    <div class="card-panel p-0 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>تاریخ جلسه</th>
+                        <th>عنوان</th>
+                        <th>نوع</th>
+                        <th>پاسخ به دعوت</th>
+                        <th>حضور</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in rows)
+                    {
+                        <tr>
+                            <td class="text-nowrap">@row.Meeting!.StartAt.ToPersianDateTime()</td>
+                            <td class="fw-semibold">@row.Meeting.Title</td>
+                            <td>@(row.Meeting.Kind == MeetingKind.InPerson ? "حضوری" : "غیرحضوری")</td>
+                            <td>
+                                @switch (row.Response)
+                                {
+                                    case InviteResponse.Accepted:
+                                        <span class="badge text-bg-success">پذیرفته</span>
+                                        break;
+                                    case InviteResponse.Declined:
+                                        <span class="badge text-bg-danger">رد کرده</span>
+                                        break;
+                                    default:
+                                        <span class="badge text-bg-secondary">در انتظار</span>
+                                        break;
+                                }
+                            </td>
+                            <td>
+                                @switch (row.Attendance)
+                                {
+                                    case AttendanceMark.Attended:
+                                        <span class="badge text-bg-success">حاضر</span>
+                                        break;
+                                    case AttendanceMark.Absent:
+                                        <span class="badge text-bg-danger">غایب</span>
+                                        break;
+                                    default:
+                                        <span class="text-body-secondary">—</span>
+                                        break;
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private List<UserListItemDto>? users;
+    private string? selectedUserId;
+    private DateTime fromDate = DateTime.UtcNow.AddDays(-90);
+    private DateTime toDate = DateTime.UtcNow;
+    private List<MeetingInvitee>? rows;
+    private bool isLoading;
+    private bool hasSearched;
+
+    protected override async Task OnInitializedAsync() => await RunSafe(async () =>
+    {
+        users = (await UserAdminService.GetAllUsersAsync()).ToList();
+    });
+
+    private async Task LoadReportAsync() => await RunSafe(async () =>
+    {
+        if (string.IsNullOrWhiteSpace(selectedUserId))
+        {
+            Toast.ShowError("فرد مورد نظر را انتخاب کنید.");
+            return;
+        }
+        if (fromDate == default || toDate == default)
+        {
+            Toast.ShowError("هر دو تاریخ را انتخاب کنید.");
+            return;
+        }
+        if (fromDate > toDate)
+        {
+            Toast.ShowError("تاریخ شروع باید قبل از تاریخ پایان باشد.");
+            return;
+        }
+
+        isLoading = true;
+        try
+        {
+            // مقدار دیت‌پیکر نیمه‌شبِ روزِ انتخابی است؛ تا پایان همان روز در نظر گرفته می‌شود
+            rows = await MeetingService.GetPersonAttendanceAsync(selectedUserId, fromDate, toDate.AddDays(1));
+            hasSearched = true;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }, "خطا در تهیهٔ گزارش حضور.");
+}

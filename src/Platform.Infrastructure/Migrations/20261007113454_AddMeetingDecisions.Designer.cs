@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Platform.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using Platform.Infrastructure.Data;
 namespace Platform.Infrastructure.Migrations
 {
     [DbContext(typeof(PlatformDbContext))]
-    partial class PlatformDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261007113454_AddMeetingDecisions")]
+    partial class AddMeetingDecisions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -107,24 +110,6 @@ namespace Platform.Infrastructure.Migrations
 
                     b.Property<DateTime?>("MinutesSentAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("PhotoContentType")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("PhotoFileName")
-                        .HasMaxLength(260)
-                        .HasColumnType("nvarchar(260)");
-
-                    b.Property<long?>("PhotoSizeBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("PhotoUploadedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("PhotoUploadedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("StartAt")
                         .HasColumnType("datetime2");

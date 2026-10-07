@@ -2,28 +2,24 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Platform.Domain.Identity;
-using Platform.Infrastructure.Data;
 using Platform.Domain.Interfaces;
 using Platform.Web.Components.Layout;
 
 namespace Sample.Web;
 
 /// <summary>
-/// کاتالوگ مجوزهای پروژهٔ نمونه. پروژهٔ واقعی خودش را دارد.
+/// کاتالوگ مجوزهای سامانهٔ جلسات.
 /// </summary>
 public sealed class SamplePermissionCatalog : IPermissionCatalog
 {
-    public const string TasksManage = "tasks.manage";
-
     public IReadOnlyList<PermissionDescriptor> All { get; } =
     [
-        new(TasksManage, "مدیریت وظایف", "وظایف"),
         new(Meetings.MeetingPermissions.Manage, "مدیریت جلسات", "جلسات")
     ];
 }
 
 /// <summary>
-/// منوی پروژهٔ نمونه. هیچ آدرس یا مجوزی از دامنهٔ دیگری نمی‌شناسد.
+/// منوی سامانه.
 /// </summary>
 public sealed class SampleNavProvider : INavProvider
 {
@@ -31,9 +27,9 @@ public sealed class SampleNavProvider : INavProvider
     [
         NavItem.Group("جلسات", "bi-calendar3",
             NavItem.Link("جلسات من", "my-meetings", "bi-calendar2-check"),
-            NavItem.Link("مدیریت جلسات", "meetings", "bi-calendar2-week", Meetings.MeetingPermissions.Manage)),
-        NavItem.Group("وظایف", "bi-list-check",
-            NavItem.Link("وظایف من", "tasks", "bi-check2-square", SamplePermissionCatalog.TasksManage)),
+            NavItem.Link("مدیریت جلسات", "meetings", "bi-calendar2-week", Meetings.MeetingPermissions.Manage),
+            NavItem.Link("گزارش جلسات", "meetings/report", "bi-bar-chart", Meetings.MeetingPermissions.Manage),
+            NavItem.Link("گزارش حضور", "meetings/attendance-report", "bi-people", Meetings.MeetingPermissions.Manage)),
         NavItem.Group("مدیریت", "bi-shield-lock",
             NavItem.Link("کاربران", "admin/users", "bi-people", Roles.Admin),
             NavItem.Link("مجوز نقش‌ها", "admin/roles", "bi-key", Roles.Admin),
@@ -46,31 +42,17 @@ public sealed class SampleNavProvider : INavProvider
 }
 
 /// <summary>
-/// ثبت سرویس‌های دامنهٔ نمونه.
+/// راه‌اندازی میزبان.
 /// </summary>
 public static class SampleSetup
 {
-    public static IServiceCollection AddSampleModule(this IServiceCollection services)
+    /// <summary>
+    /// کاتالوگ مجوزها و منو: همین دو نقطه‌اند که پایه به دامنه وصل می‌شوند.
+    /// </summary>
+    public static IServiceCollection AddSampleWeb(this IServiceCollection services)
     {
-        // ماژول EF: پیکربندی مدل «وظایف» به DbContext پایه تزریق می‌شود
-        services.AddSingleton<IPlatformModule,
-            SampleDomain.SampleModule>();
-
-        // واحد کار دامنه: یک نمونه در هر اسکوپ برای هر دو قرارداد، تا سرویس‌های پایه
-        // و سرویس دامنه همیشه یک شیء واحد ببینند (ثبتِ دوبارهٔ تایپهای مجزا دو شیء می‌ساخت).
-        services.AddScoped<SampleDomain.SampleUnitOfWork>();
-        services.AddScoped<IPlatformUnitOfWork>(sp => sp.GetRequiredService<SampleDomain.SampleUnitOfWork>());
-        services.AddScoped<SampleDomain.ISampleUnitOfWork>(sp => sp.GetRequiredService<SampleDomain.SampleUnitOfWork>());
-
-        services.AddScoped<SampleDomain.IWorkTaskRepository,
-            SampleDomain.WorkTaskRepository>();
-        services.AddScoped<SampleDomain.IWorkTaskService,
-            SampleDomain.WorkTaskService>();
-
-        // کاتالوگ مجوزها و منو: همین دو نقطه‌اند که پایه را به دامنه وصل می‌کنند
         services.AddSingleton<IPermissionCatalog, SamplePermissionCatalog>();
         services.AddSingleton<INavProvider, SampleNavProvider>();
-
         return services;
     }
 

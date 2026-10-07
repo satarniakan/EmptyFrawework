@@ -65,8 +65,51 @@ public class Meeting
     /// <summary>آخرین زمانی که صورت‌جلسه به کارتابل اعضا ارسال شد؛ null یعنی هنوز ارسال نشده.</summary>
     public DateTime? MinutesSentAt { get; set; }
 
+    /// <summary>فایل صوتی جلسه — نام فایل ذخیره‌شده روی دیسک (پوشهٔ AppData/meeting-audio میزبان).</summary>
+    public string? AudioFileName { get; set; }
+
+    public string? AudioContentType { get; set; }
+    public long? AudioSizeBytes { get; set; }
+    public string? AudioUploadedByUserId { get; set; }
+    public DateTime? AudioUploadedAt { get; set; }
+
+    /// <summary>عکس جلسه (مثلاً عکس گروهی) — نام فایل ذخیره‌شده روی دیسک (پوشهٔ AppData/meeting-photos میزبان).</summary>
+    public string? PhotoFileName { get; set; }
+    public string? PhotoContentType { get; set; }
+    public long? PhotoSizeBytes { get; set; }
+    public string? PhotoUploadedByUserId { get; set; }
+    public DateTime? PhotoUploadedAt { get; set; }
+
     public List<MeetingInvitee> Invitees { get; set; } = [];
     public List<MeetingTimeProposal> TimeProposals { get; set; } = [];
+    public List<MeetingDecision> Decisions { get; set; } = [];
+}
+
+/// <summary>
+/// یک بند مصوبهٔ جلسه: متن، مسئول(ین) اقدام (از بین مدعوین و/یا نام آزاد) و مهلت اقدام.
+/// </summary>
+public class MeetingDecision
+{
+    public int Id { get; set; }
+    public int MeetingId { get; set; }
+    public Meeting? Meeting { get; set; }
+
+    /// <summary>متن مصوبه.</summary>
+    public string Content { get; set; } = string.Empty;
+
+    /// <summary>مسئولین اقدام از بین مدعوین — جداشده با ویرگول (IdentityUser.Id).</summary>
+    public string? AssigneeUserIds { get; set; }
+
+    /// <summary>مسئولین تایپ‌شدهٔ آزاد (خارج از سامانه) — جداشده با ویرگول.</summary>
+    public string? AssigneeNames { get; set; }
+
+    /// <summary>مهلت اقدام (UTC).</summary>
+    public DateTime? DueAt { get; set; }
+
+    /// <summary>آیا انجام شده است؟</summary>
+    public bool IsDone { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 /// <summary>دعوت‌نامهٔ یک کاربر به یک جلسه.</summary>

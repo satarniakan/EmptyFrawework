@@ -1200,3 +1200,104 @@ main > .top-row {
         display: none;
     }
 }
+
+/* ============================================================
+   تم تاریک: دیت‌پیکر Azar (متغیرهای خودش) و ویرایشگر Quill
+   ============================================================ */
+[data-theme="dark"] {
+    --azar-bg: #1e293b;
+    --azar-surface: #0f172a;
+    --azar-border: #334155;
+    --azar-text: #e2e8f0;
+    --azar-text-secondary: #94a3b8;
+    --azar-text-muted: #64748b;
+    --azar-primary-light: rgba(59, 130, 246, 0.25);
+    --azar-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.45);
+    --azar-shadow-lg: 0 20px 40px -8px rgba(0, 0, 0, 0.5);
+}
+
+[data-bs-theme="dark"] .ql-toolbar.ql-snow,
+[data-bs-theme="dark"] .ql-container.ql-snow {
+    border-color: var(--brand-border);
+}
+
+[data-bs-theme="dark"] .ql-toolbar.ql-snow {
+    background: var(--brand-surface);
+}
+
+[data-bs-theme="dark"] .ql-snow .ql-stroke {
+    stroke: var(--brand-text-muted);
+}
+
+[data-bs-theme="dark"] .ql-snow .ql-fill,
+[data-bs-theme="dark"] .ql-snow .ql-stroke.ql-fill {
+    fill: var(--brand-text-muted);
+}
+
+[data-bs-theme="dark"] .ql-snow .ql-picker-label {
+    color: var(--brand-text);
+}
+
+[data-bs-theme="dark"] .ql-snow .ql-picker-options {
+    background: var(--brand-surface);
+    border-color: var(--brand-border);
+}
+
+[data-bs-theme="dark"] .ql-snow .ql-picker.ql-header .ql-picker-item[data-value="2"],
+[data-bs-theme="dark"] .ql-snow .ql-picker.ql-header .ql-picker-item[data-value="3"] {
+    color: var(--brand-text);
+}
+
+[data-bs-theme="dark"] .ql-snow.ql-toolbar button:hover .ql-stroke,
+[data-bs-theme="dark"] .ql-snow .ql-picker-label:hover {
+    color: var(--brand-primary);
+}
+
+[data-bs-theme="dark"] .ql-snow.ql-toolbar button:hover .ql-stroke {
+    stroke: var(--brand-primary);
+}
+
+[data-bs-theme="dark"] .ql-snow .ql-active .ql-stroke,
+[data-bs-theme="dark"] .ql-snow .ql-picker-item.ql-selected {
+    color: var(--brand-primary);
+}
+
+[data-bs-theme="dark"] .ql-snow .ql-editor {
+    color: var(--brand-text);
+    background: var(--brand-surface);
+}
+
+[data-bs-theme="dark"] .ql-snow .ql-tooltip {
+    background: var(--brand-surface);
+    border-color: var(--brand-border);
+    color: var(--brand-text);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+}
+
+[data-bs-theme="dark"] .ql-snow .ql-tooltip input[type="text"] {
+    background: var(--brand-bg);
+    border-color: var(--brand-border);
+    color: var(--brand-text);
+}
+
+/* ویرایشگر در حالت روشن هم با حاشیهٔ تم */
+.rtl-editor .ql-toolbar.ql-snow,
+.rtl-editor .ql-container.ql-snow {
+    border-color: var(--brand-border);
+    border-radius: 0;
+}
+
+.rtl-editor .ql-toolbar.ql-snow {
+    border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.rtl-editor .ql-container.ql-snow {
+    border-radius: 0 0 var(--radius) var(--radius);
+    font-family: 'Vazirmatn', Tahoma, sans-serif;
+    font-size: 0.95rem;
+}
+
+.rtl-editor .ql-editor {
+    direction: rtl;
+    text-align: right;
+}

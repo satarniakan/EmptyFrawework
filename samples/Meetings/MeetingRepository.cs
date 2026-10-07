@@ -17,6 +17,16 @@ public interface IMeetingRepository
     Task<MeetingTimeProposal?> GetProposalAsync(int proposalId);
     Task AddAsync(Meeting meeting);
     Task AddProposalAsync(MeetingTimeProposal proposal);
+
+    // ===== مصوبات =====
+    Task<List<MeetingDecision>> GetDecisionsForMeetingAsync(int meetingId);
+    Task<MeetingDecision?> GetDecisionAsync(int decisionId);
+    Task AddDecisionAsync(MeetingDecision decision);
+    void RemoveDecision(MeetingDecision decision);
+
+    // ===== گزارش‌ها =====
+    Task<List<Meeting>> GetInRangeAsync(DateTime fromUtc, DateTime toUtc);
+    Task<List<MeetingInvitee>> GetUserInvitesInRangeAsync(string userId, DateTime fromUtc, DateTime toUtc);
 }
 
 public class MeetingRepository : IMeetingRepository
@@ -67,4 +77,37 @@ public class MeetingRepository : IMeetingRepository
 
     public async Task AddProposalAsync(MeetingTimeProposal proposal) =>
         await _context.Set<MeetingTimeProposal>().AddAsync(proposal);
+
+    // ===== مصوبات =====
+
+    public Task<List<MeetingDecision>> GetDecisionsForMeetingAsync(int meetingId) =>
+        _context.Set<MeetingDecision>()
+            .Where(d => d.MeetingId == meetingId)
+            .OrderBy(d => d.Id)
+            .ToListAsync();
+
+    public Task<MeetingDecision?> GetDecisionAsync(int decisionId) =>
+        _context.Set<MeetingDecision>().FirstOrDefaultAsync(d => d.Id == decisionId);
+
+    public async Task AddDecisionAsync(MeetingDecision decision) =>
+        await _context.Set<MeetingDecision>().AddAsync(decision);
+
+    public void RemoveDecision(MeetingDecision decision) =>
+        _context.Set<MeetingDecision>().Remove(decision);
+
+    // ===== گزارش‌ها =====
+
+    public Task<List<Meeting>> GetInRangeAsync(DateTime fromUtc, DateTime toUtc) =>
+        _context.Set<Meeting>()
+            .Include(m => m.Invitees)
+            .Where(m => m.StartAt >= fromUtc && m.StartAt < toUtc)
+            .OrderBy(m => m.StartAt)
+            .ToListAsync();
+
+    public Task<List<MeetingInvitee>> GetUserInvitesInRangeAsync(string userId, DateTime fromUtc, DateTime toUtc) =>
+        _context.Set<MeetingInvitee>()
+            .Include(i => i.Meeting)
+            .Where(i => i.UserId == userId && i.Meeting!.StartAt >= fromUtc && i.Meeting!.StartAt < toUtc)
+            .OrderBy(i => i.Meeting!.StartAt)
+            .ToListAsync();
 }

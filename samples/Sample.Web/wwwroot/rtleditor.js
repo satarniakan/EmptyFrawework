@@ -1,48 +1,60 @@
 // samples/Sample.Web/wwwroot/rtleditor.js
-// interop ویرایشگر متن راست‌چین (contenteditable) برای صورت‌جلسه‌ها.
+// interop ویرایشگر صورت‌جلسه بر پایهٔ Quill (open source) — همان API قبلی: init/getHtml/setHtml
 window.rtlEditor = {
+    _quills: {},
+
     init: function (id, initialHtml, minHeight) {
         var el = document.getElementById(id);
         if (!el) return;
-        el.innerHTML = initialHtml || '';
-        if (minHeight) el.style.minHeight = minHeight + 'px';
-
-        // وقتی محتوا واقعاً خالی است، placeholder سی‌اس‌اس نمایش داده شود
-        function syncEmpty() {
-            if (el.textContent.trim() === '' && el.querySelector('img') === null) {
-                el.classList.add('is-empty');
-            } else {
-                el.classList.remove('is-empty');
-            }
+        if (this._quills[id]) {
+            if (initialHtml) this.setHtml(id, initialHtml);
+            return;
         }
-        el.addEventListener('input', syncEmpty);
-        el.addEventListener('blur', syncEmpty);
-        syncEmpty();
-    },
 
-    exec: function (id, command, value) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        el.focus();
-        document.execCommand(command, false, value || null);
+        var quill = new Quill(el, {
+            theme: 'snow',
+            direction: 'rtl',
+            placeholder: el.getAttribute('data-placeholder') || '',
+            modules: {
+                toolbar: [
+                    [{ header: [2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ list: 'ordered' }, { list: 'bullet' }],
+                    [{ direction: 'rtl' }],
+                    ['link', 'blockquote'],
+                    ['clean']
+                ]
+            }
+        });
+
+        if (initialHtml) this.setHtml(id, initialHtml);
+        if (minHeight) {
+            quill.root.style.minHeight = minHeight + 'px';
+        }
+
+        this._quills[id] = quill;
     },
 
     getHtml: function (id) {
-        var el = document.getElementById(id);
-        if (!el) return '';
-        // خالی واقعی را به رشتهٔ خالی برمی‌گردانیم نه <br> و ...
-        if (el.textContent.trim() === '' && el.querySelector('img') === null) return '';
-        return el.innerHTML;
+        var quill = this._quills[id];
+        if (!quill) return '';
+        // خالی واقعی را به رشتهٔ خالی برمی‌گردانیم نه <p><br></p> و ...
+        if (quill.getText().trim() === '' && quill.root.querySelector('img') === null) return '';
+        return quill.root.innerHTML;
     },
 
     setHtml: function (id, html) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        el.innerHTML = html || '';
-        if (el.textContent.trim() === '') {
-            el.classList.add('is-empty');
-        } else {
-            el.classList.remove('is-empty');
+        var quill = this._quills[id];
+        if (!quill) return;
+        if (!html) {
+            quill.setText('');
+            return;
+        }
+        try {
+            quill.clipboard.dangerouslyPasteHTML(html);
+        } catch (e) {
+            // HTML غیرمتعارف: مستقیم در ریشه می‌نشانیم
+            quill.root.innerHTML = html;
         }
     }
 };

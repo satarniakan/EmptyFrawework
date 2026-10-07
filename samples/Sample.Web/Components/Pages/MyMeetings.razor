@@ -70,23 +70,30 @@ else
             </div>
 
             <div class="d-flex flex-wrap gap-2 mt-3">
-                @if (item.Response != InviteResponse.Accepted)
+                @if (item.Meeting.StartAt > DateTime.UtcNow)
                 {
-                    <button class="btn btn-sm btn-success" disabled="@isBusy"
-                            @onclick="@(async () => await RespondAsync(item, InviteResponse.Accepted))">
-                        <i class="bi bi-check-lg me-1"></i>پذیرش دعوت
+                    @if (item.Response != InviteResponse.Accepted)
+                    {
+                        <button class="btn btn-sm btn-success" disabled="@isBusy"
+                                @onclick="@(async () => await RespondAsync(item, InviteResponse.Accepted))">
+                            <i class="bi bi-check-lg me-1"></i>پذیرش دعوت
+                        </button>
+                    }
+                    @if (item.Response != InviteResponse.Declined)
+                    {
+                        <button class="btn btn-sm btn-outline-danger" disabled="@isBusy"
+                                @onclick="@(async () => await RespondAsync(item, InviteResponse.Declined))">
+                            <i class="bi bi-x-lg me-1"></i>رد دعوت
+                        </button>
+                    }
+                    <button class="btn btn-sm btn-outline-primary" @onclick="@(async () => await ToggleProposalPanelAsync(item))">
+                        <i class="bi bi-clock-history me-1"></i>پیشنهاد زمان جدید
                     </button>
                 }
-                @if (item.Response != InviteResponse.Declined)
+                else if (item.Response == InviteResponse.Pending)
                 {
-                    <button class="btn btn-sm btn-outline-danger" disabled="@isBusy"
-                            @onclick="@(async () => await RespondAsync(item, InviteResponse.Declined))">
-                        <i class="bi bi-x-lg me-1"></i>رد دعوت
-                    </button>
+                    <span class="badge text-bg-secondary align-self-center">زمان جلسه گذشته و پاسخی ثبت نشده است</span>
                 }
-                <button class="btn btn-sm btn-outline-primary" @onclick="@(async () => await ToggleProposalPanelAsync(item))">
-                    <i class="bi bi-clock-history me-1"></i>پیشنهاد زمان جدید
-                </button>
                 @if (item.Meeting.MinutesSentAt is not null)
                 {
                     <a href="/my-meetings/@item.MeetingId" class="btn btn-sm btn-outline-secondary">
@@ -116,9 +123,61 @@ else
     }
 }
 
+@* ===== جلساتی که کاربر مسئول آن‌هاست: وضعیت مدعوین + لینک مدیریت ===== *@
+@if (hostedMeetings.Count > 0)
+{
+    <h6 class="form-section-title mt-4"><i class="bi bi-person-badge"></i>جلساتی که مسئول آن هستید</h6>
+    @foreach (var m in hostedMeetings)
+    {
+        var accepted = m.Invitees.Count(i => i.Response == InviteResponse.Accepted);
+        var declined = m.Invitees.Count(i => i.Response == InviteResponse.Declined);
+        var pending = m.Invitees.Count(i => i.Response == InviteResponse.Pending);
+        var marked = m.Invitees.Count(i => i.Attendance is not null);
+        <div class="card-panel mb-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                <div>
+                    <h6 class="mb-1 fw-semibold">@m.Title</h6>
+                    <div class="small text-body-secondary">
+                        <i class="bi bi-calendar3 me-1"></i>@m.StartAt.ToPersianDateTime()
+                        @if (m.Kind == MeetingKind.InPerson)
+                        {
+                            <span class="ms-3"><i class="bi bi-geo-alt me-1"></i>حضوری — @(m.Location ?? "نامشخص")</span>
+                        }
+                        else
+                        {
+                            <span class="ms-3"><i class="bi bi-camera-video me-1"></i>غیرحضوری</span>
+                        }
+                    </div>
+                    <div class="small mt-2">
+                        <span class="badge text-bg-success me-1">@accepted پذیرفته</span>
+                        <span class="badge text-bg-danger me-1">@declined رد کرده</span>
+                        <span class="badge text-bg-secondary me-1">@pending در انتظار</span>
+                        @if (marked > 0)
+                        {
+                            <span class="badge text-bg-info">حضور/غیاب @marked نفر ثبت شده</span>
+                        }
+                        @if (m.MinutesSentAt is not null)
+                        {
+                            <span class="badge text-bg-success">صورت‌جلسه ارسال شده</span>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(m.MinutesHtml))
+                        {
+                            <span class="badge text-bg-warning">صورت‌جلسه نوشته شده</span>
+                        }
+                    </div>
+                </div>
+                <a href="/meetings/@m.Id/manage" class="btn btn-sm btn-primary">
+                    <i class="bi bi-gear me-1"></i>مدیریت جلسه، حضور و صورت‌جلسه
+                </a>
+            </div>
+        </div>
+    }
+}
+
 @code {
     private List<InviteRow>? items;
     private List<Meeting>? calendarMeetings;
+    private List<Meeting> hostedMeetings = [];
     private int? openPanelInviteeId;
     private DateTime proposalTime = DateTime.UtcNow.AddDays(1);
     private string? proposalNote;
@@ -133,6 +192,9 @@ else
         if (userId is null) return;
 
         calendarMeetings = await MeetingService.GetCalendarMeetingsAsync(userId);
+        hostedMeetings = calendarMeetings!
+            .Where(m => m.CreatedByUserId == userId)
+            .ToList();
         var invites = await MeetingService.GetInvitesForUserAsync(userId);
         items = invites.Select(i => new InviteRow(i)).ToList();
     });

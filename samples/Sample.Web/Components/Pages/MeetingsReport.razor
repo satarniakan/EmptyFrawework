@@ -1,0 +1,192 @@
+@page "/meetings/report"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Meetings.MeetingPermissions.Manage)]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Platform.Application.Helpers
+@inherits Platform.Web.Components.Shared.AppComponentBase
+@inject IMeetingService MeetingService
+<PageTitle>گزارش جلسات</PageTitle>
+
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">گزارش جلسات و مصوبات</h3>
+        <div class="text-body-secondary small">جلسات، مصوبات و وضعیت مدعوین در بازهٔ زمانی انتخابی</div>
+    </div>
+    <a href="/meetings" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+    </a>
+</div>
+
+@* ===== فیلتر بازهٔ تاریخ ===== *@
+<div class="card-panel mb-3">
+    <div class="row align-items-end">
+        <div class="col-md-4">
+            <label class="form-label">از تاریخ</label>
+            <PersianDateTimePicker @bind-Value="fromDate" ShowTime="false" Placeholder="تاریخ شروع" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">تا تاریخ</label>
+            <PersianDateTimePicker @bind-Value="toDate" ShowTime="false" Placeholder="تاریخ پایان" />
+        </div>
+        <div class="col-md-4">
+            <button class="btn btn-primary" disabled="@isLoading" @onclick="LoadReportAsync">
+                @if (isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-funnel me-1"></i>
+                }
+                نمایش گزارش
+            </button>
+            <PrintButton CssClass="btn btn-outline-secondary no-print" />
+        </div>
+    </div>
+</div>
+
+@if (!hasSearched)
+{
+    <div class="text-center text-body-secondary py-4">
+        <i class="bi bi-funnel d-block mb-2" style="font-size: 1.6rem;"></i>
+        بازهٔ زمانی را انتخاب و «نمایش گزارش» را بزنید.
+    </div>
+}
+else if (reportMeetings is null)
+{
+    <LoadingSkeleton />
+}
+else if (reportMeetings.Count == 0)
+{
+    <div class="text-center text-body-secondary py-4">
+        <i class="bi bi-calendar-x d-block mb-2" style="font-size: 1.6rem;"></i>
+        در این بازه جلسه‌ای یافت نشد.
+    </div>
+}
+else
+{
+    <div class="small text-body-secondary mb-2">@reportMeetings.Count جلسه در بازهٔ انتخابی</div>
+
+    @foreach (var item in reportMeetings)
+    {
+        var m = item.Meeting;
+        var decisionsForMeeting = reportDecisions.TryGetValue(m.Id, out var list) ? list : [];
+        <div class="card-panel mb-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                <div>
+                    <h6 class="mb-1 fw-semibold">@m.Title</h6>
+                    <div class="small text-body-secondary">
+                        <i class="bi bi-calendar3 me-1"></i>@m.StartAt.ToPersianDateTime()
+                        @if (m.Kind == MeetingKind.InPerson)
+                        {
+                            <span class="ms-3"><i class="bi bi-geo-alt me-1"></i>حضوری — @(m.Location ?? "نامشخص")</span>
+                        }
+                        else
+                        {
+                            <span class="ms-3"><i class="bi bi-camera-video me-1"></i>غیرحضوری</span>
+                        }
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap gap-1">
+                    <span class="badge text-bg-success">@(item.Invitees.Count(i => i.Response == InviteResponse.Accepted)) پذیرفته</span>
+                    <span class="badge text-bg-danger">@(item.Invitees.Count(i => i.Response == InviteResponse.Declined)) رد</span>
+                    <span class="badge text-bg-secondary">@(item.Invitees.Count(i => i.Response == InviteResponse.Pending)) در انتظار</span>
+                    <span class="badge text-bg-info">@(item.Invitees.Count(i => i.Attendance == AttendanceMark.Attended)) حاضر</span>
+                    <span class="badge text-bg-warning">@(item.Invitees.Count(i => i.Attendance == AttendanceMark.Absent)) غایب</span>
+                    <a href="/meetings/@m.Id/manage" class="btn btn-sm btn-outline-primary no-print">مدیریت</a>
+                </div>
+            </div>
+
+            @* مصوبات *@
+            @if (decisionsForMeeting.Count > 0)
+            {
+                <div class="mt-2 border rounded-2 p-2 bg-body-tertiary">
+                    <div class="small fw-semibold mb-1"><i class="bi bi-list-check me-1"></i>مصوبات</div>
+                    @foreach (var d in decisionsForMeeting)
+                    {
+                        <div class="small border-bottom py-1">
+                            <span class="@(d.IsDone ? "text-decoration-line-through text-body-secondary" : "")">@d.Content</span>
+                            @if (d.Assignees.Count > 0)
+                            {
+                                <span class="text-body-secondary">— مسئول: @string.Join("، ", d.Assignees)</span>
+                            }
+                            @if (d.DueAt is not null)
+                            {
+                                <span class="text-body-secondary">— مهلت: @d.DueAt.Value.ToPersianDate() @(d.IsDone ? "✓" : "")</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            @* مدعوین *@
+            @if (item.Invitees.Count > 0)
+            {
+                <div class="table-responsive mt-2">
+                    <table class="table table-sm table-borderless mb-0 small">
+                        <thead>
+                            <tr class="text-body-secondary">
+                                <th>مدعو</th>
+                                <th>تلفن</th>
+                                <th>پاسخ</th>
+                                <th>حضور</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var i in item.Invitees)
+                            {
+                                <tr>
+                                    <td>@i.FullName</td>
+                                    <td>@i.PhoneNumber</td>
+                                    <td>@(i.Response == InviteResponse.Accepted ? "پذیرفته" : i.Response == InviteResponse.Declined ? "رد شده" : "در انتظار")</td>
+                                    <td>@(i.Attendance == AttendanceMark.Attended ? "حاضر" : i.Attendance == AttendanceMark.Absent ? "غایب" : "—")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private DateTime fromDate = DateTime.UtcNow.AddDays(-30);
+    private DateTime toDate = DateTime.UtcNow;
+    private List<MeetingReportItem>? reportMeetings;
+    private Dictionary<int, List<DecisionInfo>> reportDecisions = [];
+    private bool isLoading;
+    private bool hasSearched;
+
+    private async Task LoadReportAsync() => await RunSafe(async () =>
+    {
+        if (fromDate == default || toDate == default)
+        {
+            Toast.ShowError("هر دو تاریخ را انتخاب کنید.");
+            return;
+        }
+        if (fromDate > toDate)
+        {
+            Toast.ShowError("تاریخ شروع باید قبل از تاریخ پایان باشد.");
+            return;
+        }
+
+        isLoading = true;
+        try
+        {
+            // مقدار دیت‌پیکر نیمه‌شبِ روزِ انتخابی است؛ تا پایان همان روز در نظر گرفته می‌شود
+            reportMeetings = await MeetingService.GetReportAsync(fromDate, toDate.AddDays(1));
+            reportDecisions = [];
+            foreach (var item in reportMeetings)
+            {
+                reportDecisions[item.Meeting.Id] = await MeetingService.GetDecisionsForMeetingAsync(item.Meeting.Id);
+            }
+            hasSearched = true;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }, "خطا در تهیهٔ گزارش.");
+}

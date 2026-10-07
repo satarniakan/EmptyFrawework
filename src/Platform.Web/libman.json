@@ -18,6 +18,14 @@
         "font/fonts/bootstrap-icons.woff",
         "font/fonts/bootstrap-icons.woff2"
       ]
+    },
+    {
+      "library": "quill@2.0.3",
+      "destination": "wwwroot/lib/quill/",
+      "files": [
+        "dist/quill.js",
+        "dist/quill.snow.css"
+      ]
     }
   ]
 }

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.DataProtection;
+using System.Security.Claims;
 using Meetings;
 using Platform.Domain.Identity;
 using Platform.Infrastructure;
@@ -39,10 +40,10 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys")));
 
-// هر لایه تنظیمات سرویس‌های خودش را رجیستر می‌کند؛ نمونهٔ دامنه بعد از پایه می‌آید
+// هر لایه تنظیمات سرویس‌های خودش را رجیستر می‌کند؛ ماژول جلسات بعد از پایه می‌آید
 builder.Services.AddPlatform(builder.Configuration, builder.Environment.IsDevelopment());
-builder.Services.AddSampleModule();
 builder.Services.AddMeetingsModule();
+builder.Services.AddSampleWeb();
 
 // مجوز «مدیریت جلسات»: ادمین همیشه، و هر نقشی که این مجوز رویش claim شده باشد.
 // نام سیاست عمداً همان کلید مجوز است تا صفحات با [Authorize(Policy = MeetingPermissions.Manage)] بسته شوند.
@@ -128,6 +129,56 @@ app.MapGet("/dev-login", async (
     await signIn.SignInAsync(user, isPersistent: true);
     return Results.Redirect("/my-meetings");
 });
+
+// پخش/دانلود فایل صوتی جلسه — فقط سازنده و مدعوین، یا ادمین/دارندهٔ مجوز مدیریت جلسات
+app.MapGet("/meetings/{id:int}/audio", async (
+    int id,
+    ClaimsPrincipal user,
+    IMeetingService meetings,
+    IWebHostEnvironment environment) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null) return Results.Unauthorized();
+
+    var canManage = user.IsInRole(Roles.Admin) ||
+                    user.HasClaim(Permissions.ClaimType, Meetings.MeetingPermissions.Manage);
+    if (!canManage && !await meetings.CanViewAsync(id, userId))
+        return Results.Forbid();
+
+    var meeting = await meetings.GetMeetingAsync(id);
+    if (string.IsNullOrWhiteSpace(meeting?.AudioFileName)) return Results.NotFound();
+
+    var path = Path.Combine(environment.ContentRootPath, "AppData", "meeting-audio", meeting.AudioFileName);
+    if (!File.Exists(path)) return Results.NotFound();
+
+    return Results.File(path, meeting.AudioContentType ?? "application/octet-stream",
+        fileDownloadName: $"meeting-{id}{Path.GetExtension(meeting.AudioFileName)}");
+}).RequireAuthorization();
+
+// نمایش/دانلود عکس جلسه — همان کنترل دسترسی صوت
+app.MapGet("/meetings/{id:int}/photo", async (
+    int id,
+    ClaimsPrincipal user,
+    IMeetingService meetings,
+    IWebHostEnvironment environment) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null) return Results.Unauthorized();
+
+    var canManage = user.IsInRole(Roles.Admin) ||
+                    user.HasClaim(Permissions.ClaimType, Meetings.MeetingPermissions.Manage);
+    if (!canManage && !await meetings.CanViewAsync(id, userId))
+        return Results.Forbid();
+
+    var meeting = await meetings.GetMeetingAsync(id);
+    if (string.IsNullOrWhiteSpace(meeting?.PhotoFileName)) return Results.NotFound();
+
+    var path = Path.Combine(environment.ContentRootPath, "AppData", "meeting-photos", meeting.PhotoFileName);
+    if (!File.Exists(path)) return Results.NotFound();
+
+    return Results.File(path, meeting.PhotoContentType ?? "application/octet-stream",
+        fileDownloadName: $"meeting-{id}{Path.GetExtension(meeting.PhotoFileName)}");
+}).RequireAuthorization();
 
 app.MapRazorComponents<Sample.Web.Components.App>()
     // صفحات پایه (login، profile، admin و…) در مونتاژ Platform.Web هستند؛

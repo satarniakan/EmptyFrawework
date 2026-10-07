@@ -2,8 +2,12 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = Meetings.MeetingPermissions.Manage)]
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Security.Claims
 @inherits Platform.Web.Components.Shared.AppComponentBase
 @inject IMeetingService MeetingService
+@inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavigationManager
 <PageTitle>مدیریت جلسه</PageTitle>
 
@@ -140,6 +144,97 @@ else
         </div>
     </div>
 
+    @* ===== مصوبات ===== *@
+    <div class="card-panel mb-3">
+        <h6 class="form-section-title"><i class="bi bi-list-check"></i>مصوبات و اقدامات</h6>
+
+        @if (decisions is null)
+        {
+            <LoadingSkeleton Table="false" Rows="2" />
+        }
+        else if (decisions.Count == 0)
+        {
+            <div class="text-body-secondary small mb-2">هنوز مصوبه‌ای ثبت نشده است.</div>
+        }
+        else
+        {
+            @foreach (var d in decisions)
+            {
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 py-2 border-bottom">
+                    <div>
+                        <div class="@(d.IsDone ? "text-decoration-line-through text-body-secondary" : "")">@d.Content</div>
+                        <div class="small text-body-secondary mt-1">
+                            @if (d.Assignees.Count > 0)
+                            {
+                                <span><i class="bi bi-person-check me-1"></i>مسئول: @string.Join("، ", d.Assignees)</span>
+                            }
+                            @if (d.DueAt is not null)
+                            {
+                                var daysLeft = (d.DueAt.Value.Date - DateTime.UtcNow).TotalDays;
+                                <span class="ms-3"><i class="bi bi-calendar-deadline me-1"></i>مهلت: @d.DueAt.Value.ToPersianDate()
+                                    @(daysLeft >= 0 ? $"({daysLeft:N0} روز مانده)" : "(گذشته)")
+                                </span>
+                            }
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" checked="@d.IsDone"
+                                   @onchange="@(async e => await ToggleDecisionAsync(d.Id, (bool)e.Value!))" />
+                            <label class="form-check-label small">انجام شد</label>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="@(async () => await RemoveDecisionAsync(d.Id))">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            }
+        }
+
+        @* فرم افزودن مصوبه *@
+        <div class="border rounded-2 p-3 mt-3 bg-body-tertiary">
+            <AppTextArea @bind-Value="newDecisionContent" Label="متن مصوبه" Rows="2"
+                         Placeholder="مثال: تهیهٔ گزارش پیشرفت و ارائه تا پایان ماه" />
+            <div class="row">
+                <div class="col-md-4">
+                    <label class="form-label">مهلت اقدام</label>
+                    <PersianDateTimePicker @bind-Value="newDecisionDue" ShowTime="false" Placeholder="تاریخ مهلت (اختیاری)" />
+                </div>
+                <div class="col-md-8">
+                    <AppTextField @bind-Value="newDecisionExternalNames" Label="مسئولین خارج از سامانه (با ویرگول)"
+                                  Placeholder="مثال: واحد مالی، شرکت الف" />
+                </div>
+            </div>
+            @if (invitees is { Count: > 0 })
+            {
+                <label class="form-label">مسئولین از بین مدعوین</label>
+                <div class="d-flex flex-wrap gap-3 mb-2">
+                    @foreach (var i in invitees)
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="@("dec_" + i.UserId)"
+                                   checked="@newDecisionAssignees.Contains(i.UserId)"
+                                   @onchange="@(e => ToggleDecisionAssignee(i.UserId, (bool)e.Value!))" />
+                            <label class="form-check-label" for="@("dec_" + i.UserId)">@i.FullName</label>
+                        </div>
+                    }
+                </div>
+            }
+            <button class="btn btn-sm btn-primary" disabled="@isSavingDecision" @onclick="AddDecisionAsync">
+                @if (isSavingDecision)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-plus-lg me-1"></i>
+                }
+                افزودن مصوبه
+            </button>
+            <div class="form-text mt-2">به مسئولین انتخاب‌شده از بین مدعوین، اعلان کارتابل ارسال می‌شود.</div>
+        </div>
+    </div>
+
     @* ===== صورت‌جلسه ===== *@
     <div class="card-panel">
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
@@ -184,6 +279,80 @@ else
             </button>
         </div>
     </div>
+
+    @* ===== صوت جلسه ===== *@
+    <div class="card-panel mt-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+            <h6 class="form-section-title mb-0"><i class="bi bi-mic"></i>صوت جلسه</h6>
+            @if (meeting.AudioUploadedAt is not null)
+            {
+                <span class="small text-body-secondary">
+                    بارگذاری: @meeting.AudioUploadedAt.Value.ToPersianDateTime()
+                    @if (meeting.AudioSizeBytes is not null)
+                    {
+                        <span>— @(meeting.AudioSizeBytes.Value / 1024.0 / 1024.0 < 1
+                            ? $"{meeting.AudioSizeBytes.Value / 1024.0:N0} کیلوبایت"
+                            : $"{meeting.AudioSizeBytes.Value / 1024.0 / 1024.0:N1} مگابایت")</span>
+                    }
+                </span>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(meeting.AudioFileName))
+        {
+            <audio controls class="w-100 mb-2" preload="metadata" src="/meetings/@Id/audio"></audio>
+            <div class="d-flex gap-2">
+                <a href="/meetings/@Id/audio" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-download me-1"></i>دانلود فایل
+                </a>
+                <button class="btn btn-sm btn-outline-danger" disabled="@isAudioBusy" @onclick="RemoveAudioAsync">
+                    <i class="bi bi-trash me-1"></i>حذف صوت
+                </button>
+            </div>
+        }
+        else
+        {
+            <InputFile accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.wma" OnChange="UploadAudioAsync" disabled="@isAudioBusy" />
+            <div class="form-text">فرمت‌های مجاز: mp3، m4a، wav، ogg، aac — حداکثر ۵۰ مگابایت. فایل جدید جای فایل قبلی را می‌گیرد (برای جایگزینی، ابتدا حذف کنید).</div>
+        }
+    </div>
+
+    @* ===== عکس جلسه ===== *@
+    <div class="card-panel mt-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+            <h6 class="form-section-title mb-0"><i class="bi bi-image"></i>عکس جلسه</h6>
+            @if (meeting.PhotoUploadedAt is not null)
+            {
+                <span class="small text-body-secondary">
+                    بارگذاری: @meeting.PhotoUploadedAt.Value.ToPersianDateTime()
+                    @if (meeting.PhotoSizeBytes is not null)
+                    {
+                        <span>— @(meeting.PhotoSizeBytes.Value / 1024.0 / 1024.0 < 1
+                            ? $"{meeting.PhotoSizeBytes.Value / 1024.0:N0} کیلوبایت"
+                            : $"{meeting.PhotoSizeBytes.Value / 1024.0 / 1024.0:N1} مگابایت")</span>
+                    }
+                </span>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(meeting.PhotoFileName))
+        {
+            <img src="/meetings/@Id/photo" class="img-fluid mb-2" style="max-height: 300px; border-radius: 8px;" alt="عکس جلسه" />
+            <div class="d-flex gap-2">
+                <a href="/meetings/@Id/photo" class="btn btn-sm btn-outline-secondary" target="_blank">
+                    <i class="bi bi-download me-1"></i>دانلود فایل
+                </a>
+                <button class="btn btn-sm btn-outline-danger" disabled="@isPhotoBusy" @onclick="RemovePhotoAsync">
+                    <i class="bi bi-trash me-1"></i>حذف عکس
+                </button>
+            </div>
+        }
+        else
+        {
+            <InputFile accept="image/*,.jpg,.jpeg,.png,.gif,.bmp" OnChange="UploadPhotoAsync" disabled="@isPhotoBusy" />
+            <div class="form-text">فرمت‌های مجاز: jpg، jpeg، png، gif، bmp — حداکثر ۱۰ مگابایت. فایل جدید جای فایل قبلی را می‌گیرد (برای جایگزینی، ابتدا حذف کنید).</div>
+        }
+    </div>
 }
 
 <AppConfirmDialog @ref="confirmDialog" />
@@ -191,19 +360,40 @@ else
 @code {
     [Parameter] public int Id { get; set; }
 
+    private const long MaxAudioBytes = 50 * 1024 * 1024;
+    private static readonly string[] AudioExtensions = [".mp3", ".m4a", ".wav", ".ogg", ".aac", ".wma"];
+
     private Meeting? meeting;
     private List<InviteeInfo>? invitees;
     private List<ProposalInfo>? proposals;
+    private List<DecisionInfo>? decisions;
+    private string? newDecisionContent;
+    private DateTime? newDecisionDue;
+    private string? newDecisionExternalNames;
+    private readonly HashSet<string> newDecisionAssignees = [];
+    private bool isSavingDecision;
     private RtlEditor minutesEditor = default!;
     private AppConfirmDialog confirmDialog = default!;
     private bool isSaving;
     private bool isSending;
+    private bool isAudioBusy;
+    private bool isPhotoBusy;
     private bool loadFailed;
+
+    private string? userId;
+
+    private const long MaxPhotoBytes = 10 * 1024 * 1024;
+    private static readonly string[] PhotoExtensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp"];
+
+    [Inject] private IWebHostEnvironment Environment { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
         await RunSafe(async () =>
         {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
             meeting = await MeetingService.GetMeetingAsync(Id);
             if (meeting is null)
             {
@@ -212,8 +402,57 @@ else
             }
             invitees = await MeetingService.GetInviteeDetailsAsync(Id);
             proposals = await MeetingService.GetProposalDetailsAsync(Id);
+            decisions = await MeetingService.GetDecisionsForMeetingAsync(Id);
         });
     }
+
+    private void ToggleDecisionAssignee(string assigneeId, bool isChecked)
+    {
+        if (isChecked) newDecisionAssignees.Add(assigneeId);
+        else newDecisionAssignees.Remove(assigneeId);
+    }
+
+    private async Task AddDecisionAsync() => await RunSafe(async () =>
+    {
+        if (string.IsNullOrWhiteSpace(newDecisionContent))
+        {
+            Toast.ShowError("متن مصوبه را وارد کنید.");
+            return;
+        }
+
+        isSavingDecision = true;
+        try
+        {
+            await MeetingService.AddDecisionAsync(Id, newDecisionContent, newDecisionDue,
+                newDecisionAssignees.ToList(), newDecisionExternalNames, userId ?? "");
+            decisions = await MeetingService.GetDecisionsForMeetingAsync(Id);
+            newDecisionContent = null;
+            newDecisionDue = null;
+            newDecisionExternalNames = null;
+            newDecisionAssignees.Clear();
+            Toast.ShowSuccess("مصوبه ثبت شد.");
+        }
+        finally
+        {
+            isSavingDecision = false;
+        }
+    }, "خطا در ثبت مصوبه.");
+
+    private async Task RemoveDecisionAsync(int decisionId) => await RunSafe(async () =>
+    {
+        var confirmed = await confirmDialog.ShowAsync("حذف مصوبه", "این بند مصوبه حذف شود؟");
+        if (!confirmed) return;
+
+        await MeetingService.RemoveDecisionAsync(decisionId);
+        decisions = await MeetingService.GetDecisionsForMeetingAsync(Id);
+        Toast.ShowSuccess("مصوبه حذف شد.");
+    });
+
+    private async Task ToggleDecisionAsync(int decisionId, bool isDone) => await RunSafe(async () =>
+    {
+        await MeetingService.ToggleDecisionDoneAsync(decisionId, isDone);
+        decisions = await MeetingService.GetDecisionsForMeetingAsync(Id);
+    });
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -288,4 +527,152 @@ else
             isSending = false;
         }
     }, "خطا در ارسال صورت‌جلسه.");
+
+    private async Task UploadAudioAsync(InputFileChangeEventArgs e) => await RunSafe(async () =>
+    {
+        var file = e.File;
+        var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+        if (!AudioExtensions.Contains(extension))
+        {
+            Toast.ShowError("فرمت فایل پشتیبانی نمی‌شود؛ فقط mp3، m4a، wav، ogg و aac.");
+            return;
+        }
+        if (file.Size > MaxAudioBytes)
+        {
+            Toast.ShowError("حجم فایل بیشتر از ۵۰ مگابایت است.");
+            return;
+        }
+
+        isAudioBusy = true;
+        try
+        {
+            var storedFileName = $"meeting-{Id}-{DateTime.UtcNow:yyyyMMddHHmmss}{extension}";
+            var directory = Path.Combine(Environment.ContentRootPath, "AppData", "meeting-audio");
+            Directory.CreateDirectory(directory);
+            var fullPath = Path.Combine(directory, storedFileName);
+
+            await using var source = file.OpenReadStream(MaxAudioBytes);
+            await using var target = File.Create(fullPath);
+            await source.CopyToAsync(target);
+
+            // فایل صوتی قبلی (در صورت وجود) حذف می‌شود
+            await DeleteAudioFileOnDiskAsync(meeting?.AudioFileName);
+
+            await MeetingService.SetAudioAsync(Id, storedFileName, file.ContentType, file.Size, userId ?? "");
+            meeting = await MeetingService.GetMeetingAsync(Id);
+            Toast.ShowSuccess("صوت جلسه بارگذاری شد.");
+        }
+        finally
+        {
+            isAudioBusy = false;
+        }
+    }, "خطا در بارگذاری فایل صوتی.");
+
+    private async Task RemoveAudioAsync() => await RunSafe(async () =>
+    {
+        var confirmed = await confirmDialog.ShowAsync("حذف صوت جلسه", "فایل صوتی جلسه حذف شود؟");
+        if (!confirmed) return;
+
+        isAudioBusy = true;
+        try
+        {
+            var removed = await MeetingService.ClearAudioAsync(Id, userId ?? "");
+            await DeleteAudioFileOnDiskAsync(removed);
+            meeting = await MeetingService.GetMeetingAsync(Id);
+            Toast.ShowSuccess("صوت جلسه حذف شد.");
+        }
+        finally
+        {
+            isAudioBusy = false;
+        }
+    });
+
+    private async Task DeleteAudioFileOnDiskAsync(string? storedFileName)
+    {
+        if (string.IsNullOrWhiteSpace(storedFileName)) return;
+        try
+        {
+            var path = Path.Combine(Environment.ContentRootPath, "AppData", "meeting-audio", storedFileName);
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "حذف فایل صوتی {File} از دیسک ناموفق بود", storedFileName);
+        }
+        await Task.CompletedTask;
+    }
+
+    private async Task UploadPhotoAsync(InputFileChangeEventArgs e) => await RunSafe(async () =>
+    {
+        var file = e.File;
+        var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+        if (!PhotoExtensions.Contains(extension))
+        {
+            Toast.ShowError("فرمت فایل پشتیبانی نمی‌شود؛ فقط jpg، jpeg، png، gif و bmp.");
+            return;
+        }
+        if (file.Size > MaxPhotoBytes)
+        {
+            Toast.ShowError("حجم فایل بیشتر از ۱۰ مگابایت است.");
+            return;
+        }
+
+        isPhotoBusy = true;
+        try
+        {
+            var storedFileName = $"meeting-{Id}-{DateTime.UtcNow:yyyyMMddHHmmss}{extension}";
+            var directory = Path.Combine(Environment.ContentRootPath, "AppData", "meeting-photos");
+            Directory.CreateDirectory(directory);
+            var fullPath = Path.Combine(directory, storedFileName);
+
+            await using var source = file.OpenReadStream(MaxPhotoBytes);
+            await using var target = File.Create(fullPath);
+            await source.CopyToAsync(target);
+
+            // عکس قبلی (در صورت وجود) حذف می‌شود
+            await DeletePhotoFileOnDiskAsync(meeting?.PhotoFileName);
+
+            await MeetingService.SetPhotoAsync(Id, storedFileName, file.ContentType, file.Size, userId ?? "");
+            meeting = await MeetingService.GetMeetingAsync(Id);
+            Toast.ShowSuccess("عکس جلسه بارگذاری شد.");
+        }
+        finally
+        {
+            isPhotoBusy = false;
+        }
+    }, "خطا در بارگذاری عکس جلسه.");
+
+    private async Task RemovePhotoAsync() => await RunSafe(async () =>
+    {
+        var confirmed = await confirmDialog.ShowAsync("حذف عکس جلسه", "عکس جلسه حذف شود؟");
+        if (!confirmed) return;
+
+        isPhotoBusy = true;
+        try
+        {
+            var removed = await MeetingService.ClearPhotoAsync(Id, userId ?? "");
+            await DeletePhotoFileOnDiskAsync(removed);
+            meeting = await MeetingService.GetMeetingAsync(Id);
+            Toast.ShowSuccess("عکس جلسه حذف شد.");
+        }
+        finally
+        {
+            isPhotoBusy = false;
+        }
+    });
+
+    private async Task DeletePhotoFileOnDiskAsync(string? storedFileName)
+    {
+        if (string.IsNullOrWhiteSpace(storedFileName)) return;
+        try
+        {
+            var path = Path.Combine(Environment.ContentRootPath, "AppData", "meeting-photos", storedFileName);
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "حذف فایل عکس {File} از دیسک ناموفق بود", storedFileName);
+        }
+        await Task.CompletedTask;
+    }
 }

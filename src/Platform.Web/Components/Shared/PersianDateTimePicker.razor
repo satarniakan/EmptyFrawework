@@ -43,7 +43,8 @@
 
             string? initialDisplay = null;
             var currentValue = ToNullableDateTime(Value);
-            if (currentValue.HasValue)
+            // فیلد غیرنالِ DateTime قبل از انتخاب کاربر default است؛ تقویم شمسی تاریخ ۰ را نمی‌پذیرد
+            if (currentValue.HasValue && currentValue.Value != default)
             {
                 var pc = new PersianCalendar();
                 initialDisplay = ShowTime

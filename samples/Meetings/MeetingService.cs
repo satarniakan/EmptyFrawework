@@ -37,6 +37,25 @@ public record ProposalInfo(
     ProposalStatus Status,
     DateTime CreatedAt);
 
+/// <summary>یک بند مصوبه با نام‌هایResolve‌شدهٔ مسئولین برای نمایش.</summary>
+public record DecisionInfo(
+    int Id,
+    string Content,
+    List<string> Assignees,
+    DateTime? DueAt,
+    bool IsDone);
+
+/// <summary>ردیف مدعو با نام Resolve‌شده برای گزارش.</summary>
+public record ReportInviteeRow(
+    string FullName,
+    string? PhoneNumber,
+    InviteResponse Response,
+    DateTime? RespondedAt,
+    AttendanceMark? Attendance);
+
+/// <summary>جلسهٔ گزارش‌شده با مدعوینِ نام‌دار.</summary>
+public record MeetingReportItem(Meeting Meeting, List<ReportInviteeRow> Invitees);
+
 public interface IMeetingService
 {
     /// <summary>همهٔ جلسات برای فهرست ادمین.</summary>
@@ -71,6 +90,36 @@ public interface IMeetingService
 
     /// <summary>ذخیرهٔ متن صورت‌جلسه (پس از پاک‌سازی HTML).</summary>
     Task SaveMinutesAsync(int meetingId, string? html);
+
+    /// <summary>ثبت فایل صوتی بارگذاری‌شدهٔ جلسه (فایل از قبل روی دیسک ذخیره شده است).</summary>
+    Task SetAudioAsync(int meetingId, string storedFileName, string contentType, long sizeBytes, string userId);
+
+    /// <summary>حذف فایل صوتی جلسه (رکورد را خالی می‌کند؛ حذف فایل از دیسک با فراخواننده است).</summary>
+    Task<string?> ClearAudioAsync(int meetingId, string userId);
+
+    /// <summary>ثبت عکس جلسه (فایل از قبل روی دیسک ذخیره شده است).</summary>
+    Task SetPhotoAsync(int meetingId, string storedFileName, string contentType, long sizeBytes, string userId);
+
+    /// <summary>حذف عکس جلسه (رکورد را خالی می‌کند؛ حذف فایل از دیسک با فراخواننده است).</summary>
+    Task<string?> ClearPhotoAsync(int meetingId, string userId);
+
+    // ===== مصوبات =====
+
+    /// <summary>افزودن بند مصوبه با مسئولین (مدعوین و/یا نام آزاد) و مهلت اقدام.</summary>
+    Task<DecisionInfo> AddDecisionAsync(int meetingId, string content, DateTime? dueAtUtc,
+        IReadOnlyList<string> assigneeUserIds, string? externalAssigneeNames, string createdByUserId);
+
+    Task RemoveDecisionAsync(int decisionId);
+    Task ToggleDecisionDoneAsync(int decisionId, bool isDone);
+    Task<List<DecisionInfo>> GetDecisionsForMeetingAsync(int meetingId);
+
+    // ===== گزارش‌ها =====
+
+    /// <summary>جلسات در بازهٔ زمانی (UTC) با مدعوینِ نام‌دار — برای گزارش جلسات و مصوبات.</summary>
+    Task<List<MeetingReportItem>> GetReportAsync(DateTime fromUtc, DateTime toUtc);
+
+    /// <summary>دعوت‌نامه‌های یک فرد در بازهٔ زمانی (UTC) — برای گزارش حضور.</summary>
+    Task<List<MeetingInvitee>> GetPersonAttendanceAsync(string userId, DateTime fromUtc, DateTime toUtc);
 
     /// <summary>ارسال صورت‌جلسه به کارتابل همهٔ مدعوین؛ تعداد گیرندگان را برمی‌گرداند.</summary>
     Task<int> SendMinutesAsync(int meetingId);
@@ -223,6 +272,10 @@ public class MeetingService : IMeetingService
         var invitee = await _meetings.GetInviteeAsync(meetingId, userId);
         if (invitee?.Meeting is null) return false;
 
+        // پس از گذشتهٔ زمان جلسه، ثبت یا تغییر پاسخ معنا ندارد
+        if (invitee.Meeting.StartAt <= _clock.GetUtcNow().UtcDateTime)
+            throw new BusinessRuleException("زمان جلسه گذشته است و امکان ثبت یا تغییر پاسخ وجود ندارد.");
+
         if (invitee.Response != response)
         {
             invitee.Response = response;
@@ -249,6 +302,10 @@ public class MeetingService : IMeetingService
     {
         var invitee = await _meetings.GetInviteeAsync(meetingId, userId);
         if (invitee?.Meeting is null) return false;
+
+        // برای جلسه‌ای که وقتش گذشته، پیشنهاد زمان بی‌معناست
+        if (invitee.Meeting.StartAt <= _clock.GetUtcNow().UtcDateTime)
+            throw new BusinessRuleException("زمان جلسه گذشته است و امکان پیشنهاد زمان جدید وجود ندارد.");
 
         if (proposedStartAt <= _clock.GetUtcNow().UtcDateTime)
             throw new BusinessRuleException("زمان پیشنهادی باید در آینده باشد.");
@@ -358,6 +415,74 @@ public class MeetingService : IMeetingService
         await _unitOfWork.CompleteAsync();
     }
 
+    public async Task SetAudioAsync(int meetingId, string storedFileName, string contentType, long sizeBytes, string userId)
+    {
+        if (string.IsNullOrWhiteSpace(storedFileName))
+            throw new BusinessRuleException("نام فایل صوتی نامعتبر است.");
+
+        var meeting = await _meetings.GetByIdAsync(meetingId)
+            ?? throw new NotFoundException("جلسه", meetingId);
+
+        // بارگذاری جدید جای فایل قبلی را می‌گیرد
+        meeting.AudioFileName = storedFileName.Trim();
+        meeting.AudioContentType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType.Trim();
+        meeting.AudioSizeBytes = sizeBytes;
+        meeting.AudioUploadedByUserId = userId;
+        meeting.AudioUploadedAt = _clock.GetUtcNow().UtcDateTime;
+
+        await _unitOfWork.CompleteAsync();
+    }
+
+    public async Task<string?> ClearAudioAsync(int meetingId, string userId)
+    {
+        var meeting = await _meetings.GetByIdAsync(meetingId)
+            ?? throw new NotFoundException("جلسه", meetingId);
+
+        var removed = meeting.AudioFileName;
+        meeting.AudioFileName = null;
+        meeting.AudioContentType = null;
+        meeting.AudioSizeBytes = null;
+        meeting.AudioUploadedByUserId = null;
+        meeting.AudioUploadedAt = null;
+
+        await _unitOfWork.CompleteAsync();
+        return removed;
+    }
+
+    public async Task SetPhotoAsync(int meetingId, string storedFileName, string contentType, long sizeBytes, string userId)
+    {
+        if (string.IsNullOrWhiteSpace(storedFileName))
+            throw new BusinessRuleException("نام فایل عکس نامعتبر است.");
+
+        var meeting = await _meetings.GetByIdAsync(meetingId)
+            ?? throw new NotFoundException("جلسه", meetingId);
+
+        // بارگذاری جدید جای فایل قبلی را می‌گیرد
+        meeting.PhotoFileName = storedFileName.Trim();
+        meeting.PhotoContentType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType.Trim();
+        meeting.PhotoSizeBytes = sizeBytes;
+        meeting.PhotoUploadedByUserId = userId;
+        meeting.PhotoUploadedAt = _clock.GetUtcNow().UtcDateTime;
+
+        await _unitOfWork.CompleteAsync();
+    }
+
+    public async Task<string?> ClearPhotoAsync(int meetingId, string userId)
+    {
+        var meeting = await _meetings.GetByIdAsync(meetingId)
+            ?? throw new NotFoundException("جلسه", meetingId);
+
+        var removed = meeting.PhotoFileName;
+        meeting.PhotoFileName = null;
+        meeting.PhotoContentType = null;
+        meeting.PhotoSizeBytes = null;
+        meeting.PhotoUploadedByUserId = null;
+        meeting.PhotoUploadedAt = null;
+
+        await _unitOfWork.CompleteAsync();
+        return removed;
+    }
+
     public async Task<int> SendMinutesAsync(int meetingId)
     {
         var meeting = await _meetings.GetByIdAsync(meetingId)
@@ -387,6 +512,127 @@ public class MeetingService : IMeetingService
         var meeting = await _meetings.GetByIdAsync(meetingId);
         if (meeting is null) return false;
         return meeting.CreatedByUserId == userId || meeting.Invitees.Any(i => i.UserId == userId);
+    }
+
+    // ===== مصوبات =====
+
+    public async Task<DecisionInfo> AddDecisionAsync(int meetingId, string content, DateTime? dueAtUtc,
+        IReadOnlyList<string> assigneeUserIds, string? externalAssigneeNames, string createdByUserId)
+    {
+        var text = content?.Trim() ?? string.Empty;
+        if (text.Length == 0)
+            throw new BusinessRuleException("متن مصوبه را وارد کنید.");
+
+        var meeting = await _meetings.GetByIdAsync(meetingId)
+            ?? throw new NotFoundException("جلسه", meetingId);
+
+        var userIds = assigneeUserIds.Distinct().ToList();
+        var decision = new MeetingDecision
+        {
+            MeetingId = meetingId,
+            Content = text,
+            AssigneeUserIds = userIds.Count > 0 ? string.Join("،", userIds) : null,
+            AssigneeNames = string.IsNullOrWhiteSpace(externalAssigneeNames) ? null : externalAssigneeNames.Trim(),
+            DueAt = dueAtUtc
+        };
+        await _meetings.AddDecisionAsync(decision);
+        await _unitOfWork.CompleteAsync();
+
+        // اطلاع به مسئولین اقدام از طریق کارتابل
+        if (userIds.Count > 0)
+        {
+            await _notifications.NotifyUsersAsync(
+                userIds,
+                "مسئول اقدام مصوبه",
+                $"در جلسهٔ «{meeting.Title}» یک مصوبه ثبت شد و شما مسئول اقدام آن هستید.",
+                NotificationType.System,
+                $"/my-meetings/{meetingId}");
+        }
+
+        return await ToDecisionInfoAsync(decision);
+    }
+
+    public async Task RemoveDecisionAsync(int decisionId)
+    {
+        var decision = await _meetings.GetDecisionAsync(decisionId)
+            ?? throw new NotFoundException("مصوبه", decisionId);
+
+        _meetings.RemoveDecision(decision);
+        await _unitOfWork.CompleteAsync();
+    }
+
+    public async Task ToggleDecisionDoneAsync(int decisionId, bool isDone)
+    {
+        var decision = await _meetings.GetDecisionAsync(decisionId)
+            ?? throw new NotFoundException("مصوبه", decisionId);
+
+        decision.IsDone = isDone;
+        await _unitOfWork.CompleteAsync();
+    }
+
+    public async Task<List<DecisionInfo>> GetDecisionsForMeetingAsync(int meetingId)
+    {
+        var decisions = await _meetings.GetDecisionsForMeetingAsync(meetingId);
+        var infos = new List<DecisionInfo>(decisions.Count);
+        foreach (var decision in decisions)
+        {
+            infos.Add(await ToDecisionInfoAsync(decision));
+        }
+        return infos;
+    }
+
+    // ===== گزارش‌ها =====
+
+    public async Task<List<MeetingReportItem>> GetReportAsync(DateTime fromUtc, DateTime toUtc)
+    {
+        var meetings = await _meetings.GetInRangeAsync(fromUtc, toUtc);
+        var allUserIds = meetings
+            .SelectMany(m => m.Invitees.Select(i => i.UserId))
+            .Distinct()
+            .ToList();
+        var contacts = await _users.GetUsersAsync(allUserIds);
+        var byId = contacts.ToDictionary(c => c.UserId);
+
+        var result = new List<MeetingReportItem>(meetings.Count);
+        foreach (var m in meetings)
+        {
+            var rows = m.Invitees
+                .Select(i => byId.TryGetValue(i.UserId, out var contact)
+                    ? new ReportInviteeRow(contact.DisplayName, contact.PhoneNumber, i.Response, i.RespondedAt, i.Attendance)
+                    : new ReportInviteeRow("کاربر حذف‌شده", null, i.Response, i.RespondedAt, i.Attendance))
+                .ToList();
+            result.Add(new MeetingReportItem(m, rows));
+        }
+        return result;
+    }
+
+    public Task<List<MeetingInvitee>> GetPersonAttendanceAsync(string userId, DateTime fromUtc, DateTime toUtc) =>
+        _meetings.GetUserInvitesInRangeAsync(userId, fromUtc, toUtc);
+
+    private async Task<DecisionInfo> ToDecisionInfoAsync(MeetingDecision decision)
+    {
+        var assignees = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(decision.AssigneeUserIds))
+        {
+            var ids = decision.AssigneeUserIds
+                .Split('،', ',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+            var contacts = await _users.GetUsersAsync(ids);
+            var byId = contacts.ToDictionary(c => c.UserId);
+            foreach (var id in ids)
+            {
+                assignees.Add(byId.TryGetValue(id, out var contact) ? contact.DisplayName : "کاربر حذف‌شده");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(decision.AssigneeNames))
+        {
+            assignees.AddRange(decision.AssigneeNames
+                .Split('،', ',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        }
+
+        return new DecisionInfo(decision.Id, decision.Content, assignees, decision.DueAt, decision.IsDone);
     }
 
     private static string KindLabel(MeetingKind kind) =>

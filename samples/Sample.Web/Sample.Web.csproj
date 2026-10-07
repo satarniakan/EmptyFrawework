@@ -18,7 +18,6 @@
     <ProjectReference Include="..\..\src\Platform.Web\Platform.Web.csproj" />
     <ProjectReference Include="..\..\src\Platform.Web.Hosting\Platform.Web.Hosting.csproj" />
     <ProjectReference Include="..\Meetings\Meetings.csproj" />
-    <ProjectReference Include="..\Sample.Module\Sample.Module.csproj" />
   </ItemGroup>
 
 </Project>

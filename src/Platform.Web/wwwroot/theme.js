@@ -2,9 +2,17 @@
 (function () {
     const KEY = 'platform-theme';
 
+    // آیکون کلید تم همیشه تم «مقابل» را نشان می‌دهد (در تاریک: خورشید، در روشن: ماه)
+    function syncToggleIcons(theme) {
+        document.querySelectorAll('.theme-toggle i').forEach((icon) => {
+            icon.className = 'bi ' + (theme === 'dark' ? 'bi-sun-fill' : 'bi-moon-stars-fill');
+        });
+    }
+
     function apply(theme) {
         document.documentElement.setAttribute('data-theme', theme);
         document.documentElement.setAttribute('data-bs-theme', theme);
+        syncToggleIcons(theme);
     }
 
     // اگر کاربر انتخابی ذخیره نکرده باشد، پیش‌فرض تم سیستم‌عامل است
@@ -12,6 +20,10 @@
 const saved = localStorage.getItem(KEY);
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
 apply(saved === 'dark' || saved === 'light' ? saved : (systemDark.matches ? 'dark' : 'light'));
+
+// آیکون‌ها بعد از رندر بدنه هم همگام می‌شوند (apply اول در head است و بدنه هنوز نیست)
+document.addEventListener('DOMContentLoaded', () =>
+    syncToggleIcons(document.documentElement.getAttribute('data-theme') || 'light'));
 
 if (saved !== 'dark' && saved !== 'light') {
     systemDark.addEventListener('change', (e) => {
