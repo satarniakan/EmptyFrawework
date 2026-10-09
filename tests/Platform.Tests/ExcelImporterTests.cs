@@ -42,7 +42,7 @@ public class ExcelImporterTests
         var result = ExcelImporter.Read(stream,
             row => ExcelImporter.Required(row, "Phone", "موبایل", "شماره موبایل"));
 
-        Assert.Equal(["09120000001", "09120000002"], result.Items);
+        Assert.Equal(["09120000001", "09120000002"], result.Items.Select(i => i.Value));
         Assert.Equal(3, result.TotalRows);
         var error = Assert.Single(result.RowErrors);
         Assert.Equal(3, error.RowNumber); // سطر واقعی اکسل، نه شمارش داخلی
@@ -58,7 +58,7 @@ public class ExcelImporterTests
         var result = ExcelImporter.Read(stream,
             row => ExcelImporter.Required(row, "Phone", "موبایل", "شماره موبایل"));
 
-        Assert.Equal(["09120000003"], result.Items);
+        Assert.Equal(["09120000003"], result.Items.Select(i => i.Value));
         Assert.Empty(result.RowErrors);
     }
 

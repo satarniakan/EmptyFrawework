@@ -11,9 +11,12 @@ public sealed class RowImportException(string column, string message) : Exceptio
 /// <summary>خطای یک سطر: شمارهٔ سطرِ اکسل + ستون + پیام فارسی.</summary>
 public record ImportRowError(int RowNumber, string Column, string Message);
 
+/// <summary>یک سطر موفق به‌همراه شمارهٔ واقعی‌اش در اکسل (برای خطاهای مرحلهٔ بعد، مثل تطبیق).</summary>
+public record ImportedRow<T>(int RowNumber, T Value);
+
 /// <summary>نتیجهٔ ایمپورت: ردیف‌های موفق + خطاهای سطری. سطرهای خراب بقیه را نمی‌سوزانند.</summary>
 public record ExcelImportResult<T>(
-    List<T> Items,
+    List<ImportedRow<T>> Items,
     List<ImportRowError> RowErrors,
     int TotalRows)
 {
@@ -54,7 +57,7 @@ public static class ExcelImporter
         if (headers.Count == 0)
             return new([], [new(1, "", "سطر اول (سرستون‌ها) خالی است.")], 0);
 
-        var items = new List<T>();
+        var items = new List<ImportedRow<T>>();
         var errors = new List<ImportRowError>();
         var totalRows = 0;
 
@@ -83,7 +86,7 @@ public static class ExcelImporter
 
             try
             {
-                items.Add(mapRow(record));
+                items.Add(new ImportedRow<T>(row.RowNumber(), mapRow(record)));
             }
             catch (RowImportException ex)
             {

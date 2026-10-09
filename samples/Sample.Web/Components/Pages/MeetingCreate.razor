@@ -4,6 +4,8 @@
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Platform.Application.Imports
 @inherits Platform.Web.Components.Shared.AppComponentBase
 @inject IMeetingService MeetingService
 @inject IUserAdminService UserAdminService
@@ -111,6 +113,32 @@
                 </div>
                 <ValidationMessage For="() => model.InviteeUserIds" class="text-danger small d-block" />
                 <div class="form-text">به هر مدعو انتخاب‌شده، دعوت‌نامه با ایمیل (در صورت داشتن ایمیل) و پیامک ارسال می‌شود.</div>
+                <div class="d-flex align-items-center gap-2 mt-2">
+                    <label class="btn btn-sm btn-outline-secondary mb-0">
+                        <i class="bi bi-file-earmark-excel me-1"></i>افزودن از اکسل
+                        <InputFile accept=".xlsx" OnChange="ImportInviteesAsync" style="display:none;" />
+                    </label>
+                    <span class="form-text">ستون شماره موبایل (Phone / موبایل / شماره موبایل)؛ کاربرانِ یافت‌شده تیک می‌خورند.</span>
+                </div>
+                @if (!string.IsNullOrEmpty(importSummary))
+                {
+                    <div class="alert alert-success small py-2 mt-2 mb-0">@importSummary</div>
+                }
+                @if (importErrors.Count > 0)
+                {
+                    <div class="alert alert-warning small py-2 mt-2 mb-0">
+                        <ul class="mb-0 ps-3">
+                            @foreach (var error in importErrors.Take(10))
+                            {
+                                <li>سطر @error.RowNumber: @error.Message</li>
+                            }
+                            @if (importErrors.Count > 10)
+                            {
+                                <li>و @(importErrors.Count - 10) خطای دیگر…</li>
+                            }
+                        </ul>
+                    </div>
+                }
             }
         </div>
 
@@ -144,6 +172,8 @@
     private List<UserListItemDto>? users;
     private bool isSaving;
     private string? errorMessage;
+    private List<ImportRowError> importErrors = new();
+    private string? importSummary;
 
     private int SelectedCount => model.InviteeUserIds.Count;
 
@@ -167,6 +197,72 @@
             model.InviteeUserIds.Remove(userId);
         }
     }
+
+    /// <summary>
+    /// ایمپورت مدعوین از اکسل با شماره موبایل: شماره‌ها با فهرست کاربران تطبیق داده
+    /// می‌شوند و یافت‌شده‌ها تیک می‌خورند؛ ناشناخته‌ها به‌صورت خطای سطری گزارش می‌شوند.
+    /// </summary>
+    private async Task ImportInviteesAsync(InputFileChangeEventArgs e)
+    {
+        importErrors = new();
+        importSummary = null;
+
+        await RunSafe(async () =>
+        {
+            await using var source = e.File.OpenReadStream(5 * 1024 * 1024);
+            using var buffer = new MemoryStream();
+            await source.CopyToAsync(buffer);
+            buffer.Position = 0;
+
+            var result = ExcelImporter.Read(buffer, row =>
+                ExcelImporter.Required(row, "Phone", "PhoneNumber", "موبایل", "شماره موبایل", "شماره"));
+
+            var byPhone = (users ?? Enumerable.Empty<UserListItemDto>())
+                .Where(u => !string.IsNullOrWhiteSpace(u.PhoneNumber))
+                .GroupBy(u => ToEnglishDigits(u.PhoneNumber!))
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+
+            var matched = 0;
+            var errors = new List<ImportRowError>(result.RowErrors);
+            foreach (var item in result.Items)
+            {
+                var raw = item.Value;
+                var phone = ToEnglishDigits(raw);
+                if (!System.Text.RegularExpressions.Regex.IsMatch(phone, "^09\\d{9}$"))
+                {
+                    errors.Add(new ImportRowError(item.RowNumber, "Phone", $"شمارهٔ «{raw}» معتبر نیست."));
+                    continue;
+                }
+
+                if (byPhone.TryGetValue(phone, out var user))
+                {
+                    if (!model.InviteeUserIds.Contains(user.UserId))
+                        model.InviteeUserIds.Add(user.UserId);
+                    matched++;
+                }
+                else
+                {
+                    errors.Add(new ImportRowError(item.RowNumber, "Phone", $"کاربری با شمارهٔ «{phone}» یافت نشد."));
+                }
+            }
+
+            importErrors = errors
+                .OrderBy(err => err.RowNumber)
+                .ToList();
+
+            importSummary = $"{matched} نفر از فایل به مدعوین اضافه شد.";
+        }, "خطا در خواندن فایل اکسل.");
+    }
+
+    /// <summary>ارقام فارسی/عربی به انگلیسی — شماره‌های اکسل معمولاً فارسی‌اند.</summary>
+    private static string ToEnglishDigits(string value) =>
+        value.Replace('۰', '0').Replace('۱', '1').Replace('۲', '2').Replace('۳', '3')
+            .Replace('۴', '4').Replace('۵', '5').Replace('۶', '6').Replace('۷', '7')
+            .Replace('۸', '8').Replace('۹', '9')
+            .Replace('٠', '0').Replace('١', '1').Replace('٢', '2').Replace('٣', '3')
+            .Replace('٤', '4').Replace('٥', '5').Replace('٦', '6').Replace('٧', '7')
+            .Replace('٨', '8').Replace('٩', '9')
+            .Trim();
 
     private async Task HandleValidSubmit()
     {
