@@ -6,6 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Platform.Application;
 using Platform.Infrastructure;
 using Platform.Infrastructure.Data;
+using Microsoft.AspNetCore.Authorization;
+using Platform.Web.Authorization;
 using Platform.Web.Endpoints;
 using Platform.Web.Services;
 
@@ -33,6 +35,10 @@ public static class PlatformSetup
         // AddRazorComponents در میزبان وابسته نباشد (وگرنه هر میزبانی که
         // Razor Components اضافه نکند، هنگام UseAuthorization خطا می‌گیرد).
         services.AddAuthorization();
+
+        // سیاست‌ساز خودکار: هر کلید IPermissionCatalog خودش یک policy است.
+        // باید بعد از AddAuthorization بیاید تا جایگزین provider پیش‌فرض شود.
+        services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
         services.AddScoped<ToastService>();
         services.AddHostedService<OtpCleanupService>();

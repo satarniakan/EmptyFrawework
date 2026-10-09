@@ -48,13 +48,9 @@ builder.Services.AddPlatform(builder.Configuration, builder.Environment.IsDevelo
 builder.Services.AddMeetingsModule();
 builder.Services.AddSampleWeb();
 
-// مجوز «مدیریت جلسات»: ادمین همیشه، و هر نقشی که این مجوز رویش claim شده باشد.
+// سیاست دسترسی صفحات جلسات خودکار است: PermissionPolicyProvider پایه هر کلید
+// IPermissionCatalog را به policy تبدیل می‌کند، پس ثبت دستی لازم نیست.
 // نام سیاست عمداً همان کلید مجوز است تا صفحات با [Authorize(Policy = MeetingPermissions.Manage)] بسته شوند.
-builder.Services.AddAuthorization(options =>
-    options.AddPolicy(Meetings.MeetingPermissions.Manage, policy =>
-        policy.RequireAssertion(ctx =>
-            ctx.User.IsInRole(Platform.Domain.Identity.Roles.Admin) ||
-            ctx.User.HasClaim(Platform.Domain.Identity.Permissions.ClaimType, Meetings.MeetingPermissions.Manage))));
 
 builder.Services.AddHealthChecks().AddDbContextCheck<PlatformDbContext>();
 

@@ -49,6 +49,7 @@
 @code {
     private List<NavItem> visibleItems = [];
     private HashSet<string> grantedPermissions = new(StringComparer.Ordinal);
+    private bool currentUserIsAdmin;
     private bool permissionsLoaded;
 
     // شناسهٔ بخش‌های باز/بسته — به‌جای bool جدا برای هر بخش
@@ -109,6 +110,7 @@
             .FindAll(Platform.Domain.Identity.Permissions.ClaimType)
             .Select(c => c.Value)
             .ToHashSet(StringComparer.Ordinal);
+        currentUserIsAdmin = state.User.IsInRole(Platform.Domain.Identity.Roles.Admin);
         permissionsLoaded = true;
 
         visibleItems = NavProvider.GetRootItems().Where(CanSee).ToList();
@@ -208,15 +210,18 @@
 
         if (grantedPermissions.Contains(item.RequiredPermission)) return true;
 
-        var viewPermission = ViewOf(item.RequiredPermission);
-        return viewPermission is not null && grantedPermissions.Contains(viewPermission);
-    }
+        // «Admin» در منو نام نقش است نه کلید مجوز (صفحات ادمین هم با Roles بسته شده‌اند)؛
+        // ادمین همهٔ آیتم‌های مدیریتی را می‌بیند. بدون این، منوی مدیریت برای خودِ ادمین پنهان می‌ماند.
+        if (item.RequiredPermission == Platform.Domain.Identity.Roles.Admin && currentUserIsAdmin)
+            return true;
 
-    /// <summary>
-    /// نگاشت مجوز «مدیریتی» به مجوز «مشاهدهٔ» همان بخش. پروژهٔ مصرف‌کننده در صورت نیاز
-    /// این را با یک سرویس جایگزین می‌کند؛ این نسخهٔ پیش‌فرض فقط مجوز دقیق را می‌سنجد.
-    /// </summary>
-    private static string? ViewOf(string permission) => null;
+        // مجوزهای «همیشه‌مجاز» نیازی به claim ندارند
+        if (Platform.Domain.Identity.Permissions.Always
+                .Contains(item.RequiredPermission, StringComparer.Ordinal))
+            return true;
+
+        return false;
+    }
 
     public void Dispose()
     {
