@@ -1,5 +1,4 @@
 ﻿using System.Security.Cryptography;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Platform.Domain.Entities;
 using Platform.Domain.Exceptions;
@@ -20,20 +19,21 @@ public interface IOtpService
 public class OtpService : IOtpService
 {
     private readonly IOtpRepository _otpRepository;
+    private readonly IOtpThrottleRepository _throttles;
     private readonly ISmsSender _smsSender;
     private readonly IPlatformUnitOfWork _unitOfWork;
     private readonly ILogger<OtpService> _logger;
-    private readonly IMemoryCache _attempts;
     private readonly TimeProvider _clock;
 
-    public OtpService(IOtpRepository otpRepository, ISmsSender smsSender, IPlatformUnitOfWork unitOfWork,
-        ILogger<OtpService> logger, IMemoryCache attempts, TimeProvider? clock = null)
+    public OtpService(IOtpRepository otpRepository, IOtpThrottleRepository throttles,
+        ISmsSender smsSender, IPlatformUnitOfWork unitOfWork,
+        ILogger<OtpService> logger, TimeProvider? clock = null)
     {
         _otpRepository = otpRepository;
+        _throttles = throttles;
         _smsSender = smsSender;
         _unitOfWork = unitOfWork;
         _logger = logger;
-        _attempts = attempts;
         // تزریق‌پذیر تا انقضای پنجرهٔ قفل در تست قابل بررسی باشد
         _clock = clock ?? TimeProvider.System;
     }
@@ -56,65 +56,119 @@ public class OtpService : IOtpService
 
     private static readonly TimeSpan GenerationWindow = TimeSpan.FromMinutes(15);
 
-    /// <summary>تعداد و زمان شروع پنجره — یک رکورد، تا شمارنده پنجرهٔ لغزان نداشته باشد</summary>
-    private sealed record AttemptState(int Count, DateTimeOffset WindowStart);
+    /// <summary>وضعیت یک پنجرهٔ شمارنده: تعداد رخداد و شروع پنجره (null یعنی پنجره‌ای باز نیست).</summary>
+    private sealed record WindowState(int Count, DateTime? WindowStartUtc);
 
-    private string AttemptKey(string phoneNumber) => $"otp-attempts:{phoneNumber}";
+    /// <summary>
+    /// خواندن وضعیت یک پنجره از دیتابیس. رکورد تروتل برای شماره‌ای که هنوز هیچ
+    /// رخدادی نداشته ساخته نمی‌شود تا جدول فقط شماره‌های فعال را داشته باشد.
+    /// </summary>
+    private async Task<WindowState> GetWindowAsync(string phoneNumber, bool generation)
+    {
+        var throttle = await _throttles.GetByPhoneAsync(phoneNumber);
+        if (throttle is null)
+            return new WindowState(0, null);
 
-    private string GenerationKey(string phoneNumber) => $"otp-generations:{phoneNumber}";
+        return generation
+            ? new WindowState(throttle.GenerationCount, throttle.GenerationWindowStartUtc)
+            : new WindowState(throttle.FailedCount, throttle.FailedWindowStartUtc);
+    }
+
+    private async Task<OtpThrottle> GetOrCreateThrottleAsync(string phoneNumber)
+    {
+        var throttle = await _throttles.GetByPhoneAsync(phoneNumber);
+        if (throttle is not null)
+            return throttle;
+
+        throttle = new OtpThrottle { PhoneNumber = phoneNumber };
+        await _throttles.AddAsync(throttle);
+        return throttle;
+    }
 
     /// <summary>
     /// آیا پنجره پر شده؟ پنجره «لغزان» نبود: با هر رخداد، شروعِ پنجره تمدید نمی‌شود،
     /// وگرنه یک تلاش هر ۹ دقیقه شماره را برای همیشه قفل می‌کرد.
     /// </summary>
-    private bool IsWindowExhausted(string key, int maxCount, TimeSpan window)
+    private static bool IsWindowExhausted(WindowState state, int maxCount, TimeSpan window, DateTime nowUtc)
     {
-        if (!_attempts.TryGetValue(key, out AttemptState? state) || state is null)
+        if (state.WindowStartUtc is null)
             return false;
 
-        if (_clock.GetUtcNow() - state.WindowStart >= window)
-        {
-            _attempts.Remove(key); // پنجره منقضی شده
+        // پنجره منقضی شده — مثل این است که پنجره‌ای نیست
+        if (nowUtc - state.WindowStartUtc.Value >= window)
             return false;
-        }
 
         return state.Count >= maxCount;
     }
 
-    private void RegisterInWindow(string key, TimeSpan window)
+    private static void RegisterInWindow(OtpThrottle throttle, bool generation, DateTime nowUtc, TimeSpan window)
     {
-        var now = _clock.GetUtcNow();
+        var (count, start) = generation
+            ? (throttle.GenerationCount, throttle.GenerationWindowStartUtc)
+            : (throttle.FailedCount, throttle.FailedWindowStartUtc);
 
-        if (_attempts.TryGetValue(key, out AttemptState? existing) && existing is not null
-            && now - existing.WindowStart < window)
+        // فقط شمارنده بالا می‌رود؛ شروع پنجره ثابت می‌ماند. پنجرهٔ منقضی از نو شروع می‌شود.
+        if (start is null || nowUtc - start.Value >= window)
         {
-            // فقط شمارنده بالا می‌رود؛ شروع پنجره ثابت می‌ماند
-            _attempts.Set(key, existing with { Count = existing.Count + 1 }, window);
+            count = 1;
+            start = nowUtc;
         }
         else
         {
-            _attempts.Set(key, new AttemptState(1, now), window);
+            count++;
+        }
+
+        if (generation)
+        {
+            throttle.GenerationCount = count;
+            throttle.GenerationWindowStartUtc = start;
+        }
+        else
+        {
+            throttle.FailedCount = count;
+            throttle.FailedWindowStartUtc = start;
         }
     }
 
-    private bool IsBlocked(string phoneNumber)
-        => IsWindowExhausted(AttemptKey(phoneNumber), MaxFailedAttempts, AttemptWindow);
+    private async Task<bool> IsBlockedAsync(string phoneNumber)
+    {
+        var state = await GetWindowAsync(phoneNumber, generation: false);
+        return IsWindowExhausted(state, MaxFailedAttempts, AttemptWindow, _clock.GetUtcNow().UtcDateTime);
+    }
 
-    private void RegisterFailedAttempt(string phoneNumber)
-        => RegisterInWindow(AttemptKey(phoneNumber), AttemptWindow);
+    private async Task RegisterFailedAttemptAsync(string phoneNumber)
+    {
+        var throttle = await GetOrCreateThrottleAsync(phoneNumber);
+        RegisterInWindow(throttle, generation: false, _clock.GetUtcNow().UtcDateTime, AttemptWindow);
+        await _unitOfWork.CompleteAsync();
+    }
+
+    private async Task ClearFailedAttemptsAsync(string phoneNumber)
+    {
+        var throttle = await _throttles.GetByPhoneAsync(phoneNumber);
+        if (throttle is null)
+            return;
+
+        // ورود موفق ⇒ شمارندهٔ تلاش‌های ناموفق پاک می‌شود
+        throttle.FailedCount = 0;
+        throttle.FailedWindowStartUtc = null;
+        await _unitOfWork.CompleteAsync();
+    }
 
     public async Task GenerateAndSendOtpAsync(string phoneNumber)
     {
         // شماره‌ای که چند بار پشت‌سرهم کد اشتباه داده، فعلاً ورودی جدید نمی‌گیرد
         // تا مهاجم نتواند با درخواست‌های مکرر، کدهای معتبر کاربر را باطل کند
-        if (IsBlocked(phoneNumber))
+        if (await IsBlockedAsync(phoneNumber))
         {
             _logger.LogWarning("OTP request blocked for {PhoneNumber} after repeated failures", phoneNumber);
             throw new BusinessRuleException(
                 "تلاش‌های ناموفق زیاد بود. لطفاً ۱۰ دقیقه دیگر تلاش کنید.");
         }
 
-        if (IsWindowExhausted(GenerationKey(phoneNumber), MaxGenerationsPerWindow, GenerationWindow))
+        var generationState = await GetWindowAsync(phoneNumber, generation: true);
+        if (IsWindowExhausted(generationState, MaxGenerationsPerWindow, GenerationWindow,
+                _clock.GetUtcNow().UtcDateTime))
         {
             _logger.LogWarning("OTP generation limit reached for {PhoneNumber}", phoneNumber);
             throw new BusinessRuleException(
@@ -123,7 +177,8 @@ public class OtpService : IOtpService
 
         // شمارش پیش از ارسال: درخواست‌هایی که ارسالشان شکست می‌خورد هم باید شمرده شوند،
         // وگرنه حلقهٔ «درخواست ← خطای سرویس پیامک ← درخواست» سقف را دور می‌زند
-        RegisterInWindow(GenerationKey(phoneNumber), GenerationWindow);
+        var throttle = await GetOrCreateThrottleAsync(phoneNumber);
+        RegisterInWindow(throttle, generation: true, _clock.GetUtcNow().UtcDateTime, GenerationWindow);
 
         var code = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
 
@@ -132,7 +187,7 @@ public class OtpService : IOtpService
             PhoneNumber = phoneNumber,
             // فقط هش کد ذخیره می‌شود نه خود کد — دسترسی مستقیم به دیتابیس دیگر امکان ورود نمی‌دهد
             Code = HashOtp(phoneNumber, code),
-            ExpiresAt = DateTime.UtcNow.AddMinutes(5),
+            ExpiresAt = _clock.GetUtcNow().UtcDateTime.AddMinutes(5),
             IsUsed = false
         };
 
@@ -152,7 +207,7 @@ public class OtpService : IOtpService
 
     public async Task<bool> VerifyOtpAsync(string phoneNumber, string code)
     {
-        if (IsBlocked(phoneNumber))
+        if (await IsBlockedAsync(phoneNumber))
         {
             _logger.LogWarning("OTP verification blocked for {PhoneNumber} after repeated failures", phoneNumber);
             return false;
@@ -163,7 +218,7 @@ public class OtpService : IOtpService
 
         if (otp is null)
         {
-            RegisterFailedAttempt(phoneNumber);
+            await RegisterFailedAttemptAsync(phoneNumber);
             _logger.LogWarning("Invalid or expired OTP attempt for {PhoneNumber}", phoneNumber);
             return false;
         }
@@ -175,15 +230,20 @@ public class OtpService : IOtpService
             return false;
         }
 
-        // ورود موفق ⇒ شمارندهٔ تلاش‌های ناموفق پاک می‌شود
-        _attempts.Remove(AttemptKey(phoneNumber));
-
+        await ClearFailedAttemptsAsync(phoneNumber);
         await _unitOfWork.CompleteAsync();
         return true;
     }
 
     public async Task<int> PurgeExpiredAsync(TimeSpan grace)
-        => await _otpRepository.DeleteExpiredAsync(_clock.GetUtcNow().UtcDateTime - grace);
+    {
+        var cutoff = _clock.GetUtcNow().UtcDateTime - grace;
+        var deletedCodes = await _otpRepository.DeleteExpiredAsync(cutoff);
+
+        // رکوردهای تروتلِ شماره‌هایی که مدت‌هاست فعالیتی نداشته‌اند هم پاک می‌شوند تا جدول رشد نکند
+        var deletedThrottles = await _throttles.DeleteStaleAsync(_clock.GetUtcNow().UtcDateTime - TimeSpan.FromDays(1));
+        return deletedCodes + deletedThrottles;
+    }
 
     /// <summary>
     /// هش کد یک‌بارمصرف — کد خام هرگز در دیتابیس ذخیره نمی‌شود.

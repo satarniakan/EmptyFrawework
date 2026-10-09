@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Platform.Application.Services;
@@ -25,10 +24,18 @@ public class OtpServiceTests
         uow.Setup(u => u.CompleteAsync()).ReturnsAsync(1);
         sms.Setup(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(Task.CompletedTask);
 
+        // تروتل دیتابیسی با حافظهٔ درون‌تستی: رفتار واقعی شمارنده حفظ می‌شود
+        var throttles = new Dictionary<string, OtpThrottle>(StringComparer.Ordinal);
+        var throttleRepo = new Mock<IOtpThrottleRepository>();
+        throttleRepo.Setup(r => r.GetByPhoneAsync(It.IsAny<string>()))
+            .ReturnsAsync((string phone) => throttles.TryGetValue(phone, out var t) ? t : null);
+        throttleRepo.Setup(r => r.AddAsync(It.IsAny<OtpThrottle>()))
+            .Callback<OtpThrottle>(t => throttles[t.PhoneNumber] = t)
+            .Returns(Task.CompletedTask);
+
         var service = new OtpService(
-            repo.Object, sms.Object, uow.Object,
-            NullLogger<OtpService>.Instance,
-            new MemoryCache(new MemoryCacheOptions()));
+            repo.Object, throttleRepo.Object, sms.Object, uow.Object,
+            NullLogger<OtpService>.Instance);
 
         return (service, repo, sms);
     }

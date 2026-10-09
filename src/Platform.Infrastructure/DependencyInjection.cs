@@ -70,6 +70,7 @@ public static class DependencyInjection
         services.AddScoped<IPlatformUnitOfWork, PlatformUnitOfWork>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IOtpRepository, OtpCodeRepository>();
+        services.AddScoped<IOtpThrottleRepository, OtpThrottleRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IOutboxRepository, OutboxRepository>();
 

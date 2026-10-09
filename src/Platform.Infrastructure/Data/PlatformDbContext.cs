@@ -52,6 +52,7 @@ public class PlatformDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
+    public DbSet<OtpThrottle> OtpThrottles => Set<OtpThrottle>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<Notification> Notifications => Set<Notification>();
 
@@ -74,6 +75,12 @@ public class PlatformDbContext : IdentityDbContext<ApplicationUser>
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.PhoneNumber);
             e.HasIndex(x => x.ExpiresAt);
+        });
+
+        builder.Entity<OtpThrottle>(e =>
+        {
+            e.HasKey(x => x.PhoneNumber);
+            e.Property(x => x.PhoneNumber).HasMaxLength(32);
         });
 
         builder.Entity<OutboxMessage>(e =>
