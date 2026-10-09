@@ -84,6 +84,7 @@ public static class DependencyInjection
         services.AddScoped<IOtpThrottleRepository, OtpThrottleRepository>();
         services.AddScoped<IApiTokenRepository, ApiTokenRepository>();
         services.AddScoped<ILoginHistoryRepository, LoginHistoryRepository>();
+        services.AddScoped<ISettingRepository, SettingRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IOutboxRepository, OutboxRepository>();
 

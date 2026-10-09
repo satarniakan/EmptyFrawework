@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Platform.Application.Services;
+using Platform.Domain.Identity;
 
 namespace Platform.Application;
 
@@ -14,6 +16,9 @@ public static class DependencyInjection
         // شمارندهٔ تلاش ناموفقِ OTP (و هر حافظهٔ موقت دیگر) — سرویس‌های اسکوپ‌دار به آن تزریق می‌شوند
         services.AddMemoryCache();
 
+        // کاتالوگ پیش‌فرض تنظیمات: میزبان با AddSingleton خودش جایگزینش می‌کند
+        services.TryAddSingleton<ISettingCatalog, EmptySettingCatalog>();
+
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IOtpService, OtpService>();
         services.AddScoped<IAuditService, AuditService>();
@@ -23,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<IOutboxService, OutboxService>();
         services.AddScoped<IApiTokenService, ApiTokenService>();
         services.AddScoped<ILoginHistoryService, LoginHistoryService>();
+        services.AddScoped<ISettingService, SettingService>();
 
         return services;
     }

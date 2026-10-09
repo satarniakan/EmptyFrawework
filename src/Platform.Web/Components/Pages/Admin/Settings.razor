@@ -1,0 +1,105 @@
+@* Platform.Web/Components/Pages/Admin/Settings.razor *@
+@page "/admin/settings"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = Platform.Domain.Identity.Roles.Admin)]
+@using Microsoft.AspNetCore.Authorization
+@using Platform.Application.Services
+@using Platform.Domain.Identity
+<PageTitle>تنظیمات سامانه</PageTitle>
+
+<div class="mb-3">
+    <h3 class="mb-1">تنظیمات سامانه</h3>
+    <div class="text-body-secondary small">نام سایت و قالب پیام‌ها — بدون نیاز به تغییر کد و استقرار دوباره. خالی گذاشتن یعنی «مقدار پیش‌فرض».</div>
+</div>
+
+@if (groups is null)
+{
+    <div class="card-panel"><LoadingSkeleton /></div>
+}
+else
+{
+    @foreach (var group in groups)
+    {
+        <div class="card-panel mb-3">
+            <h5 class="mb-3">@group.Name</h5>
+            @foreach (var row in group.Rows)
+            {
+                <div class="mb-3">
+                    <label class="form-label">@row.Descriptor.Title</label>
+                    <div class="input-group">
+                        <input class="form-control" dir="auto"
+                               value="@row.Value" @onchange="(e) => row.Value = e.Value?.ToString()" />
+                        <button class="btn btn-outline-primary" @onclick="() => SaveAsync(row)"
+                                disabled="@row.Saving">
+                            @(row.Saving ? "…" : "ذخیره")
+                        </button>
+                    </div>
+                    <div class="form-text">کلید: <code>@row.Descriptor.Key</code> — پیش‌فرض: @row.Descriptor.DefaultValue</div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private List<SettingGroup>? groups;
+
+    [Inject] private ISettingCatalog Catalog { get; set; } = default!;
+    [Inject] private ISettingService SettingService { get; set; } = default!;
+    [Inject] private Platform.Web.Services.ToastService Toast { get; set; } = default!;
+
+    private sealed class SettingRow
+    {
+        public SettingDescriptor Descriptor { get; set; } = default!;
+        public string? Value { get; set; }
+        public bool Saving { get; set; }
+    }
+
+    private sealed class SettingGroup
+    {
+        public string Name { get; set; } = string.Empty;
+        public List<SettingRow> Rows { get; set; } = new();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var loaded = new List<SettingGroup>();
+        foreach (var descriptor in Catalog.All)
+        {
+            var value = await SettingService.GetAsync(descriptor.Key);
+            var group = loaded.FirstOrDefault(g => g.Name == descriptor.Group);
+            if (group is null)
+            {
+                group = new SettingGroup { Name = descriptor.Group };
+                loaded.Add(group);
+            }
+
+            // اگر مقدار فعلی همان پیش‌فرض است، فیلد خالی نشان داده می‌شود تا معلوم باشد دستی تنظیم نشده
+            group.Rows.Add(new SettingRow
+            {
+                Descriptor = descriptor,
+                Value = value == descriptor.DefaultValue ? null : value
+            });
+        }
+
+        groups = loaded;
+    }
+
+    private async Task SaveAsync(SettingRow row)
+    {
+        row.Saving = true;
+        try
+        {
+            await SettingService.SetAsync(row.Descriptor.Key, row.Value);
+            Toast.ShowSuccess("تنظیم ذخیره شد.");
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError(Platform.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex));
+        }
+        finally
+        {
+            row.Saving = false;
+        }
+    }
+}

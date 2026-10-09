@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using Platform.Domain.Entities;
 using Platform.Domain.Exceptions;
+using Platform.Domain.Identity;
 using Platform.Domain.Interfaces;
 
 namespace Platform.Application.Services;
@@ -21,17 +22,19 @@ public class OtpService : IOtpService
     private readonly IOtpRepository _otpRepository;
     private readonly IOtpThrottleRepository _throttles;
     private readonly ISmsSender _smsSender;
+    private readonly ISettingService _settings;
     private readonly IPlatformUnitOfWork _unitOfWork;
     private readonly ILogger<OtpService> _logger;
     private readonly TimeProvider _clock;
 
     public OtpService(IOtpRepository otpRepository, IOtpThrottleRepository throttles,
-        ISmsSender smsSender, IPlatformUnitOfWork unitOfWork,
+        ISmsSender smsSender, ISettingService settings, IPlatformUnitOfWork unitOfWork,
         ILogger<OtpService> logger, TimeProvider? clock = null)
     {
         _otpRepository = otpRepository;
         _throttles = throttles;
         _smsSender = smsSender;
+        _settings = settings;
         _unitOfWork = unitOfWork;
         _logger = logger;
         // تزریق‌پذیر تا انقضای پنجرهٔ قفل در تست قابل بررسی باشد
@@ -194,9 +197,15 @@ public class OtpService : IOtpService
         await _otpRepository.AddAsync(otp);
         await _unitOfWork.CompleteAsync();
 
+        // متن پیامک از تنظیمات می‌آید ({Code} جای کد می‌نشیند) تا بدون deploy عوض شود
+        var template = await _settings.GetAsync(FrameworkSettingKeys.OtpSmsTemplate);
+        var body = template.Contains("{Code}", StringComparison.Ordinal)
+            ? template.Replace("{Code}", code, StringComparison.Ordinal)
+            : $"{template} {code}";
+
         // پیامک پیش از باطل‌کردن کدهای قبلی ارسال می‌شود: اگر سرویس پیامک شکست بخورد،
         // کد قبلی هنوز معتبر است و کاربر نه با کدی بی‌اعتبار و نه بدون کد می‌ماند
-        await _smsSender.SendAsync(phoneNumber, $"کد ورود شما: {code}");
+        await _smsSender.SendAsync(phoneNumber, body);
 
         // فقط پس از ارسال موفق — تا آخرین کد ارسال‌شده قابل استفاده بماند
         await _otpRepository.InvalidateOthersAsync(phoneNumber, otp.Id);

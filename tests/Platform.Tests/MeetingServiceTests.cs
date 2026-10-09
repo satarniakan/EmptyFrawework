@@ -51,9 +51,18 @@ public class MeetingServiceTests
         var outbox = new Mock<IOutboxService>();
         var notifications = new Mock<INotificationService>();
 
+        var settings = new Mock<ISettingService>();
+        settings.Setup(s => s.GetAsync(It.IsAny<string>()))
+            .ReturnsAsync((string key) => key switch
+            {
+                "meetings:invitation-sms-template" => MeetingSettingKeys.DefaultInvitationSmsTemplate,
+                "meetings:invitation-email-subject" => MeetingSettingKeys.DefaultInvitationEmailSubject,
+                _ => string.Empty
+            });
+
         var service = new MeetingService(
             repo.Object, uow.Object, users.Object, notifications.Object, outbox.Object,
-            new FixedTimeProvider());
+            settings.Object, new FixedTimeProvider());
 
         return (service, repo, outbox, notifications);
     }

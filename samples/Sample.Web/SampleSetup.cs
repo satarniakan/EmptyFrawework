@@ -19,6 +19,23 @@ public sealed class SamplePermissionCatalog : IPermissionCatalog
 }
 
 /// <summary>
+/// کاتالوگ تنظیمات سامانه: کلیدهای پایه + قالب‌های پیام ماژول جلسات.
+/// </summary>
+public sealed class SampleSettingCatalog : ISettingCatalog
+{
+    public IReadOnlyList<SettingDescriptor> All { get; } =
+    [
+        new(FrameworkSettingKeys.SiteName, "نام سامانه", SettingDefaults.Get(FrameworkSettingKeys.SiteName), "عمومی"),
+        new(FrameworkSettingKeys.OtpSmsTemplate, "قالب پیامک کد ورود ({Code})",
+            SettingDefaults.Get(FrameworkSettingKeys.OtpSmsTemplate), "پیامک"),
+        new(Meetings.MeetingSettingKeys.InvitationSmsTemplate, "قالب پیامک دعوت به جلسه ({Title}، {When}، {Where})",
+            Meetings.MeetingSettingKeys.DefaultInvitationSmsTemplate, "جلسات"),
+        new(Meetings.MeetingSettingKeys.InvitationEmailSubject, "موضوع ایمیل دعوت به جلسه ({Title})",
+            Meetings.MeetingSettingKeys.DefaultInvitationEmailSubject, "جلسات")
+    ];
+}
+
+/// <summary>
 /// منوی سامانه — ترتیب گروه‌ها: عملیات روزمره، گزارش‌ها، مدیریت، سیستم.
 /// </summary>
 public sealed class SampleNavProvider : INavProvider
@@ -39,7 +56,8 @@ public sealed class SampleNavProvider : INavProvider
         NavItem.Group("مدیریت", "bi-shield-lock",
             NavItem.Link("کاربران", "admin/users", "bi-people", Roles.Admin),
             NavItem.Link("مجوز نقش‌ها", "admin/roles", "bi-key", Roles.Admin),
-            NavItem.Link("اعلان سراسری", "admin/broadcast", "bi-megaphone", Roles.Admin)),
+            NavItem.Link("اعلان سراسری", "admin/broadcast", "bi-megaphone", Roles.Admin),
+            NavItem.Link("تنظیمات", "admin/settings", "bi-sliders", Roles.Admin)),
 
         // سیستم — لاگ‌ها و تنظیمات حساب
         NavItem.Group("سیستم", "bi-gear",
@@ -61,6 +79,7 @@ public static class SampleSetup
     public static IServiceCollection AddSampleWeb(this IServiceCollection services)
     {
         services.AddSingleton<IPermissionCatalog, SamplePermissionCatalog>();
+        services.AddSingleton<ISettingCatalog, SampleSettingCatalog>();
         services.AddSingleton<INavProvider, SampleNavProvider>();
         return services;
     }

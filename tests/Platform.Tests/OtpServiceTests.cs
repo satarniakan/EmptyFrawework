@@ -33,9 +33,13 @@ public class OtpServiceTests
             .Callback<OtpThrottle>(t => throttles[t.PhoneNumber] = t)
             .Returns(Task.CompletedTask);
 
+        var settings = new Mock<ISettingService>();
+        settings.Setup(s => s.GetAsync(It.IsAny<string>()))
+            .ReturnsAsync("کد ورود شما: {Code}");
+
         var service = new OtpService(
-            repo.Object, throttleRepo.Object, sms.Object, uow.Object,
-            NullLogger<OtpService>.Instance);
+            repo.Object, throttleRepo.Object, sms.Object, settings.Object,
+            uow.Object, NullLogger<OtpService>.Instance);
 
         return (service, repo, sms);
     }

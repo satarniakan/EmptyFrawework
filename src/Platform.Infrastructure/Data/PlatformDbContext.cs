@@ -57,6 +57,7 @@ public class PlatformDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<UserApiToken> ApiTokens => Set<UserApiToken>();
     public DbSet<LoginHistory> LoginHistories => Set<LoginHistory>();
+    public DbSet<Setting> Settings => Set<Setting>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -105,6 +106,12 @@ public class PlatformDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.UserAgent).HasMaxLength(512);
             e.Property(x => x.FailureReason).HasMaxLength(256);
             e.HasIndex(x => new { x.UserId, x.OccurredAtUtc });
+        });
+
+        builder.Entity<Setting>(e =>
+        {
+            e.HasKey(x => x.Key);
+            e.Property(x => x.Key).HasMaxLength(128);
         });
 
         builder.Entity<OutboxMessage>(e =>

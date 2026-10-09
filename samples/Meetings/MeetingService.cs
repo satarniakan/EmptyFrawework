@@ -141,6 +141,7 @@ public class MeetingService : IMeetingService
     private readonly IMeetingUserDirectory _users;
     private readonly INotificationService _notifications;
     private readonly IOutboxService _outbox;
+    private readonly ISettingService _settings;
     private readonly TimeProvider _clock;
 
     public MeetingService(
@@ -149,6 +150,7 @@ public class MeetingService : IMeetingService
         IMeetingUserDirectory users,
         INotificationService notifications,
         IOutboxService outbox,
+        ISettingService settings,
         TimeProvider? clock = null)
     {
         _meetings = meetings;
@@ -156,6 +158,7 @@ public class MeetingService : IMeetingService
         _users = users;
         _notifications = notifications;
         _outbox = outbox;
+        _settings = settings;
         _clock = clock ?? TimeProvider.System;
     }
 
@@ -206,7 +209,11 @@ public class MeetingService : IMeetingService
                 NotificationType.System,
                 "/my-meetings");
 
-            // ایمیل/پیامک در صف Outbox — ارسال واقعی را OutboxProcessor انجام می‌دهد
+            // ایمیل/پیامک در صف Outbox — ارسال واقعی را OutboxProcessor انجام می‌دهد.
+            // قالب‌ها از تنظیمات می‌آیند تا متن دعوت بدون deploy عوض شود.
+            var smsTemplate = await _settings.GetAsync(MeetingSettingKeys.InvitationSmsTemplate);
+            var subjectTemplate = await _settings.GetAsync(MeetingSettingKeys.InvitationEmailSubject);
+
             var contacts = await _users.GetUsersAsync(inviteeIds);
             foreach (var contact in contacts)
             {
@@ -214,13 +221,15 @@ public class MeetingService : IMeetingService
                 {
                     await _outbox.QueueEmailAsync(
                         contact.Email!,
-                        $"دعوت به جلسه: {meeting.Title}",
+                        ApplyTemplate(subjectTemplate, meeting, contact.DisplayName),
                         BuildInvitationEmail(meeting, contact));
                 }
 
                 if (!string.IsNullOrWhiteSpace(contact.PhoneNumber))
                 {
-                    await _outbox.QueueSmsAsync(contact.PhoneNumber!, BuildInvitationSms(meeting));
+                    await _outbox.QueueSmsAsync(
+                        contact.PhoneNumber!,
+                        ApplyTemplate(smsTemplate, meeting, contact.DisplayName));
                 }
             }
         });
@@ -669,6 +678,17 @@ public class MeetingService : IMeetingService
             ? $"حضوری — مکان: {meeting.Location ?? "نامشخص"}"
             : $"غیرحضوری — لینک جلسه: {meeting.MeetingLink ?? "نامشخص"}";
 
+    /// <summary>
+    /// اعمال قالب پیام دعوت ({Title}، {When}، {Where}، {Name}). جاگذاریِ ناشناخته
+    /// دست‌نخورده می‌ماند تا خطای تایپی در تنظیمات، پیام را خراب نکند.
+    /// </summary>
+    internal static string ApplyTemplate(string template, Meeting meeting, string displayName) =>
+        template
+            .Replace("{Title}", meeting.Title, StringComparison.Ordinal)
+            .Replace("{When}", PersianDateHelper.ToPersianDateTime(meeting.StartAt), StringComparison.Ordinal)
+            .Replace("{Where}", WhereLabel(meeting), StringComparison.Ordinal)
+            .Replace("{Name}", displayName, StringComparison.Ordinal);
+
     private static string BuildInvitationEmail(Meeting meeting, MeetingUser contact) =>
         $"""
         {contact.DisplayName} عزیز،
@@ -683,11 +703,4 @@ public class MeetingService : IMeetingService
         برای پذیرش یا رد دعوت (و در صورت نیاز پیشنهاد زمان جدید) وارد سامانه شوید
         و در بخش «جلسات من» پاسخ خود را ثبت کنید.
         """;
-
-    private static string BuildInvitationSms(Meeting meeting) =>
-        $"دعوت به جلسه «{meeting.Title}» — {PersianDateHelper.ToPersianDateTime(meeting.StartAt)} — " +
-        (meeting.Kind == MeetingKind.InPerson
-            ? $"حضوری ({meeting.Location ?? "نامشخص"})"
-            : "غیرحضوری؛ لینک در سامانه") +
-        ". پاسخ در بخش «جلسات من».";
 }

@@ -21,6 +21,21 @@ public static class MeetingFileTypes
     public const string Photo = "meeting-photo";
 }
 
+/// <summary>
+/// کلیدهای تنظیمات ماژول جلسات (قالب‌های پیام دعوت) + مقادیر پیش‌فرض‌شان.
+/// جاگذاری‌ها: {Title} موضوع، {When} زمان شمسی، {Where} مکان/لینک، {Name} نام مدعو.
+/// </summary>
+public static class MeetingSettingKeys
+{
+    public const string InvitationSmsTemplate = "meetings:invitation-sms-template";
+    public const string InvitationEmailSubject = "meetings:invitation-email-subject";
+
+    public const string DefaultInvitationSmsTemplate =
+        "دعوت به جلسه «{Title}» — {When} — {Where}. پاسخ در بخش «جلسات من».";
+
+    public const string DefaultInvitationEmailSubject = "دعوت به جلسه: {Title}";
+}
+
 /// <summary>ثبت سرویس‌های ماژول جلسات. در Program.cs میزبان بعد از AddSampleModule فراخوانی می‌شود.</summary>
 public static class MeetingsSetup
 {
