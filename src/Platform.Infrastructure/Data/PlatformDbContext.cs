@@ -58,6 +58,7 @@ public class PlatformDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<UserApiToken> ApiTokens => Set<UserApiToken>();
     public DbSet<LoginHistory> LoginHistories => Set<LoginHistory>();
     public DbSet<Setting> Settings => Set<Setting>();
+    public DbSet<NumberSequence> NumberSequences => Set<NumberSequence>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -112,6 +113,13 @@ public class PlatformDbContext : IdentityDbContext<ApplicationUser>
         {
             e.HasKey(x => x.Key);
             e.Property(x => x.Key).HasMaxLength(128);
+        });
+
+        builder.Entity<NumberSequence>(e =>
+        {
+            e.HasKey(x => x.Name);
+            e.Property(x => x.Name).HasMaxLength(128);
+            e.Property(x => x.RowVersion).IsRowVersion();
         });
 
         builder.Entity<OutboxMessage>(e =>

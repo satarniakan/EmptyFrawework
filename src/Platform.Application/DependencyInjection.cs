@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<IApiTokenService, ApiTokenService>();
         services.AddScoped<ILoginHistoryService, LoginHistoryService>();
         services.AddScoped<ISettingService, SettingService>();
+        services.AddScoped<INumberSeries, NumberSeries>();
 
         return services;
     }
