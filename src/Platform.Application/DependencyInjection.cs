@@ -31,6 +31,7 @@ public static class DependencyInjection
         services.AddScoped<ISettingService, SettingService>();
         services.AddScoped<INumberSeries, NumberSeries>();
         services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<IPushNotificationService, PushNotificationService>();
 
         return services;
     }

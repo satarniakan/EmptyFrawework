@@ -1,0 +1,70 @@
+@* دکمهٔ فعال‌سازی اعلان‌های مرورگر (وب‌پوش). اگر VAPID تنظیم نشده باشد، خودش را پنهان می‌کند. *@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@inject IConfiguration Configuration
+
+@if (!string.IsNullOrWhiteSpace(publicKey))
+{
+    <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-sm btn-outline-secondary" @onclick="SubscribeAsync" disabled="@busy">
+            <i class="bi bi-bell me-1"></i>فعال‌سازی اعلان‌های مرورگر
+        </button>
+        @if (statusMessage is not null)
+        {
+            <span class="small @(subscribed ? "text-success" : "text-body-secondary")">@statusMessage</span>
+        }
+    </div>
+}
+
+@code {
+    private string? publicKey;
+    private bool busy;
+    private bool subscribed;
+    private string? statusMessage;
+
+    protected override void OnInitialized()
+    {
+        publicKey = Configuration["Push:Vapid:PublicKey"];
+    }
+
+    private async Task SubscribeAsync()
+    {
+        busy = true;
+        try
+        {
+            var module = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "/_content/Platform.Web/push-subscribe.js");
+            await using (module)
+            {
+                var result = await module.InvokeAsync<PushSubscribeResult>("subscribePush",
+                    "/_content/Platform.Web/push-sw.js", publicKey, "/api/v1/push/subscriptions");
+
+                if (result?.Ok == true)
+                {
+                    subscribed = true;
+                    statusMessage = "اعلان‌های مرورگر فعال شد.";
+                }
+                else
+                {
+                    statusMessage = result?.Reason == "denied"
+                        ? "دسترسی اعلان در مرورگر بسته است؛ از تنظیمات سایت بازش کنید."
+                        : "مرورگر شما اعلان وب را پشتیبانی نمی‌کند.";
+                }
+            }
+        }
+        catch (Exception)
+        {
+            statusMessage = "فعال‌سازی ناموفق بود؛ دوباره تلاش کنید.";
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private sealed class PushSubscribeResult
+    {
+        public bool Ok { get; set; }
+        public string? Reason { get; set; }
+    }
+}

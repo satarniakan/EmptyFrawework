@@ -16,13 +16,16 @@
         <h3 class="mb-1">اعلان‌ها</h3>
         <div class="text-body-secondary small">آرشیو کامل اعلان‌های شما.</div>
     </div>
-    <button type="button" class="btn btn-outline-primary btn-sm" disabled="@isMarkingAll" @onclick="MarkAllRead">
+    <div class="d-flex gap-2 align-items-center">
+        <PushSubscribeButton />
+        <button type="button" class="btn btn-outline-primary btn-sm" disabled="@isMarkingAll" @onclick="MarkAllRead">
         @if (isMarkingAll)
         {
             <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
         }
         علامت‌گذاری همه به‌عنوان خوانده‌شده
-    </button>
+        </button>
+    </div>
 </div>
 
 @if (items is null)

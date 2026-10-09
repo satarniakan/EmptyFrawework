@@ -22,6 +22,9 @@ public class OutboxMessage
 
     public string Body { get; set; } = string.Empty;
 
+    /// <summary>لینک مقصد اعلان — فقط برای کانال Push.</summary>
+    public string? LinkUrl { get; set; }
+
     public OutboxStatus Status { get; set; } = OutboxStatus.Pending;
 
     /// <summary>تعداد تلاش‌های ارسال — پس از سقف، Failed دائمی می‌شود</summary>

@@ -1,4 +1,5 @@
 // Platform.Web/Services/OutboxProcessor.cs
+using Platform.Application.Services;
 using Platform.Domain.Entities;
 using Platform.Domain.Enums;
 using Platform.Domain.Interfaces;
@@ -45,6 +46,7 @@ public class OutboxProcessor : BackgroundService
                 var outboxRepo = scope.ServiceProvider.GetRequiredService<IOutboxRepository>();
                 var smsSender = scope.ServiceProvider.GetRequiredService<ISmsSender>();
                 var emailSender = scope.ServiceProvider.GetRequiredService<IEmailSender>();
+                var pushService = scope.ServiceProvider.GetRequiredService<IPushNotificationService>();
 
                 // فقط رکوردهایی که از مهلتِ ارسال هم گذشته‌اند یتیم‌اند؛ رکورد Processingِ تازه
                 // یعنی instance دیگری همین حالا آن را می‌فرستد و دست‌زدن به آن = ارسال تکراری
@@ -52,7 +54,7 @@ public class OutboxProcessor : BackgroundService
                 if (reclaimed > 0)
                     _logger.LogWarning("{Count} پیام مانده در Processing به صف برگشت", reclaimed);
 
-                foreach (OutboxChannel channel in new[] { OutboxChannel.Sms, OutboxChannel.Email })
+                foreach (OutboxChannel channel in new[] { OutboxChannel.Sms, OutboxChannel.Email, OutboxChannel.Push })
                 {
                     var pending = await outboxRepo.GetPendingAsync(channel, _maxAttempts, _batchSize);
                     foreach (var message in pending)
@@ -69,6 +71,9 @@ public class OutboxProcessor : BackgroundService
                         {
                             if (message.Channel == OutboxChannel.Email)
                                 await emailSender.SendAsync(message.Recipient, message.Subject ?? "", message.Body);
+                            else if (message.Channel == OutboxChannel.Push)
+                                await pushService.NotifyUserAsync(message.Recipient,
+                                    message.Subject ?? "اعلان", message.Body, message.LinkUrl);
                             else
                                 await smsSender.SendAsync(message.Recipient, message.Body);
                         }

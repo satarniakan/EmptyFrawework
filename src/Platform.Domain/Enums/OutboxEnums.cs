@@ -4,7 +4,13 @@ namespace Platform.Domain.Enums;
 public enum OutboxChannel
 {
     Sms = 1,
-    Email = 2
+    Email = 2,
+
+    /// <summary>
+    /// اعلان وب‌پوش: Recipient شناسهٔ کاربر است (نه شماره/ایمیل) و Subject/Body
+    /// همان عنوان و متن اعلان‌اند. بدون تغییر اسکیما اضافه شد (عدد ۳ تازه است).
+    /// </summary>
+    Push = 3
 }
 
 public enum OutboxStatus

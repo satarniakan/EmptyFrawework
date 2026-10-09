@@ -87,6 +87,8 @@ public static class DependencyInjection
         services.AddScoped<ISettingRepository, SettingRepository>();
         services.AddScoped<INumberSequenceRepository, NumberSequenceRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
+        services.AddScoped<IPushSubscriptionRepository, PushSubscriptionRepository>();
+        services.AddScoped<IPushSender, VapidPushSender>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IOutboxRepository, OutboxRepository>();
 

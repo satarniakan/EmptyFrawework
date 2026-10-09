@@ -40,6 +40,35 @@
       "FromName": "سامانه"
     }
   },
+  "Payment": {
+    "//": "Provider: Fake (نمایشی) یا ZarinPal (واقعی). مبالغ به تومان.",
+    "Provider": "Fake",
+    "ZarinPal": {
+      "MerchantId": "",
+      "Sandbox": false
+    }
+  },
+  "Captcha": {
+    "//": "Provider: خالی/Fake (غیرفعال) یا Turnstile (واقعی).",
+    "Provider": "",
+    "Turnstile": {
+      "SiteKey": "",
+      "SecretKey": ""
+    }
+  },
+  "Push": {
+    "//": "کلیدهای VAPID برای وب‌پوش. ساخت: npx web-push generate-vapid-keys",
+    "//Subject": "mailto:admin@example.com",
+    "Vapid": {
+      "Subject": "",
+      "PublicKey": "",
+      "PrivateKey": ""
+    }
+  },
+  "ApiTokens": {
+    "//": "عمر توکن موبایل به روز.",
+    "LifetimeDays": 180
+  },
   "ForwardedHeaders": {
     "//": "پشت reverse proxy این را false نگه دارید، وگرنه همهٔ کاربران یک IP می‌گیرند و rate limit همه را قفل می‌کند.",
     "TrustAllProxies": false

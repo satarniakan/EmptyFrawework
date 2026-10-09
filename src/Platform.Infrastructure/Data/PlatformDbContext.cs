@@ -60,6 +60,7 @@ public class PlatformDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<NumberSequence> NumberSequences => Set<NumberSequence>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -136,11 +137,23 @@ public class PlatformDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => new { x.UserId, x.Status });
         });
 
+        builder.Entity<PushSubscription>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            e.Property(x => x.Endpoint).HasMaxLength(500).IsRequired();
+            e.Property(x => x.P256dh).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Auth).HasMaxLength(100).IsRequired();
+            e.HasIndex(x => x.Endpoint).IsUnique();
+            e.HasIndex(x => x.UserId);
+        });
+
         builder.Entity<OutboxMessage>(e =>
         {
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.Status);
             e.HasIndex(x => new { x.Status, x.Attempts });
+            e.Property(x => x.LinkUrl).HasMaxLength(1000);
         });
 
         builder.Entity<Notification>(e =>

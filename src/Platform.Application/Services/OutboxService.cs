@@ -16,6 +16,12 @@ public interface IOutboxService
     Task QueueSmsAsync(string phone, string body);
 
     Task QueueEmailAsync(string to, string subject, string body);
+
+    /// <summary>
+    /// اعلان وب‌پوش در صف: userId شناسهٔ کاربر است و ارسال واقعی را
+    /// OutboxProcessor با IPushNotificationService انجام می‌دهد.
+    /// </summary>
+    Task QueuePushAsync(string userId, string title, string? body, string? linkUrl = null);
 }
 
 public class OutboxService : IOutboxService
@@ -35,7 +41,11 @@ public class OutboxService : IOutboxService
     public Task QueueEmailAsync(string to, string subject, string body) =>
         QueueAsync(OutboxChannel.Email, to, subject, body);
 
-    private async Task QueueAsync(OutboxChannel channel, string recipient, string? subject, string body)
+    public Task QueuePushAsync(string userId, string title, string? body, string? linkUrl = null) =>
+        QueueAsync(OutboxChannel.Push, userId, title, body ?? string.Empty, linkUrl);
+
+    private async Task QueueAsync(OutboxChannel channel, string recipient, string? subject,
+        string body, string? linkUrl = null)
     {
         // عمداً try/catch ندارد: اگر ثبت در صف شکست بخورد، باید خطا به فراخواننده برسد تا
         // تراکنشِ عملیات اصلی rollback شود. بلعیدن خطا یعنی «عملیات موفق، پیام گم» —
@@ -46,7 +56,8 @@ public class OutboxService : IOutboxService
             Channel = channel,
             Recipient = recipient,
             Subject = subject,
-            Body = body
+            Body = body,
+            LinkUrl = linkUrl
         });
         await _unitOfWork.CompleteAsync();
     }
