@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <!-- خروجی اکسل/PDF -->
-    <PackageVersion Include="ClosedXML" Version="0.104.2" />
+    <PackageVersion Include="ClosedXML" Version="0.105.1" />
     <PackageVersion Include="HtmlSanitizer" Version="9.2.1039" />
     <PackageVersion Include="QuestPDF" Version="2026.9.1" />
 
