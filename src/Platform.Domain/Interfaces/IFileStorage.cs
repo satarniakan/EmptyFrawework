@@ -35,4 +35,10 @@ public interface IFileStorage
     /// <summary>آیا فایل با <paramref name="storageId"/> در <paramref name="fileType" />
     /// مملک <paramref name="ownerId" /> وجود دارد؟</summary>
     Task<bool> ExistsAsync(string ownerId, string fileType, string storageId);
+
+    /// <summary>
+    /// بازکردن فایل برای خواندن (مثلاً برای دانلود). فراخواننده مالک stream است و
+    /// باید آن را dispose کند. اگر فایل نباشد null برمی‌گردد.
+    /// </summary>
+    Task<Stream?> OpenReadAsync(string ownerId, string fileType, string storageId);
 }

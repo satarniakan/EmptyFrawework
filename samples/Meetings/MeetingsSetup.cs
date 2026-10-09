@@ -10,6 +10,17 @@ public static class MeetingPermissions
     public const string Manage = "meetings.manage";
 }
 
+/// <summary>
+/// نوع فایل در <c>IFileStorage</c> برای فایل‌های جلسه. مالک، شناسهٔ جلسه است.
+/// قرارداد مشترک آپلود (MeetingManage) و دانلود (Program) — یک‌جا تعریف می‌شود
+/// تا رشته‌ها در دو فایل از هم جدا نمانند.
+/// </summary>
+public static class MeetingFileTypes
+{
+    public const string Audio = "meeting-audio";
+    public const string Photo = "meeting-photo";
+}
+
 /// <summary>ثبت سرویس‌های ماژول جلسات. در Program.cs میزبان بعد از AddSampleModule فراخوانی می‌شود.</summary>
 public static class MeetingsSetup
 {

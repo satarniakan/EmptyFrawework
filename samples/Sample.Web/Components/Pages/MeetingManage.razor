@@ -5,8 +5,10 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Security.Claims
+@using Platform.Domain.Interfaces
 @inherits Platform.Web.Components.Shared.AppComponentBase
 @inject IMeetingService MeetingService
+@inject IFileStorage FileStorage
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavigationManager
 <PageTitle>مدیریت جلسه</PageTitle>
@@ -385,8 +387,6 @@ else
     private const long MaxPhotoBytes = 10 * 1024 * 1024;
     private static readonly string[] PhotoExtensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp"];
 
-    [Inject] private IWebHostEnvironment Environment { get; set; } = default!;
-
     protected override async Task OnInitializedAsync()
     {
         await RunSafe(async () =>
@@ -546,19 +546,17 @@ else
         isAudioBusy = true;
         try
         {
-            var storedFileName = $"meeting-{Id}-{DateTime.UtcNow:yyyyMMddHHmmss}{extension}";
-            var directory = Path.Combine(Environment.ContentRootPath, "AppData", "meeting-audio");
-            Directory.CreateDirectory(directory);
-            var fullPath = Path.Combine(directory, storedFileName);
-
+            // ذخیره از طریق IFileStorage: نام/مسیر امن و خودکار، اعتبارسنجی پسوند و حجم
+            // در همان‌جا. شناسهٔ برگشتی (نه نام فایل کاربر) در دیتابیس می‌ماند.
             await using var source = file.OpenReadStream(MaxAudioBytes);
-            await using var target = File.Create(fullPath);
-            await source.CopyToAsync(target);
+            var storageId = await FileStorage.SaveAsync(
+                Id.ToString(), Meetings.MeetingFileTypes.Audio, source, file.Name, file.ContentType);
 
             // فایل صوتی قبلی (در صورت وجود) حذف می‌شود
-            await DeleteAudioFileOnDiskAsync(meeting?.AudioFileName);
+            if (!string.IsNullOrWhiteSpace(meeting?.AudioFileName))
+                await FileStorage.DeleteAsync(Id.ToString(), Meetings.MeetingFileTypes.Audio, meeting.AudioFileName);
 
-            await MeetingService.SetAudioAsync(Id, storedFileName, file.ContentType, file.Size, userId ?? "");
+            await MeetingService.SetAudioAsync(Id, storageId, file.ContentType, file.Size, userId ?? "");
             meeting = await MeetingService.GetMeetingAsync(Id);
             Toast.ShowSuccess("صوت جلسه بارگذاری شد.");
         }
@@ -577,7 +575,8 @@ else
         try
         {
             var removed = await MeetingService.ClearAudioAsync(Id, userId ?? "");
-            await DeleteAudioFileOnDiskAsync(removed);
+            if (!string.IsNullOrWhiteSpace(removed))
+                await FileStorage.DeleteAsync(Id.ToString(), Meetings.MeetingFileTypes.Audio, removed);
             meeting = await MeetingService.GetMeetingAsync(Id);
             Toast.ShowSuccess("صوت جلسه حذف شد.");
         }
@@ -587,20 +586,7 @@ else
         }
     });
 
-    private async Task DeleteAudioFileOnDiskAsync(string? storedFileName)
-    {
-        if (string.IsNullOrWhiteSpace(storedFileName)) return;
-        try
-        {
-            var path = Path.Combine(Environment.ContentRootPath, "AppData", "meeting-audio", storedFileName);
-            if (File.Exists(path)) File.Delete(path);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "حذف فایل صوتی {File} از دیسک ناموفق بود", storedFileName);
-        }
-        await Task.CompletedTask;
-    }
+
 
     private async Task UploadPhotoAsync(InputFileChangeEventArgs e) => await RunSafe(async () =>
     {
@@ -620,19 +606,15 @@ else
         isPhotoBusy = true;
         try
         {
-            var storedFileName = $"meeting-{Id}-{DateTime.UtcNow:yyyyMMddHHmmss}{extension}";
-            var directory = Path.Combine(Environment.ContentRootPath, "AppData", "meeting-photos");
-            Directory.CreateDirectory(directory);
-            var fullPath = Path.Combine(directory, storedFileName);
-
             await using var source = file.OpenReadStream(MaxPhotoBytes);
-            await using var target = File.Create(fullPath);
-            await source.CopyToAsync(target);
+            var storageId = await FileStorage.SaveAsync(
+                Id.ToString(), Meetings.MeetingFileTypes.Photo, source, file.Name, file.ContentType);
 
             // عکس قبلی (در صورت وجود) حذف می‌شود
-            await DeletePhotoFileOnDiskAsync(meeting?.PhotoFileName);
+            if (!string.IsNullOrWhiteSpace(meeting?.PhotoFileName))
+                await FileStorage.DeleteAsync(Id.ToString(), Meetings.MeetingFileTypes.Photo, meeting.PhotoFileName);
 
-            await MeetingService.SetPhotoAsync(Id, storedFileName, file.ContentType, file.Size, userId ?? "");
+            await MeetingService.SetPhotoAsync(Id, storageId, file.ContentType, file.Size, userId ?? "");
             meeting = await MeetingService.GetMeetingAsync(Id);
             Toast.ShowSuccess("عکس جلسه بارگذاری شد.");
         }
@@ -651,7 +633,8 @@ else
         try
         {
             var removed = await MeetingService.ClearPhotoAsync(Id, userId ?? "");
-            await DeletePhotoFileOnDiskAsync(removed);
+            if (!string.IsNullOrWhiteSpace(removed))
+                await FileStorage.DeleteAsync(Id.ToString(), Meetings.MeetingFileTypes.Photo, removed);
             meeting = await MeetingService.GetMeetingAsync(Id);
             Toast.ShowSuccess("عکس جلسه حذف شد.");
         }
@@ -660,19 +643,4 @@ else
             isPhotoBusy = false;
         }
     });
-
-    private async Task DeletePhotoFileOnDiskAsync(string? storedFileName)
-    {
-        if (string.IsNullOrWhiteSpace(storedFileName)) return;
-        try
-        {
-            var path = Path.Combine(Environment.ContentRootPath, "AppData", "meeting-photos", storedFileName);
-            if (File.Exists(path)) File.Delete(path);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "حذف فایل عکس {File} از دیسک ناموفق بود", storedFileName);
-        }
-        await Task.CompletedTask;
-    }
 }

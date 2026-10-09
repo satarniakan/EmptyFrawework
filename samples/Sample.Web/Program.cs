@@ -132,61 +132,53 @@ app.MapGet("/dev-login", async (
     return Results.Redirect("/my-meetings");
 });
 
-// پخش/دانلود فایل صوتی جلسه — فقط سازنده و مدعوین، یا ادمین/دارندهٔ مجوز مدیریت جلسات
-app.MapGet("/meetings/{id:int}/audio", async (
-    int id,
-    ClaimsPrincipal user,
-    IMeetingService meetings,
-    IWebHostEnvironment environment) =>
-{
-    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-    if (userId is null) return Results.Unauthorized();
-
-    var canManage = user.IsInRole(Roles.Admin) ||
-                    user.HasClaim(Permissions.ClaimType, Meetings.MeetingPermissions.Manage);
-    if (!canManage && !await meetings.CanViewAsync(id, userId))
-        return Results.Forbid();
-
-    var meeting = await meetings.GetMeetingAsync(id);
-    if (string.IsNullOrWhiteSpace(meeting?.AudioFileName)) return Results.NotFound();
-
-    var path = Path.Combine(environment.ContentRootPath, "AppData", "meeting-audio", meeting.AudioFileName);
-    if (!File.Exists(path)) return Results.NotFound();
-
-    return Results.File(path, meeting.AudioContentType ?? "application/octet-stream",
-        fileDownloadName: $"meeting-{id}{Path.GetExtension(meeting.AudioFileName)}");
-}).RequireAuthorization();
-
-// نمایش/دانلود عکس جلسه — همان کنترل دسترسی صوت
-app.MapGet("/meetings/{id:int}/photo", async (
-    int id,
-    ClaimsPrincipal user,
-    IMeetingService meetings,
-    IWebHostEnvironment environment) =>
-{
-    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-    if (userId is null) return Results.Unauthorized();
-
-    var canManage = user.IsInRole(Roles.Admin) ||
-                    user.HasClaim(Permissions.ClaimType, Meetings.MeetingPermissions.Manage);
-    if (!canManage && !await meetings.CanViewAsync(id, userId))
-        return Results.Forbid();
-
-    var meeting = await meetings.GetMeetingAsync(id);
-    if (string.IsNullOrWhiteSpace(meeting?.PhotoFileName)) return Results.NotFound();
-
-    var path = Path.Combine(environment.ContentRootPath, "AppData", "meeting-photos", meeting.PhotoFileName);
-    if (!File.Exists(path)) return Results.NotFound();
-
-    return Results.File(path, meeting.PhotoContentType ?? "application/octet-stream",
-        fileDownloadName: $"meeting-{id}{Path.GetExtension(meeting.PhotoFileName)}");
-}).RequireAuthorization();
+// پخش/دانلود فایل جلسه (صوت و عکس) — فقط سازنده و مدعوین، یا ادمین/دارندهٔ مجوز مدیریت جلسات.
+// فایل‌ها از طریق IFileStorage خوانده می‌شوند؛ همان شناسه‌ای که هنگام آپلود در دیتابیس ماند.
+MapMeetingFile(app, "/meetings/{id:int}/audio", MeetingFileTypes.Audio,
+    m => m.AudioFileName, m => m.AudioContentType);
+MapMeetingFile(app, "/meetings/{id:int}/photo", MeetingFileTypes.Photo,
+    m => m.PhotoFileName, m => m.PhotoContentType);
 
 app.MapRazorComponents<Sample.Web.Components.App>()
     // صفحات پایه (login، profile، admin و…) در مونتاژ Platform.Web هستند؛
     // بدون این، فقط صفحات میزبان به‌عنوان endpoint نگاشت می‌شوند.
     .AddAdditionalAssemblies(typeof(Platform.Web.Components.Routes).Assembly)
     .AddInteractiveServerRenderMode();
+
+// فایل جلسه (صوت/عکس): یک نگاشت برای هر دو، با همان کنترل دسترسی.
+// stream مستقیم از IFileStorage می‌آید و پس از ارسال dispose می‌شود (مالکیت با Results.File است).
+static void MapMeetingFile(
+    WebApplication application,
+    string route,
+    string fileType,
+    Func<Meeting, string?> getStoredId,
+    Func<Meeting, string?> getContentType)
+{
+    application.MapGet(route, async (
+        int id,
+        ClaimsPrincipal user,
+        IMeetingService meetings,
+        Platform.Domain.Interfaces.IFileStorage storage) =>
+    {
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null) return Results.Unauthorized();
+
+        var canManage = user.IsInRole(Roles.Admin) ||
+                        user.HasClaim(Permissions.ClaimType, Meetings.MeetingPermissions.Manage);
+        if (!canManage && !await meetings.CanViewAsync(id, userId))
+            return Results.Forbid();
+
+        var meeting = await meetings.GetMeetingAsync(id);
+        var storedId = meeting is null ? null : getStoredId(meeting);
+        if (string.IsNullOrWhiteSpace(storedId)) return Results.NotFound();
+
+        var stream = await storage.OpenReadAsync(id.ToString(), fileType, storedId);
+        if (stream is null) return Results.NotFound();
+
+        return Results.File(stream, getContentType(meeting!) ?? "application/octet-stream",
+            fileDownloadName: $"{fileType}-{id}{Path.GetExtension(storedId)}");
+    }).RequireAuthorization();
+}
 
 try
 {

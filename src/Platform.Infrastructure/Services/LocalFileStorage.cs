@@ -16,9 +16,17 @@ namespace Platform.Infrastructure.Services;
 /// <item>دراپ کامل فایل‌ها با <c>DeleteAsync</c> ساده است — یک پوشه = یک فایل.</item>
 /// </list>
 /// </para>
+/// <para>
+/// نکات امنیتی: هیچ بخشی از مسیر از ورودی کاربر ساخته نمی‌شود (فقط هش owner و
+/// شناسهٔ تولیدشده)؛ با این حال هر مسیر نهایی بررسی می‌شود که زیر Root بماند
+/// (دفاع در عمق در برابر <c>../</c> در fileType یا رکوردهای قدیمی). نوشتن اتمیک
+/// است (فایل موقت + جابه‌جایی) و استریم‌محور — بافر ۵۰ مگابایتی در حافظه نگه داشته نمی‌شود.
+/// </para>
 /// </summary>
 public class LocalFileStorage : IFileStorage
 {
+    private const int CopyBufferSize = 81920;
+
     private readonly IConfiguration _configuration;
     private readonly string _rootPath;
     private readonly long _maxFileSizeBytes;
@@ -60,34 +68,55 @@ public class LocalFileStorage : IFileStorage
         if (!_allowedExtensions.Contains(extensionWithoutDot))
             throw new ArgumentException($"پسوند '{extensionWithoutDot}' مجاز نیست و فایل نمی‌تواند ذخیره شود.", nameof(fileName));
 
-        var buffer = new byte[_maxFileSizeBytes + 1];
-        var total = 0;
-        int read;
-        while ((read = await ReadAsync(stream, buffer, total, buffer.Length - total)) > 0)
-        {
-            total += read;
-            if (total > _maxFileSizeBytes)
-                throw new ArgumentException(
-                    $"حجم فایل از {MaxFileSizeLabel()} بزرگ شده است.", nameof(fileName));
-        }
-
-        var data = buffer.AsSpan(0, total);
         var storageId = $"{Guid.NewGuid()}{extension}";
-        var relativePath = $"{Hash8(ownerId)}/{fileType}/{storageId}";
-        var fullPath = Path.GetFullPath(Path.Combine(_rootPath, relativePath));
+        var fullPath = ResolveWithinRoot(Path.Combine(Hash8(ownerId), fileType, storageId));
 
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-        await using var fileStream = new FileStream(
-            fullPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, FileOptions.Asynchronous);
-        await fileStream.WriteAsync(data.ToArray());
-        await fileStream.FlushAsync();
+
+        // نوشتن اتمیک: اول فایل موقت، بعد جابه‌جایی. اگر وسط راه خطا بیاید،
+        // فایل نیمه‌کاره با نام نهایی باقی نمی‌ماند.
+        var tempPath = fullPath + $".tmp-{Guid.NewGuid():N}";
+        try
+        {
+            await using (var target = new FileStream(
+                tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+                bufferSize: CopyBufferSize, FileOptions.Asynchronous))
+            {
+                var buffer = new byte[CopyBufferSize];
+                long total = 0;
+                int read;
+                while ((read = await stream.ReadAsync(buffer)) > 0)
+                {
+                    total += read;
+                    if (total > _maxFileSizeBytes)
+                        throw new ArgumentException(
+                            $"حجم فایل از {MaxFileSizeLabel()} بزرگ شده است.", nameof(fileName));
+
+                    await target.WriteAsync(buffer.AsMemory(0, read));
+                }
+
+                if (total == 0)
+                    throw new ArgumentException("فایل خالی است.", nameof(stream));
+            }
+
+            File.Move(tempPath, fullPath);
+        }
+        catch
+        {
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); }
+            catch { /* پاک‌سازی موقت نباید خطای اصلی را بپوشاند */ }
+            throw;
+        }
 
         return storageId;
     }
 
     public Task DeleteAsync(string ownerId, string fileType, string storageId)
     {
-        var fullPath = Path.GetFullPath(Path.Combine(_rootPath, $"{Hash8(ownerId)}/{fileType}/{storageId}"));
+        if (string.IsNullOrWhiteSpace(storageId))
+            return Task.CompletedTask;
+
+        var fullPath = ResolveWithinRoot(Path.Combine(Hash8(ownerId), fileType, storageId));
         if (File.Exists(fullPath))
             File.Delete(fullPath);
         return Task.CompletedTask;
@@ -95,8 +124,40 @@ public class LocalFileStorage : IFileStorage
 
     public Task<bool> ExistsAsync(string ownerId, string fileType, string storageId)
     {
-        var fullPath = Path.GetFullPath(Path.Combine(_rootPath, $"{Hash8(ownerId)}/{fileType}/{storageId}"));
+        if (string.IsNullOrWhiteSpace(storageId))
+            return Task.FromResult(false);
+
+        var fullPath = ResolveWithinRoot(Path.Combine(Hash8(ownerId), fileType, storageId));
         return Task.FromResult(File.Exists(fullPath));
+    }
+
+    public Task<Stream?> OpenReadAsync(string ownerId, string fileType, string storageId)
+    {
+        if (string.IsNullOrWhiteSpace(storageId))
+            return Task.FromResult<Stream?>(null);
+
+        var fullPath = ResolveWithinRoot(Path.Combine(Hash8(ownerId), fileType, storageId));
+        if (!File.Exists(fullPath))
+            return Task.FromResult<Stream?>(null);
+
+        Stream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+            bufferSize: CopyBufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        return Task.FromResult<Stream?>(stream);
+    }
+
+    /// <summary>
+    /// مسیر نهایی باید زیر Root بماند؛ وگرنه <c>../</c> در fileType یا storageId
+    /// (مثلاً از رکوردهای قدیمیِ پیش از این گارد) می‌توانست به بیرون بنویسد/بخواند.
+    /// </summary>
+    private string ResolveWithinRoot(string relativePath)
+    {
+        var root = Path.GetFullPath(_rootPath);
+        var full = Path.GetFullPath(Path.Combine(root, relativePath));
+
+        if (!full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            throw new ArgumentException("مسیر فایل خارج از پوشهٔ ذخیره‌سازی است.");
+
+        return full;
     }
 
     private static string Hash8(string input) =>
@@ -104,18 +165,4 @@ public class LocalFileStorage : IFileStorage
 
     private string MaxFileSizeLabel() =>
         $"~{Math.Round((double)_maxFileSizeMb, 1):F1} مگابایت";
-
-    private static async Task<int> ReadAsync(Stream stream, byte[] buffer, int offset, int count)
-    {
-        int totalRead = 0;
-        while (totalRead < count)
-        {
-            var remaining = count - totalRead;
-            var read = await stream.ReadAsync(buffer, offset + totalRead, remaining);
-            if (read == 0) break;
-            totalRead += read;
-        }
-
-        return totalRead;
-    }
 }
