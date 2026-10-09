@@ -1,38 +1,55 @@
-using System.Text.RegularExpressions;
+using Ganss.Xss;
 
 namespace Meetings;
 
 /// <summary>
-/// پاک‌سازی حداقلی HTML صورت‌جلسه پیش از ذخیره. متن فقط توسط ادمین‌ها نوشته می‌شود،
-/// ولی چون برای همهٔ اعضا نمایش داده می‌شود، عناصر خطرناک (script و رویدادهای inline
-/// و href جاوااسکریپتی) پیش از ذخیره حذف می‌شوند.
+/// پاک‌سازی HTML صورت‌جلسه پیش از ذخیره، با allowlist واقعی (HtmlSanitizer) نه regex.
+/// <para>
+/// چرا نه regex: HTML را نمی‌شود با عبارت منظم امن کرد — ترکیب attributeها،
+/// encodingها و تگ‌های ناقص همیشه یک بایپس دارد. این متن توسط ادمین نوشته ولی برای
+/// همهٔ اعضا با <c>MarkupString</c> رندر می‌شود، پس XSS ذخیره‌شده یعنی اجرای اسکریپت
+/// در مرورگر قربانی. کتابخانه فقط تگ‌ها/attributeهای شناخته‌شدهٔ امن را نگه می‌دارد.
+/// </para>
 /// </summary>
-public static partial class MinutesSanitizer
+public static class MinutesSanitizer
 {
-    [GeneratedRegex(@"<\s*(script|style|iframe|object|embed|form|link|meta)\b[^>]*>.*?<\s*/\s*\1\s*>",
-        RegexOptions.IgnoreCase | RegexOptions.Singleline)]
-    private static partial Regex BlockedElementWithBody();
+    private static readonly HtmlSanitizer Sanitizer = CreateSanitizer();
 
-    [GeneratedRegex(@"<\s*/?\s*(script|style|iframe|object|embed|form|link|meta)\b[^>]*/?>",
-        RegexOptions.IgnoreCase)]
-    private static partial Regex BlockedElementTag();
+    private static HtmlSanitizer CreateSanitizer()
+    {
+        var sanitizer = new HtmlSanitizer();
 
-    [GeneratedRegex(@"\son\w+\s*=\s*(""[^""]*""|'[^']*'|[^\s>]+)", RegexOptions.IgnoreCase)]
-    private static partial Regex InlineEventHandler();
+        // ویرایشگر فارسی (متن/جدول/فهرست/پیوند/راست‌چین) — فقط همین‌ها لازم‌اند
+        sanitizer.AllowedTags.Clear();
+        foreach (var tag in new[]
+            { "p", "br", "strong", "b", "em", "i", "u", "s", "ul", "ol", "li",
+              "h1", "h2", "h3", "h4", "blockquote", "a", "table", "thead", "tbody",
+              "tr", "th", "td", "span", "div", "hr" })
+        {
+            sanitizer.AllowedTags.Add(tag);
+        }
 
-    [GeneratedRegex(@"(href|src)\s*=\s*(""[^""]*javascript:[^""]*""|'[^']*javascript:[^']*'|javascript:[^\s>]+)",
-        RegexOptions.IgnoreCase)]
-    private static partial Regex JavaScriptUrl();
+        sanitizer.AllowedAttributes.Clear();
+        foreach (var attribute in new[] { "href", "title", "dir", "align", "colspan", "rowspan" })
+        {
+            sanitizer.AllowedAttributes.Add(attribute);
+        }
+
+        // فقط http/https/mailto — javascript: و data: حذف می‌شوند
+        sanitizer.AllowedSchemes.Clear();
+        sanitizer.AllowedSchemes.Add("http");
+        sanitizer.AllowedSchemes.Add("https");
+        sanitizer.AllowedSchemes.Add("mailto");
+
+        // استایل inline و class حذف می‌شود (class می‌توانست برای exfiltration استفاده شود)
+        sanitizer.AllowedCssProperties.Clear();
+
+        return sanitizer;
+    }
 
     public static string Clean(string? html)
     {
         if (string.IsNullOrWhiteSpace(html)) return string.Empty;
-
-        var clean = html.Trim();
-        clean = BlockedElementWithBody().Replace(clean, string.Empty);
-        clean = BlockedElementTag().Replace(clean, string.Empty);
-        clean = InlineEventHandler().Replace(clean, string.Empty);
-        clean = JavaScriptUrl().Replace(clean, @"$1=""#""");
-        return clean;
+        return Sanitizer.Sanitize(html.Trim());
     }
 }

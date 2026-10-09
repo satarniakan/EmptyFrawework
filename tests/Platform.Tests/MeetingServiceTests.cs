@@ -312,6 +312,41 @@ public class MinutesSanitizerTests
         Assert.DoesNotContain("javascript:", clean, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    // حمله‌هایی که sanitizer مبتنی بر regex را دور می‌زدند
+    [InlineData("<ScRiPt>alert(1)</ScRiPt>")]
+    [InlineData("<img src=x onerror=alert(1)>")]
+    [InlineData("<svg onload=alert(1)>")]
+    [InlineData("<a href=\"JaVaScRiPt:alert(1)\">x</a>")]
+    [InlineData("<a href=\"data:text/html,<script>alert(1)</script>\">x</a>")]
+    [InlineData("<p style=\"x:expression(alert(1))\">متن</p>")]
+    [InlineData("<iframe src=\"https://evil.example\"></iframe>")]
+    public void Clean_NeutralizesXssBypasses(string dirty)
+    {
+        var clean = Meetings.MinutesSanitizer.Clean(dirty);
+
+        Assert.DoesNotContain("alert(", clean, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("<script", clean, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("onload", clean, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("onerror", clean, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("javascript:", clean, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Clean_KeepsEditorFormatting()
+    {
+        var html = "<h2>سرخط</h2><p>متن <strong>مهم</strong></p><ul><li>یک</li></ul>" +
+                   "<table><tr><td>سلول</td></tr></table>" +
+                   "<a href=\"https://example.com\">پیوند</a>";
+
+        var clean = Meetings.MinutesSanitizer.Clean(html);
+
+        Assert.Contains("<h2>", clean);
+        Assert.Contains("<strong>", clean);
+        Assert.Contains("<table>", clean);
+        Assert.Contains("https://example.com", clean);
+    }
+
     [Fact]
     public void Clean_EmptyInput_ReturnsEmpty()
     {
