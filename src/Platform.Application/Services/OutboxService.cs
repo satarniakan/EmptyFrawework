@@ -37,21 +37,17 @@ public class OutboxService : IOutboxService
 
     private async Task QueueAsync(OutboxChannel channel, string recipient, string? subject, string body)
     {
-        try
+        // عمداً try/catch ندارد: اگر ثبت در صف شکست بخورد، باید خطا به فراخواننده برسد تا
+        // تراکنشِ عملیات اصلی rollback شود. بلعیدن خطا یعنی «عملیات موفق، پیام گم» —
+        // وضعیتی که هیچ‌وقت نباید بی‌صدا رخ دهد. ارسالِ واقعیِ پیام‌ها (که ممکن است به
+        // سرویس بیرونی وصل نشود) جدا است و OutboxProcessor آن را با retry مدیریت می‌کند.
+        await _unitOfWork.Outbox.AddAsync(new OutboxMessage
         {
-            await _unitOfWork.Outbox.AddAsync(new OutboxMessage
-            {
-                Channel = channel,
-                Recipient = recipient,
-                Subject = subject,
-                Body = body
-            });
-            await _unitOfWork.CompleteAsync();
-        }
-        catch (Exception ex)
-        {
-            // صف نباید جریان اصلی را بشکند؛ فقط لاگ می‌شود
-            _logger.LogError(ex, "خطا در ثبت پیام در صف برای {Recipient}", recipient);
-        }
+            Channel = channel,
+            Recipient = recipient,
+            Subject = subject,
+            Body = body
+        });
+        await _unitOfWork.CompleteAsync();
     }
 }

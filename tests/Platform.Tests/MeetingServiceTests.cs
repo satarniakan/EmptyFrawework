@@ -31,6 +31,10 @@ public class MeetingServiceTests
         var uow = new Mock<IPlatformUnitOfWork>();
         uow.Setup(u => u.CompleteAsync()).ReturnsAsync(1);
 
+        // تراکنش در تست: فقط اکشن را اجرا کن (بدون تراکنش واقعی دیتابیس)
+        uow.Setup(u => u.ExecuteInTransactionAsync(It.IsAny<Func<Task>>()))
+            .Returns<Func<Task>>(action => action());
+
         var users = new Mock<IMeetingUserDirectory>();
         users.Setup(d => d.GetUsersAsync(It.IsAny<IReadOnlyCollection<string>>()))
             .ReturnsAsync((IReadOnlyCollection<string> ids) =>

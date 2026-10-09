@@ -174,50 +174,56 @@ public class MeetingService : IMeetingService
         if (inviteeIds.Count == 0)
             throw new BusinessRuleException("حداقل یک مدعو انتخاب کنید.");
 
-        var meeting = new Meeting
+        // همهٔ نوشته‌ها (جلسه + اعلان‌ها + صف پیام) در یک تراکنش: اگر وسط راه
+        // (مثلاً ثبت پیام در Outbox) خطایی بیاید، جلسهٔ نیمه‌دعوت‌شده باقی نمی‌ماند.
+        Meeting meeting = null!;
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
-            Title = title,
-            Description = request.Description?.Trim(),
-            Kind = request.Kind,
-            Location = request.Kind == MeetingKind.InPerson ? request.Location?.Trim() : null,
-            MeetingLink = request.Kind == MeetingKind.Virtual ? request.MeetingLink?.Trim() : null,
-            StartAt = request.StartAt,
-            CreatedByUserId = request.CreatorUserId
-        };
-
-        foreach (var userId in inviteeIds)
-        {
-            meeting.Invitees.Add(new MeetingInvitee { UserId = userId });
-        }
-
-        await _meetings.AddAsync(meeting);
-        await _unitOfWork.CompleteAsync();
-
-        // اعلان کارتابل برای همهٔ مدعوین (یک Save مشترک)
-        await _notifications.NotifyUsersAsync(
-            inviteeIds,
-            "دعوت به جلسه",
-            $"به جلسهٔ «{meeting.Title}» دعوت شده‌اید. لطفاً پاسخ خود را ثبت کنید.",
-            NotificationType.System,
-            "/my-meetings");
-
-        // ایمیل/پیامک در صف Outbox — ارسال واقعی را OutboxProcessor انجام می‌دهد
-        var contacts = await _users.GetUsersAsync(inviteeIds);
-        foreach (var contact in contacts)
-        {
-            if (!string.IsNullOrWhiteSpace(contact.Email))
+            meeting = new Meeting
             {
-                await _outbox.QueueEmailAsync(
-                    contact.Email!,
-                    $"دعوت به جلسه: {meeting.Title}",
-                    BuildInvitationEmail(meeting, contact));
+                Title = title,
+                Description = request.Description?.Trim(),
+                Kind = request.Kind,
+                Location = request.Kind == MeetingKind.InPerson ? request.Location?.Trim() : null,
+                MeetingLink = request.Kind == MeetingKind.Virtual ? request.MeetingLink?.Trim() : null,
+                StartAt = request.StartAt,
+                CreatedByUserId = request.CreatorUserId
+            };
+
+            foreach (var userId in inviteeIds)
+            {
+                meeting.Invitees.Add(new MeetingInvitee { UserId = userId });
             }
 
-            if (!string.IsNullOrWhiteSpace(contact.PhoneNumber))
+            await _meetings.AddAsync(meeting);
+            await _unitOfWork.CompleteAsync();
+
+            // اعلان کارتابل برای همهٔ مدعوین
+            await _notifications.NotifyUsersAsync(
+                inviteeIds,
+                "دعوت به جلسه",
+                $"به جلسهٔ «{meeting.Title}» دعوت شده‌اید. لطفاً پاسخ خود را ثبت کنید.",
+                NotificationType.System,
+                "/my-meetings");
+
+            // ایمیل/پیامک در صف Outbox — ارسال واقعی را OutboxProcessor انجام می‌دهد
+            var contacts = await _users.GetUsersAsync(inviteeIds);
+            foreach (var contact in contacts)
             {
-                await _outbox.QueueSmsAsync(contact.PhoneNumber!, BuildInvitationSms(meeting));
+                if (!string.IsNullOrWhiteSpace(contact.Email))
+                {
+                    await _outbox.QueueEmailAsync(
+                        contact.Email!,
+                        $"دعوت به جلسه: {meeting.Title}",
+                        BuildInvitationEmail(meeting, contact));
+                }
+
+                if (!string.IsNullOrWhiteSpace(contact.PhoneNumber))
+                {
+                    await _outbox.QueueSmsAsync(contact.PhoneNumber!, BuildInvitationSms(meeting));
+                }
             }
-        }
+        });
 
         return meeting;
     }
@@ -280,20 +286,25 @@ public class MeetingService : IMeetingService
         {
             invitee.Response = response;
             invitee.RespondedAt = _clock.GetUtcNow().UtcDateTime;
-            await _unitOfWork.CompleteAsync();
         }
 
-        if (invitee.Meeting.CreatedByUserId != userId)
+        // ثبت پاسخ + اعلانِ سازنده در یک تراکنش
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
-            var responder = (await _users.GetUsersAsync([userId])).FirstOrDefault();
-            var verb = response == InviteResponse.Accepted ? "پذیرفت" : "رد کرد";
-            await _notifications.NotifyAsync(
-                invitee.Meeting.CreatedByUserId,
-                "پاسخ به دعوت جلسه",
-                $"«{responder?.DisplayName ?? "کاربر"}» دعوت جلسهٔ «{invitee.Meeting.Title}» را {verb}.",
-                NotificationType.System,
-                $"/meetings/{meetingId}/manage");
-        }
+            await _unitOfWork.CompleteAsync();
+
+            if (invitee.Meeting.CreatedByUserId != userId)
+            {
+                var responder = (await _users.GetUsersAsync([userId])).FirstOrDefault();
+                var verb = response == InviteResponse.Accepted ? "پذیرفت" : "رد کرد";
+                await _notifications.NotifyAsync(
+                    invitee.Meeting.CreatedByUserId,
+                    "پاسخ به دعوت جلسه",
+                    $"«{responder?.DisplayName ?? "کاربر"}» دعوت جلسهٔ «{invitee.Meeting.Title}» را {verb}.",
+                    NotificationType.System,
+                    $"/meetings/{meetingId}/manage");
+            }
+        });
 
         return true;
     }
@@ -317,18 +328,22 @@ public class MeetingService : IMeetingService
             ProposedStartAt = proposedStartAt,
             Note = note?.Trim()
         });
-        await _unitOfWork.CompleteAsync();
 
-        if (invitee.Meeting.CreatedByUserId != userId)
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
-            var proposer = (await _users.GetUsersAsync([userId])).FirstOrDefault();
-            await _notifications.NotifyAsync(
-                invitee.Meeting.CreatedByUserId,
-                "پیشنهاد زمان جدید",
-                $"«{proposer?.DisplayName ?? "کاربر"}» برای جلسهٔ «{invitee.Meeting.Title}» زمان {PersianDateHelper.ToPersianDateTime(proposedStartAt)} را پیشنهاد داد.",
-                NotificationType.System,
-                $"/meetings/{meetingId}/manage");
-        }
+            await _unitOfWork.CompleteAsync();
+
+            if (invitee.Meeting.CreatedByUserId != userId)
+            {
+                var proposer = (await _users.GetUsersAsync([userId])).FirstOrDefault();
+                await _notifications.NotifyAsync(
+                    invitee.Meeting.CreatedByUserId,
+                    "پیشنهاد زمان جدید",
+                    $"«{proposer?.DisplayName ?? "کاربر"}» برای جلسهٔ «{invitee.Meeting.Title}» زمان {PersianDateHelper.ToPersianDateTime(proposedStartAt)} را پیشنهاد داد.",
+                    NotificationType.System,
+                    $"/meetings/{meetingId}/manage");
+            }
+        });
 
         return true;
     }
@@ -362,37 +377,40 @@ public class MeetingService : IMeetingService
             }
         }
 
-        await _unitOfWork.CompleteAsync();
-
-        if (accept)
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
-            var inviteeIds = meeting.Invitees.Select(i => i.UserId).ToList();
-            await _notifications.NotifyUsersAsync(
-                inviteeIds,
-                "تغییر زمان جلسه",
-                $"جلسهٔ «{meeting.Title}» به {PersianDateHelper.ToPersianDateTime(meeting.StartAt)} موکول شد. لطفاً پاسخ خود را به‌روز کنید.",
-                NotificationType.System,
-                "/my-meetings");
+            await _unitOfWork.CompleteAsync();
 
-            if (proposal.ProposedByUserId != meeting.CreatedByUserId)
+            if (accept)
+            {
+                var inviteeIds = meeting.Invitees.Select(i => i.UserId).ToList();
+                await _notifications.NotifyUsersAsync(
+                    inviteeIds,
+                    "تغییر زمان جلسه",
+                    $"جلسهٔ «{meeting.Title}» به {PersianDateHelper.ToPersianDateTime(meeting.StartAt)} موکول شد. لطفاً پاسخ خود را به‌روز کنید.",
+                    NotificationType.System,
+                    "/my-meetings");
+
+                if (proposal.ProposedByUserId != meeting.CreatedByUserId)
+                {
+                    await _notifications.NotifyAsync(
+                        proposal.ProposedByUserId,
+                        "پیشنهاد زمان شما پذیرفته شد",
+                        $"پیشنهاد شما برای جلسهٔ «{meeting.Title}» پذیرفته شد.",
+                        NotificationType.System,
+                        "/my-meetings");
+                }
+            }
+            else if (proposal.ProposedByUserId != meeting.CreatedByUserId)
             {
                 await _notifications.NotifyAsync(
                     proposal.ProposedByUserId,
-                    "پیشنهاد زمان شما پذیرفته شد",
-                    $"پیشنهاد شما برای جلسهٔ «{meeting.Title}» پذیرفته شد.",
+                    "پیشنهاد زمان شما رد شد",
+                    $"پیشنهاد شما برای جلسهٔ «{meeting.Title}» پذیرفته نشد.",
                     NotificationType.System,
                     "/my-meetings");
             }
-        }
-        else if (proposal.ProposedByUserId != meeting.CreatedByUserId)
-        {
-            await _notifications.NotifyAsync(
-                proposal.ProposedByUserId,
-                "پیشنهاد زمان شما رد شد",
-                $"پیشنهاد شما برای جلسهٔ «{meeting.Title}» پذیرفته نشد.",
-                NotificationType.System,
-                "/my-meetings");
-        }
+        });
 
         return true;
     }
@@ -495,15 +513,18 @@ public class MeetingService : IMeetingService
         if (inviteeIds.Count == 0)
             throw new BusinessRuleException("این جلسه مدعویی ندارد.");
 
-        await _notifications.NotifyUsersAsync(
-            inviteeIds,
-            $"صورت‌جلسه: {meeting.Title}",
-            "صورت‌جلسهٔ جلسه برای شما ارسال شد.",
-            NotificationType.System,
-            $"/my-meetings/{meetingId}");
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
+        {
+            await _notifications.NotifyUsersAsync(
+                inviteeIds,
+                $"صورت‌جلسه: {meeting.Title}",
+                "صورت‌جلسهٔ جلسه برای شما ارسال شد.",
+                NotificationType.System,
+                $"/my-meetings/{meetingId}");
 
-        meeting.MinutesSentAt = _clock.GetUtcNow().UtcDateTime;
-        await _unitOfWork.CompleteAsync();
+            meeting.MinutesSentAt = _clock.GetUtcNow().UtcDateTime;
+            await _unitOfWork.CompleteAsync();
+        });
         return inviteeIds.Count;
     }
 
@@ -536,18 +557,23 @@ public class MeetingService : IMeetingService
             DueAt = dueAtUtc
         };
         await _meetings.AddDecisionAsync(decision);
-        await _unitOfWork.CompleteAsync();
 
-        // اطلاع به مسئولین اقدام از طریق کارتابل
-        if (userIds.Count > 0)
+        // ثبت مصوبه + اعلان مسئولین در یک تراکنش
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
-            await _notifications.NotifyUsersAsync(
-                userIds,
-                "مسئول اقدام مصوبه",
-                $"در جلسهٔ «{meeting.Title}» یک مصوبه ثبت شد و شما مسئول اقدام آن هستید.",
-                NotificationType.System,
-                $"/my-meetings/{meetingId}");
-        }
+            await _unitOfWork.CompleteAsync();
+
+            // اطلاع به مسئولین اقدام از طریق کارتابل
+            if (userIds.Count > 0)
+            {
+                await _notifications.NotifyUsersAsync(
+                    userIds,
+                    "مسئول اقدام مصوبه",
+                    $"در جلسهٔ «{meeting.Title}» یک مصوبه ثبت شد و شما مسئول اقدام آن هستید.",
+                    NotificationType.System,
+                    $"/my-meetings/{meetingId}");
+            }
+        });
 
         return await ToDecisionInfoAsync(decision);
     }
