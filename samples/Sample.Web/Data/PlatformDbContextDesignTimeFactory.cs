@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Platform.Infrastructure.Data;
 
-namespace Platform.Infrastructure;
+namespace Sample.Web.Data;
 
 /// <summary>
 /// فکتوری design-time برای دستورهای <c>dotnet ef migrations</c>.
@@ -26,7 +26,8 @@ public class PlatformDbContextDesignTimeFactory : IDesignTimeDbContextFactory<Pl
 
         var options = new DbContextOptionsBuilder<PlatformDbContext>()
             .ReplaceService<IModelCacheKeyFactory, PlatformModelCacheKeyFactory>()
-            .UseSqlServer(connectionString)
+            .UseSqlServer(connectionString, sql => sql.MigrationsAssembly(
+                typeof(PlatformDbContextDesignTimeFactory).Assembly.GetName().Name))
             .Options;
 
         // ماژول‌های دامنه را از مونتاژهای لودشده پیدا می‌کنیم. وقتی dotnet ef با

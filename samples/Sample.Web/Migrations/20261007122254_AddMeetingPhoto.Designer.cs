@@ -9,11 +9,11 @@ using Platform.Infrastructure.Data;
 
 #nullable disable
 
-namespace Platform.Infrastructure.Migrations
+namespace Sample.Web.Migrations
 {
     [DbContext(typeof(PlatformDbContext))]
-    [Migration("20261007112521_AddMeetingAudio")]
-    partial class AddMeetingAudio
+    [Migration("20261007122254_AddMeetingPhoto")]
+    partial class AddMeetingPhoto
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -111,6 +111,24 @@ namespace Platform.Infrastructure.Migrations
                     b.Property<DateTime?>("MinutesSentAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("PhotoContentType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PhotoFileName")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<long?>("PhotoSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("PhotoUploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PhotoUploadedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<DateTime>("StartAt")
                         .HasColumnType("datetime2");
 
@@ -126,6 +144,46 @@ namespace Platform.Infrastructure.Migrations
                     b.HasIndex("StartAt");
 
                     b.ToTable("Meeting");
+                });
+
+            modelBuilder.Entity("Meetings.MeetingDecision", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AssigneeNames")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("AssigneeUserIds")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DueAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDone")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MeetingId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MeetingId", "IsDone");
+
+                    b.ToTable("MeetingDecision");
                 });
 
             modelBuilder.Entity("Meetings.MeetingInvitee", b =>
@@ -527,6 +585,17 @@ namespace Platform.Infrastructure.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("Meetings.MeetingDecision", b =>
+                {
+                    b.HasOne("Meetings.Meeting", "Meeting")
+                        .WithMany("Decisions")
+                        .HasForeignKey("MeetingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Meeting");
+                });
+
             modelBuilder.Entity("Meetings.MeetingInvitee", b =>
                 {
                     b.HasOne("Meetings.Meeting", "Meeting")
@@ -602,6 +671,8 @@ namespace Platform.Infrastructure.Migrations
 
             modelBuilder.Entity("Meetings.Meeting", b =>
                 {
+                    b.Navigation("Decisions");
+
                     b.Navigation("Invitees");
 
                     b.Navigation("TimeProposals");

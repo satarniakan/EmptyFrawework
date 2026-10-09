@@ -41,8 +41,10 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys")));
 
-// هر لایه تنظیمات سرویس‌های خودش را رجیستر می‌کند؛ ماژول جلسات بعد از پایه می‌آید
-builder.Services.AddPlatform(builder.Configuration, builder.Environment.IsDevelopment());
+// هر لایه تنظیمات سرویس‌های خودش را رجیستر می‌کند؛ ماژول جلسات بعد از پایه می‌آید.
+// مایگریشن‌ها در همین مونتاژ میزبان‌اند (پوشهٔ Migrations) تا اسکیمای دامنه وارد پایه نشود.
+builder.Services.AddPlatform(builder.Configuration, builder.Environment.IsDevelopment(),
+    migrationsAssembly: typeof(Program).Assembly.GetName().Name);
 builder.Services.AddMeetingsModule();
 builder.Services.AddSampleWeb();
 

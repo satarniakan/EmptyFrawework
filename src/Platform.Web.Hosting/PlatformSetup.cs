@@ -22,10 +22,10 @@ public static class PlatformSetup
     /// ثبت سرویس‌ها: Application + Infrastructure + پیام‌رسانی + OTP + Outbox.
     /// </summary>
     public static IServiceCollection AddPlatform(this IServiceCollection services,
-        IConfiguration configuration, bool isDevelopment)
+        IConfiguration configuration, bool isDevelopment, string? migrationsAssembly = null)
     {
         services.AddPlatformApplication();
-        services.AddPlatformInfrastructure(configuration, isDevelopment);
+        services.AddPlatformInfrastructure(configuration, isDevelopment, migrationsAssembly);
 
         services.AddCascadingAuthenticationState();
 

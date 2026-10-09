@@ -20,7 +20,8 @@ public static class DependencyInjection
     /// (شامل کد OTP) لاگ می‌شود.
     /// </param>
     public static IServiceCollection AddPlatformInfrastructure(
-        this IServiceCollection services, IConfiguration configuration, bool isDevelopment = false)
+        this IServiceCollection services, IConfiguration configuration, bool isDevelopment = false,
+        string? migrationsAssembly = null)
     {
         services.AddDbContext<PlatformDbContext>(opt =>
         {
@@ -28,10 +29,20 @@ public static class DependencyInjection
             // ماژول‌دار را برای contextهای بدون ماژول هم برمی‌گرداند.
             opt.ReplaceService<IModelCacheKeyFactory, PlatformModelCacheKeyFactory>();
             opt.UseSqlServer(configuration.GetConnectionString("Default"),
-                sql => sql.EnableRetryOnFailure(
-                    maxRetryCount: 5,
-                    maxRetryDelay: TimeSpan.FromSeconds(10),
-                    errorNumbersToAdd: null));
+                sql =>
+                {
+                    sql.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(10),
+                        errorNumbersToAdd: null);
+
+                    // مایگریشن‌ها در مونتاژ میزبان‌اند نه پایه، تا اسکیمای دامنهٔ هر
+                    // پروژه وارد فریم‌ورک مشترک نشود. میزبان اسم مونتاژ خودش را می‌دهد:
+                    // AddPlatformInfrastructure(config, env.IsDevelopment(),
+                    //     migrationsAssembly: typeof(Program).Assembly.GetName().Name)
+                    if (!string.IsNullOrWhiteSpace(migrationsAssembly))
+                        sql.MigrationsAssembly(migrationsAssembly);
+                });
         });
 
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>

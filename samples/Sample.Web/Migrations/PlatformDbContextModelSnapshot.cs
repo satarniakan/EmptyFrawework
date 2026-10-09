@@ -8,7 +8,7 @@ using Platform.Infrastructure.Data;
 
 #nullable disable
 
-namespace Platform.Infrastructure.Migrations
+namespace Sample.Web.Migrations
 {
     [DbContext(typeof(PlatformDbContext))]
     partial class PlatformDbContextModelSnapshot : ModelSnapshot

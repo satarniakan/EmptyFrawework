@@ -3,42 +3,42 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Platform.Infrastructure.Migrations
+namespace Sample.Web.Migrations
 {
     /// <inheritdoc />
-    public partial class AddMeetingAudio : Migration
+    public partial class AddMeetingPhoto : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
-                name: "AudioContentType",
+                name: "PhotoContentType",
                 table: "Meeting",
                 type: "nvarchar(100)",
                 maxLength: 100,
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(
-                name: "AudioFileName",
+                name: "PhotoFileName",
                 table: "Meeting",
                 type: "nvarchar(260)",
                 maxLength: 260,
                 nullable: true);
 
             migrationBuilder.AddColumn<long>(
-                name: "AudioSizeBytes",
+                name: "PhotoSizeBytes",
                 table: "Meeting",
                 type: "bigint",
                 nullable: true);
 
             migrationBuilder.AddColumn<DateTime>(
-                name: "AudioUploadedAt",
+                name: "PhotoUploadedAt",
                 table: "Meeting",
                 type: "datetime2",
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(
-                name: "AudioUploadedByUserId",
+                name: "PhotoUploadedByUserId",
                 table: "Meeting",
                 type: "nvarchar(450)",
                 maxLength: 450,
@@ -49,23 +49,23 @@ namespace Platform.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "AudioContentType",
+                name: "PhotoContentType",
                 table: "Meeting");
 
             migrationBuilder.DropColumn(
-                name: "AudioFileName",
+                name: "PhotoFileName",
                 table: "Meeting");
 
             migrationBuilder.DropColumn(
-                name: "AudioSizeBytes",
+                name: "PhotoSizeBytes",
                 table: "Meeting");
 
             migrationBuilder.DropColumn(
-                name: "AudioUploadedAt",
+                name: "PhotoUploadedAt",
                 table: "Meeting");
 
             migrationBuilder.DropColumn(
-                name: "AudioUploadedByUserId",
+                name: "PhotoUploadedByUserId",
                 table: "Meeting");
         }
     }
