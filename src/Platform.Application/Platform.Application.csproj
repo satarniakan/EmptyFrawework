@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <PackageReference Include="ClosedXML" />
+    <!-- فقط برای عملیات ناهمگام روی IQueryable (ToPagedAsync). لایهٔ Domain همچنان بی‌خبر از EF است. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="QuestPDF" />
   </ItemGroup>
 

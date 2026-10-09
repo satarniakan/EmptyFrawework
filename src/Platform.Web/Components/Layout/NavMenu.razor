@@ -1,5 +1,6 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Platform.Web.Components.Layout
+@implements IDisposable
 @inject INavProvider NavProvider
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
@@ -53,20 +54,50 @@
     // شناسهٔ بخش‌های باز/بسته — به‌جای bool جدا برای هر بخش
     private readonly HashSet<string> openSections = new(StringComparer.Ordinal);
 
+    // مسیر جاری (بدون اسلش ابتدایی) — برای هایلایت لینک فعال و بازکردن سکشن مربوطه
+    private string currentPath = string.Empty;
+
     protected override void OnInitialized()
     {
+        currentPath = new Uri(NavigationManager.Uri).AbsolutePath.Trim('/');
+
         // حفظ «باز بودنِ بخش متناسب با مسیر جاری» هنگام ساخت کامپوننت
         // (مثلاً بعد از ریلود کامل صفحه‌ای مثل پروفایل)
-        var path = new Uri(NavigationManager.Uri).AbsolutePath.Trim('/');
         foreach (var item in NavProvider.GetRootItems())
         {
-            if (item.Children is null) continue;
-            if (item.Children.Any(c => c.Href is not null &&
-                                       path.StartsWith(c.Href, StringComparison.OrdinalIgnoreCase)))
-            {
+            if (MatchesPath(item))
                 openSections.Add(SectionKey(item));
-            }
         }
+
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    // پس از هر ناوبری، سکشن مقصد باز می‌شود تا لینک فعال دیده شود
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _ = InvokeAsync(() =>
+        {
+            currentPath = new Uri(e.Location).AbsolutePath.Trim('/');
+
+            foreach (var item in NavProvider.GetRootItems())
+            {
+                if (MatchesPath(item))
+                    openSections.Add(SectionKey(item));
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    /// <summary>آیا آدرس جاری داخل این آیتم (یا یکی از فرزندانش) می‌آید؟</summary>
+    private bool MatchesPath(NavItem item)
+    {
+        if (item.Href is not null &&
+            (currentPath.Equals(item.Href, StringComparison.OrdinalIgnoreCase) ||
+             currentPath.StartsWith(item.Href + "/", StringComparison.OrdinalIgnoreCase)))
+            return true;
+
+        return item.Children is not null && item.Children.Any(MatchesPath);
     }
 
     protected override async Task OnParametersSetAsync()
@@ -116,9 +147,10 @@
         // گروه بازشونده → سربرگ + زیرآیتم‌ها
         var key = SectionKey(item);
         var isOpen = openSections.Contains(key);
+        var isActive = MatchesPath(item);
 
         builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", "nav-section");
+        builder.AddAttribute(seq++, "class", isActive ? "nav-section active-section" : "nav-section");
 
         builder.OpenElement(seq++, "div");
         builder.AddAttribute(seq++, "class", "nav-section-header");
@@ -159,7 +191,12 @@
         if (!openSections.Remove(key)) openSections.Add(key);
     }
 
-    private static string SectionKey(NavItem item) => item.Title;
+    /// <summary>
+    /// شناسهٔ یکتا برای هر سکشن: مسیر ریشه‌اش، نه عنوانش — دو گروه با عنوان مشترک
+    /// نباید سکشن یکسان داشته باشند.
+    /// </summary>
+    private static string SectionKey(NavItem item) =>
+        item.Href ?? item.Children?.FirstOrDefault()?.Href ?? item.Title;
 
     private bool CanSee(NavItem item)
     {
@@ -180,4 +217,9 @@
     /// این را با یک سرویس جایگزین می‌کند؛ این نسخهٔ پیش‌فرض فقط مجوز دقیق را می‌سنجد.
     /// </summary>
     private static string? ViewOf(string permission) => null;
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
 }

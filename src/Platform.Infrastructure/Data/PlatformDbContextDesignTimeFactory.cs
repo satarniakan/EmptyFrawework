@@ -1,6 +1,7 @@
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Platform.Infrastructure.Data;
 
@@ -24,6 +25,7 @@ public class PlatformDbContextDesignTimeFactory : IDesignTimeDbContextFactory<Pl
             ?? "Server=(localdb)\\mssqllocaldb;Database=PlatformDev;Trusted_Connection=True;TrustServerCertificate=True";
 
         var options = new DbContextOptionsBuilder<PlatformDbContext>()
+            .ReplaceService<IModelCacheKeyFactory, PlatformModelCacheKeyFactory>()
             .UseSqlServer(connectionString)
             .Options;
 
@@ -107,7 +109,7 @@ public class PlatformDbContextDesignTimeFactory : IDesignTimeDbContextFactory<Pl
             }
         }
 
-        // پوشهٔ خروجی میزبان: همهٔ dllهای کنار هم (Sample.Module.dll، Meetings.dll و …).
+        // پوشهٔ خروجی میزبان: همهٔ dllهای کنار هم (Meetings.dll و ماژول‌های دامنهٔ دیگر).
         // وقتی dotnet ef با --startup-project اجرا شود، BaseDirectory همان پوشهٔ bin میزبان است.
         try
         {

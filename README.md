@@ -33,23 +33,23 @@ dotnet new list empty-platform
 
 ## گام ۲ — ساخت پروژهٔ جدید
 
-یک پوشهٔ **خالی** بسازید و قالب را داخلش باز کنید (اسم پروژه را به‌جای `MyShop` بگذارید):
+یک پوشهٔ **خالی** بسازید و قالب را داخلش باز کنید (اسم پروژه را به‌جای `MyProject` بگذارید):
 
 ```bash
-mkdir MyShop
-cd MyShop
-dotnet new empty-platform -n MyShop
+mkdir MyProject
+cd MyProject
+dotnet new empty-platform -n MyProject
 ```
 
 اگر اسم ماژول دامنهٔ نمونه را می‌خواهید عوض کنید:
 
 ```bash
-dotnet new empty-platform -n MyShop --SampleName Orders
+dotnet new empty-platform -n MyProject --SampleName Orders
 ```
 
 > ماژول نمونه (`samples/`) بخشی از خروجی قالب است. برای حذف کامل آن، پوشهٔ
 > `samples/` را پاک کنید و دو خط `<Project Path="samples/..." />` را از
-> `MyShop.slnx` بردارید؛ بقیهٔ پایه کاملاً مستقل بالا می‌آید.
+> `MyProject.slnx` بردارید؛ بقیهٔ پایه کاملاً مستقل بالا می‌آید.
 
 ## گام ۳ — تنظیم اتصال دیتابیس
 
@@ -61,8 +61,8 @@ dotnet new empty-platform -n MyShop --SampleName Orders
 ## گام ۴ — ساخت و تست
 
 ```bash
-dotnet build MyShop.slnx
-dotnet test tests/MyShop.Tests/MyShop.Tests.csproj
+dotnet build MyProject.slnx
+dotnet test tests/MyProject.Tests/MyProject.Tests.csproj
 ```
 
 هر دو باید سبز شوند. اگر قرمز شدند، همان خطا را بخوانید — معمولاً یا رشتهٔ اتصال
@@ -105,11 +105,11 @@ git push -u origin master
 | ۲ | ساختار منو | `INavProvider` |
 | ۳ | مدل EF دامنه + ریپازیتوری‌ها | `IPlatformModule` و `IDomainUnitOfWork : IPlatformUnitOfWork` |
 
-الگوی هر سه در `samples/Sample.Module` هست (ماژول «وظایف»). وقتی مدل دامنه را اضافه
+الگوی هر سه در `samples/Meetings` هست (ماژول «مدیریت جلسات»). وقتی مدل دامنه را اضافه
 کردید، مایگریشن تازه بسازید:
 
 ```bash
-dotnet ef migrations add <Name> --project src/MyShop.Infrastructure
+dotnet ef migrations add <Name> --project src/Platform.Infrastructure --startup-project samples/Sample.Web
 ```
 
 ## سامانهٔ مدیریت جلسات (ماژول `samples/Meetings`)
@@ -130,8 +130,8 @@ dotnet ef migrations add <Name> --project src/MyShop.Infrastructure
 می‌رود. اگر مدعو زمان دیگری پیشنهاد دهد، مسئول جلسه در کارتابلش خبر می‌شود؛ پذیرش
 پیشنهاد، زمان جلسه را جابه‌جا می‌کند و پاسخ‌های قبلی را به «در انتظار» برمی‌گرداند.
 
-جدول‌های جلسات با مایگریشن `AddMeetings` ساخته می‌شوند (جدول `WorkTask` ماژول نمونه هم
-که قبلاً جا مانده بود، همین‌جا جبران شده). برای مایگریشن‌های بعدیِ ماژول‌ها حتماً با
+جدول‌های جلسات با مایگریشن‌های `AddMeetings` به بعد ساخته می‌شوند.
+برای مایگریشن‌های بعدیِ ماژول‌ها حتماً با
 پروژهٔ میزبان بزنید تا ماژول‌ها وارد مدل شوند:
 
 ```bash
@@ -161,15 +161,14 @@ dotnet new install .
 | `src/Platform.Web` | کتابخانهٔ Razor: صفحات ورود/OTP/پروفایل/ادمین، `MainLayout`، `NavMenu` داده‌محور (`INavProvider`)، `Routes`، کامپوننت‌های `Shared/App*` |
 | `src/Platform.Web.Hosting` | زیرساخت اجرای پایه: `PlatformSetup` (ثبت سرویس‌ها، endpointها، سرویس‌های پس‌زمینه) + دارایی‌های سطح اپ (PWA، آیکون) |
 | `samples/Meetings` | ماژول دامنهٔ «مدیریت جلسات»: تعریف جلسه (حضوری/غیرحضوری)، دعوت با ایمیل/پیامک (Outbox) و اعلان کارتابل، داشبورد «جلسات من» (پذیرش/رد/پیشنهاد زمان)، حضور و غیاب و صورت‌جلسهٔ فارسی راست‌چین |
-| `samples/Sample.Module` | ماژول دامنهٔ نمونه: «وظایف» — هیچ ربطی به حسابداری ندارد؛ الگوی اتصال دامنه است |
-| `samples/Sample.Web` | میزبان نمونه که ثابت می‌کند پایه به‌تنهایی بالا می‌آید |
+| `samples/Sample.Web` | میزبان نمونه که پایه + ماژول جلسات را بالا می‌آورد |
 
 ## خطاهای پرتکرار
 
 | علامت | علت و راه‌حل |
 |---|---|
 | `dotnet new list` قالب را نشان نمی‌دهد | `dotnet new install .` را از داخل پوشهٔ `EmptyFrawework` اجرا کنید |
-| خروجی قالب پوشهٔ تودرتو ساخت (`MyShop/MyShop`) | طبیعی است (`preferNameDirectory`)؛ داخل پوشهٔ داخلی کار کنید |
+| خروجی قالب پوشهٔ تودرتو ساخت (`MyProject/MyProject`) | طبیعی است (`preferNameDirectory`)؛ داخل پوشهٔ داخلی کار کنید |
 | خطای اتصال SQL هنگام `run` | رشتهٔ اتصال در `appsettings.json` را چک کنید و مطمئن شوید SQL Server بالاست |
 | `dotnet-ef` شناخته نمی‌شود | گام پیش‌نیازها (نصب global) را انجام دهید |
 | خطای «رکورد ساختار پیکربندی» یا رشتهٔ اتصالِ خالی هنگام `run` | `samples/<Name>.Web/appsettings.json` ساخته نشده؛ از `appsettings.json.example` کپی کنید |

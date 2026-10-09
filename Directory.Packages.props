@@ -12,6 +12,7 @@
     <PackageVersion Include="QuestPDF" Version="2026.9.1" />
 
     <!-- Identity / EF Core — همه روی یک نسخه‌ی وصله -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Identity.Stores" Version="10.0.12" />
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.12" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
@@ -24,6 +25,7 @@
     <!-- تست -->
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.12" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="xunit" Version="2.9.3" />

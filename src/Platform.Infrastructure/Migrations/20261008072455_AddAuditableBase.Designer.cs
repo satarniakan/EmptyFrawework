@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Platform.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using Platform.Infrastructure.Data;
 namespace Platform.Infrastructure.Migrations
 {
     [DbContext(typeof(PlatformDbContext))]
-    partial class PlatformDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261008072455_AddAuditableBase")]
+    partial class AddAuditableBase
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

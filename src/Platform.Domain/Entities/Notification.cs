@@ -16,7 +16,7 @@ public class Notification
 
     public NotificationType Type { get; set; } = NotificationType.System;
 
-    /// <summary>لینک داخلی برای پرش مستقیم (مثلاً /shop/orders/5)</summary>
+    /// <summary>لینک داخلی برای پرش مستقیم (مثلاً /meetings/5)</summary>
     public string? LinkUrl { get; set; }
 
     public bool IsRead { get; set; }

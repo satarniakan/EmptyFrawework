@@ -19,21 +19,29 @@ public sealed class SamplePermissionCatalog : IPermissionCatalog
 }
 
 /// <summary>
-/// منوی سامانه.
+/// منوی سامانه — ترتیب گروه‌ها: عملیات روزمره، گزارش‌ها، مدیریت، سیستم.
 /// </summary>
 public sealed class SampleNavProvider : INavProvider
 {
     public IReadOnlyList<NavItem> GetRootItems() =>
     [
+        // عملیات روزمره — پرتکرارترین بخش در اول
         NavItem.Group("جلسات", "bi-calendar3",
             NavItem.Link("جلسات من", "my-meetings", "bi-calendar2-check"),
-            NavItem.Link("مدیریت جلسات", "meetings", "bi-calendar2-week", Meetings.MeetingPermissions.Manage),
-            NavItem.Link("گزارش جلسات", "meetings/report", "bi-bar-chart", Meetings.MeetingPermissions.Manage),
+            NavItem.Link("مدیریت جلسات", "meetings", "bi-calendar2-week", Meetings.MeetingPermissions.Manage)),
+
+        // گزارش‌ها — فقط برای دارندگان مجوز مدیریت جلسات
+        NavItem.Group("گزارش‌ها", "bi-bar-chart",
+            NavItem.Link("گزارش جلسات", "meetings/report", "bi-file-earmark-text", Meetings.MeetingPermissions.Manage),
             NavItem.Link("گزارش حضور", "meetings/attendance-report", "bi-people", Meetings.MeetingPermissions.Manage)),
+
+        // مدیریت کاربران، مجوزها و پیام‌رسانی
         NavItem.Group("مدیریت", "bi-shield-lock",
             NavItem.Link("کاربران", "admin/users", "bi-people", Roles.Admin),
             NavItem.Link("مجوز نقش‌ها", "admin/roles", "bi-key", Roles.Admin),
             NavItem.Link("اعلان سراسری", "admin/broadcast", "bi-megaphone", Roles.Admin)),
+
+        // سیستم — لاگ‌ها و تنظیمات حساب
         NavItem.Group("سیستم", "bi-gear",
             NavItem.Link("گزارش رویدادها", "audit-logs", "bi-journal-text", Roles.Admin),
             NavItem.Link("اعلان‌ها", "notifications", "bi-bell"),

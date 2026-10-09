@@ -44,5 +44,11 @@
     "//": "پشت reverse proxy این را false نگه دارید، وگرنه همهٔ کاربران یک IP می‌گیرند و rate limit همه را قفل می‌کند.",
     "TrustAllProxies": false
   },
-  "AllowedHosts": "*"
+  "AllowedHosts": "*",
+  "Storage": {
+    "//": "فعال‌سازی LocalFileStorage (لایه‌ی Infrastructure/Services) در محیط‌های Local/Development استفاده می‌شود؛ مقدار‌های خالی برای LocalFileStorage در محیط‌های واقعی قابل تنظیم است.",
+    "RootPath": "AppData",
+    "MaxFileSizeBytes": "52428800",
+    "AllowedExtensions": "jpg,jpeg,png,gif,bmp,webp,mp3,mp4,pdf,docx,xlsx,pptx,zip"
+  }
 }

@@ -117,7 +117,14 @@ public class MeetingServiceTests
     [Fact]
     public async Task RespondAsync_NotifiesMeetingCreator()
     {
-        var meeting = new Meeting { Id = 5, Title = "جلسهٔ آزمون", CreatedByUserId = "admin" };
+        var meeting = new Meeting
+        {
+            Id = 5,
+            Title = "جلسهٔ آزمون",
+            CreatedByUserId = "admin",
+            // گارد «زمان جلسه گذشته» در RespondAsync فعال است؛ جلسه باید آینده باشد
+            StartAt = Now.AddHours(1)
+        };
         var invitee = new MeetingInvitee { MeetingId = 5, UserId = "u1", Meeting = meeting };
         var (service, repo, _, notifications) = Build();
 

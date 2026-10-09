@@ -10,6 +10,7 @@ using Platform.Domain.Identity;
 using Platform.Infrastructure;
 using Platform.Infrastructure.Data;
 using Platform.Web;
+using Platform.Web.Hosting.Middleware;
 using Sample.Web;
 using Serilog;
 
@@ -70,6 +71,10 @@ if (builder.Configuration.GetValue<bool>("ForwardedHeaders:TrustAllProxies"))
 }
 app.UseForwardedHeaders(forwardedHeadersOptions);
 
+// مدیریت خطای سراسری — باید اولِ پایپ‌لاین باشد تا همهٔ خطاها را ببیند.
+// پیام فارسیِ امن + کد وضعیت درست؛ جزئیات فنی فقط در لاگ (و در Development در پاسخ).
+app.UsePlatformExceptionHandler();
+
 // اعمال خودکار مایگریشن‌های EF هنگام استارتاپ — دیگر فراموش نمی‌شوند
 using (var scope = app.Services.CreateScope())
 {
@@ -91,7 +96,6 @@ app.UseRequestLocalization(PlatformSetup.PersianLocalization());
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
     app.UseHsts();
 }
 

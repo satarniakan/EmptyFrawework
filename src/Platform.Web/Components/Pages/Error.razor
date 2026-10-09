@@ -1,32 +1,58 @@
 ﻿@page "/Error"
 @using System.Diagnostics
+@using Platform.Domain.Exceptions
+@using Platform.Web.Components.Shared
 
-<PageTitle>Error</PageTitle>
+<PageTitle>خطا</PageTitle>
 
-<h1 class="text-danger">Error.</h1>
-<h2 class="text-danger">An error occurred while processing your request.</h2>
+<div class="card-panel" style="max-width: 640px; margin: 2rem auto;">
+    <div class="text-center py-4">
+        <i class="bi bi-exclamation-triangle-fill text-danger d-block mb-3" style="font-size: 3rem;"></i>
 
-@if (ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@RequestId</code>
-    </p>
-}
+        @if (!string.IsNullOrEmpty(Message))
+        {
+            <h3 class="mb-2">@Message</h3>
+        }
+        else
+        {
+            <h3 class="mb-2">خطای غیرمنتظره‌ای رخ داد</h3>
+            <p class="text-body-secondary mb-0">لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.</p>
+        }
 
-<h3>Development Mode</h3>
-<p>
-    Swapping to <strong>Development</strong> environment will display more detailed information about the error that occurred.
-</p>
-<p>
-    <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
-    It can result in displaying sensitive information from exceptions to end users.
-    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
-    and restarting the app.
-</p>
+        @if (StatusCode is not null)
+        {
+            <p class="text-body-secondary small mt-3 mb-0">کد وضعیت: @StatusCode</p>
+        }
 
-@code{
+        @if (ShowRequestId)
+        {
+            <p class="text-body-secondary small mt-1 mb-0">
+                شناسهٔ درخواست: <code>@RequestId</code>
+            </p>
+        }
+
+        <div class="d-flex gap-2 justify-content-center mt-4">
+            <button class="btn btn-primary" onclick="window.location.href='/'">
+                <i class="bi bi-house-door me-1"></i>بازگشت به خانه
+            </button>
+            <button class="btn btn-outline-secondary" onclick="window.history.back()">
+                <i class="bi bi-arrow-right me-1"></i>بازگشت
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
+
+    /// <summary>پیام فارسیِ امن که مدیریت خطای سراسری فرستاده است.</summary>
+    [SupplyParameterFromQuery(Name = "message")]
+    private string? Message { get; set; }
+
+    /// <summary>کد وضعیت HTTP که به این صفحه منجر شده است.</summary>
+    [SupplyParameterFromQuery(Name = "code")]
+    private int? StatusCode { get; set; }
 
     private string? RequestId { get; set; }
     private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);

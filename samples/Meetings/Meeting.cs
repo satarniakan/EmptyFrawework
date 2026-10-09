@@ -1,3 +1,5 @@
+using Platform.Domain.Common;
+
 namespace Meetings;
 
 /// <summary>نوع برگزاری جلسه.</summary>
@@ -32,11 +34,14 @@ public enum ProposalStatus
 
 /// <summary>
 /// یک جلسه. زمان‌ها UTC ذخیره می‌شوند و در UI با <c>PersianDateHelper</c> شمسی نمایش داده می‌شوند.
+/// <para>
+/// شناسه، سازنده، زمان ایجاد/ویرایش و حذف نرم از <see cref="AuditableEntity"/> می‌آید.
+/// کل خانوادهٔ جلسات از همین پایه ارث می‌برند تا حذف نرمِ یک جلسه، فرزندانش را هم
+/// بپوشاند و رکورد یتیم ساخته نشود.
+/// </para>
 /// </summary>
-public class Meeting
+public class Meeting : AuditableEntity
 {
-    public int Id { get; set; }
-
     /// <summary>موضوع جلسه.</summary>
     public string Title { get; set; } = string.Empty;
 
@@ -53,11 +58,6 @@ public class Meeting
 
     /// <summary>زمان برگزاری (UTC).</summary>
     public DateTime StartAt { get; set; }
-
-    /// <summary>کاربر ادمینی که جلسه را تعریف کرده (IdentityUser.Id).</summary>
-    public string CreatedByUserId { get; set; } = string.Empty;
-
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>صورت‌جلسه (HTML راست‌چین از ویرایشگر) — پس از «ارسال» برای اعضا در کارتابل می‌رود.</summary>
     public string? MinutesHtml { get; set; }
@@ -88,9 +88,8 @@ public class Meeting
 /// <summary>
 /// یک بند مصوبهٔ جلسه: متن، مسئول(ین) اقدام (از بین مدعوین و/یا نام آزاد) و مهلت اقدام.
 /// </summary>
-public class MeetingDecision
+public class MeetingDecision : AuditableEntity
 {
-    public int Id { get; set; }
     public int MeetingId { get; set; }
     public Meeting? Meeting { get; set; }
 
@@ -108,14 +107,11 @@ public class MeetingDecision
 
     /// <summary>آیا انجام شده است؟</summary>
     public bool IsDone { get; set; }
-
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 /// <summary>دعوت‌نامهٔ یک کاربر به یک جلسه.</summary>
-public class MeetingInvitee
+public class MeetingInvitee : AuditableEntity
 {
-    public int Id { get; set; }
     public int MeetingId { get; set; }
     public Meeting? Meeting { get; set; }
 
@@ -130,9 +126,8 @@ public class MeetingInvitee
 }
 
 /// <summary>پیشنهاد زمان جدید از سوی یک مدعو.</summary>
-public class MeetingTimeProposal
+public class MeetingTimeProposal : AuditableEntity
 {
-    public int Id { get; set; }
     public int MeetingId { get; set; }
     public Meeting? Meeting { get; set; }
 
@@ -145,6 +140,6 @@ public class MeetingTimeProposal
     public string? Note { get; set; }
 
     public ProposalStatus Status { get; set; } = ProposalStatus.Pending;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
     public DateTime? DecidedAt { get; set; }
 }

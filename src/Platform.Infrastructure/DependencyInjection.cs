@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Platform.Domain.Identity;
 using Platform.Domain.Interfaces;
@@ -21,11 +23,16 @@ public static class DependencyInjection
         this IServiceCollection services, IConfiguration configuration, bool isDevelopment = false)
     {
         services.AddDbContext<PlatformDbContext>(opt =>
+        {
+            // مدلِ این context به ماژول‌های دامنه بستگی دارد؛ بدون این، EF مدلِ هر
+            // ماژول‌دار را برای contextهای بدون ماژول هم برمی‌گرداند.
+            opt.ReplaceService<IModelCacheKeyFactory, PlatformModelCacheKeyFactory>();
             opt.UseSqlServer(configuration.GetConnectionString("Default"),
                 sql => sql.EnableRetryOnFailure(
                     maxRetryCount: 5,
                     maxRetryDelay: TimeSpan.FromSeconds(10),
-                    errorNumbersToAdd: null)));
+                    errorNumbersToAdd: null));
+        });
 
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>
         {
@@ -54,6 +61,15 @@ public static class DependencyInjection
         services.AddScoped<IOtpRepository, OtpCodeRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IOutboxRepository, OutboxRepository>();
+
+        // «چه کسی ساخت/ویرایش کرد» روی همهٔ AuditableEntityها ثبت می‌شود.
+        // AddHttpContextAccessor لازم است؛ بیرون از درخواست HTTP مقدار null برمی‌گردد.
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUser, HttpContextCurrentUser>();
+        services.AddScoped<IFileStorage, LocalFileStorage>();
+
+        // منبع زمان مشترک — سرویس‌ها و DbContext همگی از همین می‌خوانند تا در تست قابل ثابت‌کردن باشد
+        services.TryAddSingleton(TimeProvider.System);
 
         // پیامک: بر اساس «Sms:Provider» — Kavenegar واقعی یا Fake.
         // FakeSmsSender فقط در Development متن پیامک (شامل کد OTP) را لاگ می‌کند.

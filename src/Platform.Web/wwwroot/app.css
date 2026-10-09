@@ -870,6 +870,12 @@ main {
         color: #fff;
     }
 
+/* سکشنی که مسیر جاری داخل آن است — سربرگش پررنگ‌تر دیده می‌شود */
+.sidebar .nav-section.active-section > .nav-section-header {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
 .sidebar .nav-section-title {
     display: flex;
     align-items: center;
