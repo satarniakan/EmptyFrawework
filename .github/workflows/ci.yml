@@ -24,3 +24,29 @@ jobs:
 
       - name: Test
         run: dotnet test Platform.slnx --no-build -c Release --verbosity normal
+
+  # مهم‌ترین تست ریپو: خروجی قالب باید بسازد و سبز باشد. بدون این، قالب می‌تواند
+  # بشکند در حالی که build/test خودِ ریپو سبز است.
+  template-roundtrip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install template
+        run: dotnet new install .
+
+      - name: Scaffold new project
+        run: |
+          mkdir Smoke && cd Smoke
+          dotnet new empty-platform -n Smoke
+
+      - name: Build generated project
+        run: dotnet build Smoke/Smoke/Smoke.slnx -c Release
+
+      - name: Test generated project
+        run: dotnet test Smoke/Smoke/tests/Smoke.Tests/Smoke.Tests.csproj -c Release

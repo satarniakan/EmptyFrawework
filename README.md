@@ -41,7 +41,7 @@ cd MyProject
 dotnet new empty-platform -n MyProject
 ```
 
-اگر اسم ماژول دامنهٔ نمونه را می‌خواهید عوض کنید:
+اگر اسم پروژهٔ میزبان نمونه را می‌خواهید عوض کنید (نه ماژول جلسات — آن `Meetings` می‌ماند):
 
 ```bash
 dotnet new empty-platform -n MyProject --SampleName Orders
@@ -109,7 +109,7 @@ git push -u origin master
 کردید، مایگریشن تازه بسازید:
 
 ```bash
-dotnet ef migrations add <Name> --project src/Platform.Infrastructure --startup-project samples/Sample.Web
+dotnet ef migrations add <Name> --project samples/Sample.Web --startup-project samples/Sample.Web
 ```
 
 ## سامانهٔ مدیریت جلسات (ماژول `samples/Meetings`)
@@ -130,12 +130,13 @@ dotnet ef migrations add <Name> --project src/Platform.Infrastructure --startup-
 می‌رود. اگر مدعو زمان دیگری پیشنهاد دهد، مسئول جلسه در کارتابلش خبر می‌شود؛ پذیرش
 پیشنهاد، زمان جلسه را جابه‌جا می‌کند و پاسخ‌های قبلی را به «در انتظار» برمی‌گرداند.
 
-جدول‌های جلسات با مایگریشن‌های `AddMeetings` به بعد ساخته می‌شوند.
-برای مایگریشن‌های بعدیِ ماژول‌ها حتماً با
+جدول‌های جلسات با مایگریشن‌های `AddMeetings` به بعد ساخته می‌شوند — همهٔ مایگریشن‌ها
+در پوشهٔ `samples/Sample.Web/Migrations` خودِ میزبان‌اند، نه در پایه؛ پس اسکیمای دامنهٔ
+شما هرگز وارد فریم‌ورک مشترک نمی‌شود. برای مایگریشن‌های بعدیِ ماژول‌ها حتماً با
 پروژهٔ میزبان بزنید تا ماژول‌ها وارد مدل شوند:
 
 ```bash
-dotnet ef migrations add <Name> --project src/Platform.Infrastructure --startup-project samples/Sample.Web
+dotnet ef migrations add <Name> --project samples/Sample.Web --startup-project samples/Sample.Web
 ```
 
 ## به‌روزرسانی قالب در آینده
@@ -155,13 +156,13 @@ dotnet new install .
 
 | مسیر | نقش |
 |---|---|
-| `src/Platform.Domain` | هویت (`ApplicationUser`)، مجوز (`Permissions` فقط `ClaimType` دارد)، نقش‌های پایه + `IPermissionCatalog`، انتیتی‌های پایه (AuditLog، OtpCode، OutboxMessage، Notification)، `IPlatformUnitOfWork` |
-| `src/Platform.Application` | سرویس‌های پایه (Auth، Otp، Audit، Permission، UserAdmin، Notification، Outbox) + Helpers فارسی + Exports اکسل/PDF |
-| `src/Platform.Infrastructure` | `PlatformDbContext` (ماژولار با `IPlatformModule`) + `PlatformUnitOfWork`، `RoleSeeder`، فرستنده‌های پیامک/ایمیل |
-| `src/Platform.Web` | کتابخانهٔ Razor: صفحات ورود/OTP/پروفایل/ادمین، `MainLayout`، `NavMenu` داده‌محور (`INavProvider`)، `Routes`، کامپوننت‌های `Shared/App*` |
-| `src/Platform.Web.Hosting` | زیرساخت اجرای پایه: `PlatformSetup` (ثبت سرویس‌ها، endpointها، سرویس‌های پس‌زمینه) + دارایی‌های سطح اپ (PWA، آیکون) |
-| `samples/Meetings` | ماژول دامنهٔ «مدیریت جلسات»: تعریف جلسه (حضوری/غیرحضوری)، دعوت با ایمیل/پیامک (Outbox) و اعلان کارتابل، داشبورد «جلسات من» (پذیرش/رد/پیشنهاد زمان)، حضور و غیاب و صورت‌جلسهٔ فارسی راست‌چین |
-| `samples/Sample.Web` | میزبان نمونه که پایه + ماژول جلسات را بالا می‌آورد |
+| `src/Platform.Domain` | هویت (`ApplicationUser`)، مجوز (`Permissions` فقط `ClaimType` دارد)، نقش‌های پایه + `IPermissionCatalog`، قراردادهای زیرساخت (`IFileStorage`، `ISmsSender`، `IEmailSender`، `IPaymentGateway`، `ICaptchaValidator`)، انتیتی‌های پایه (AuditLog، OtpCode، OtpThrottle، OutboxMessage، Notification، Setting، Payment، ApiToken، LoginHistory، PushSubscription)، `IPlatformUnitOfWork`، جست‌وجوی فارسی (`PersianSearch`) |
+| `src/Platform.Application` | سرویس‌های پایه (Auth، Otp، Audit، Permission، UserAdmin، Notification، Outbox، ApiToken، LoginHistory، Setting، NumberSeries، Payment، Push، Impersonation) + Helpers فارسی + Exports اکسل/PDF + ایمپورت اکسل + ترجمهٔ یکتای خطا (`ExceptionTranslator`) + کارهای تکرارشونده (`IRecurringJob`) |
+| `src/Platform.Infrastructure` | `PlatformDbContext` (ماژولار با `IPlatformModule`) + `PlatformUnitOfWork` (تراکنش واقعی)، `RoleSeeder`، فرستنده‌های پیامک/ایمیل، درگاه زرین‌پال، Turnstile، وب‌پوش VAPID — بدون هیچ مایگریشن (مال میزبان است) |
+| `src/Platform.Web` | کتابخانهٔ Razor: صفحات ورود/OTP/پروفایل/نشست‌ها/ادمین/تنظیمات/نتیجهٔ پرداخت، `MainLayout` (بنر جانشینی)، `NavMenu` داده‌محور (`INavProvider`)، `Routes`، کامپوننت‌های `Shared/App*` + دکمهٔ وب‌پوش |
+| `src/Platform.Web.Hosting` | زیرساخت اجرای پایه: `PlatformSetup` (ثبت سرویس‌ها، endpointها، policyهای خودکار از کاتالوگ، احراز هویت توکن API، سرویس‌های پس‌زمینه) + دارایی‌های سطح اپ (PWA، آیکون) |
+| `samples/Meetings` | ماژول دامنهٔ «مدیریت جلسات»: تعریف جلسه (حضوری/غیرحضوری)، دعوت با ایمیل/پیامک (Outbox) و اعلان کارتابل، داشبورد «جلسات من» (پذیرش/رد/پیشنهاد زمان)، حضور و غیاب و صورت‌جلسهٔ فارسی راست‌چین، ایمپورت مدعوین از اکسل، یادآوری خودکار (`MeetingReminderJob`) |
+| `samples/Sample.Web` | میزبان نمونه که پایه + ماژول جلسات را بالا می‌آورد؛ مایگریشن‌ها (`Migrations/`) و فکتوری design-time اینجاست |
 
 ## خطاهای پرتکرار
 
@@ -294,6 +295,8 @@ libman restore
 | bootstrap-icons | ۱.۱۱.۳ | `src/Platform.Web/wwwroot/lib/bootstrap-icons` |
 | QuestPDF | ۲۰۲۶.۹.۱ | `Directory.Packages.props` |
 | ClosedXML | ۰.۱۰۴.۲ | `Directory.Packages.props` |
+| HtmlSanitizer | ۹.۲.۱۰۳۹ | `Directory.Packages.props` |
+| WebPush | ۱.۰.۱۳ | `Directory.Packages.props` |
 | xunit | ۲.۹.۳ | `Directory.Packages.props` |
 
 ### ۵. خودکارسازی
@@ -315,6 +318,36 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 5
 ```
+
+## اجرای سریع با داکر (بدون نصب SQL Server)
+
+```bash
+docker compose up --build
+```
+
+مرورگر: `http://localhost:8080`. رمز dev دیتابیس و بقیه مقادیر داخل `docker-compose.yml`
+هست؛ `Identity:FirstAdminPhoneNumber` را همان‌جا با شمارهٔ خودتان پر کنید تا با اولین
+ورود ادمین شوید.
+
+## قابلیت‌های پایه (راهنمای تنظیمات)
+
+همه از `appsettings.json` (الگو: `appsettings.json.example`) تنظیم می‌شوند:
+
+| بخش | کلیدها | توضیح |
+|---|---|---|
+| `Sms` | `Provider`: `Fake`/`Kavenegar` | پیامک نمایشی (لاگ) یا واقعی |
+| `Email:Smtp` | `Host`، `Port`، … | `Host` خالی یعنی ارسال با خطا در Outbox ثبت می‌شود |
+| `Payment` | `Provider`: `Fake`/`ZarinPal` | شروع: `POST /api/v1/payments`؛ برگشت: `/payments/callback` |
+| `Captcha` | `Provider`: `Turnstile`/`Fake`/خالی | کپچای مسیر درخواست OTP؛ ویجت لاگین خودکار می‌آید |
+| `Push:Vapid` | `Subject`، `PublicKey`، `PrivateKey` | وب‌پوش؛ ساخت کلید: `npx web-push generate-vapid-keys` |
+| `ApiTokens` | `LifetimeDays` (پیش‌فرض ۱۸۰) | عمر توکن موبایل؛ ورود موبایل: `POST /api/v1/auth/otp/verify` |
+| `Support` | `ImpersonationEnabled` | جانشینی ادمین (پیش‌فرض خاموش) |
+| `Storage` | `RootPath`، `MaxFileSizeBytes`، `AllowedExtensions` | فایل‌استوریج محلی |
+
+نقاط توسعهٔ دامنه (بدون ویرایش پایه): `IPermissionCatalog` (مجوز ← policy خودکار)،
+`INavProvider` (منو)، `ISettingCatalog` (تنظیمات قابل‌ویرایش)، `IPlatformModule`
+(جدول‌های EF)، `IRecurringJob` (کار دوره‌ای)، `INumberSeries` (شمارهٔ سند)،
+`ExcelImporter` (ایمپورت با خطای سطری)، `IPaymentGateway` (درگاه جدید).
 
 ## قراردادها
 

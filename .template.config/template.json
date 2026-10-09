@@ -14,6 +14,9 @@
   },
   "sourceName": "Platform",
   "preferNameDirectory": true,
+  "guids": [
+    "3f6d1c2a-0000-4000-8000-000000000001"
+  ],
   "symbols": {
     "SampleName": {
       "type": "parameter",
@@ -32,6 +35,7 @@
         ".idea/**",
         "**/bin/**",
         "**/obj/**",
+        ".template.config/**",
         "artifacts/**",
         "TestResults/**",
         "content/**",
