@@ -72,6 +72,17 @@
                             <div class="d-inline-flex gap-1">
                                 <a href="/admin/users/@u.UserId" class="btn btn-sm btn-outline-primary">تغییر نقش</a>
                                 <a href="/admin/users/@u.UserId/edit" class="btn btn-sm btn-outline-secondary">ویرایش</a>
+                                @if (impersonationEnabled && u.UserId != currentUserId)
+                                {
+                                    <form action="/admin/impersonate" method="post" data-enhance="false" class="d-inline">
+                                        <AntiforgeryToken />
+                                        <input type="hidden" name="userId" value="@u.UserId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-warning"
+                                                title="ورود به‌جای این کاربر (ثبت می‌شود)">
+                                            جانشینی
+                                        </button>
+                                    </form>
+                                }
                                 <button class="btn btn-sm btn-outline-danger" disabled="@(u.UserId == currentUserId)"
                                         @onclick="@(async () => await AskDelete(u))">حذف</button>
                             </div>
@@ -97,16 +108,19 @@
     private int currentPage = 1;
     private const int PageSize = 20;
     private string? currentUserId;
+    private bool impersonationEnabled;
     private AppConfirmDialog confirmDialog = default!;
 
     [Inject] private IUserAdminService UserAdminService { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
     [Inject] private Platform.Web.Services.ToastService ToastService { get; set; } = default!;
+    [Inject] private IConfiguration Configuration { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         currentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        impersonationEnabled = Configuration.GetValue("Support:ImpersonationEnabled", false);
         await LoadAsync();
     }
 

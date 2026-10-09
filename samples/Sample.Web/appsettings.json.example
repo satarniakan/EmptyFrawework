@@ -69,6 +69,10 @@
     "//": "عمر توکن موبایل به روز.",
     "LifetimeDays": 180
   },
+  "Support": {
+    "//": "جانشینی ادمین (ورود به‌جای کاربر). پیش‌فرض خاموش؛ فقط برای پشتیبانی روشن کنید.",
+    "ImpersonationEnabled": false
+  },
   "ForwardedHeaders": {
     "//": "پشت reverse proxy این را false نگه دارید، وگرنه همهٔ کاربران یک IP می‌گیرند و rate limit همه را قفل می‌کند.",
     "TrustAllProxies": false

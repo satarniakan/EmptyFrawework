@@ -208,6 +208,11 @@ public class AuthService : IAuthService
 
         if (string.IsNullOrWhiteSpace(password)) return new ProfileUpdateResult(ProfileUpdateStatus.Success);
 
+        // نشست جانشین حق تعیین رمزِ کاربر را ندارد — وگرنه ادمین پشتیبانی می‌توانست
+        // برای همیشه راه ورود رمزی به حساب کاربر باز کند
+        if (_httpContext.HttpContext?.User.HasClaim(c => c.Type == ImpersonationClaims.Impersonator) == true)
+            return new ProfileUpdateResult(ProfileUpdateStatus.ImpersonationBlocked);
+
         if (await _userManager.HasPasswordAsync(user))
             return new ProfileUpdateResult(ProfileUpdateStatus.PasswordAlreadySet);
 

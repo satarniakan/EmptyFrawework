@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<INumberSeries, NumberSeries>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IPushNotificationService, PushNotificationService>();
+        services.AddScoped<IImpersonationService, ImpersonationService>();
 
         return services;
     }

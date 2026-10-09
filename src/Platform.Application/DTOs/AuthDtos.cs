@@ -13,7 +13,10 @@ public enum ProfileUpdateStatus
     EmailUpdateFailed,
     PasswordAlreadySet,
     PasswordMismatch,
-    PasswordUpdateFailed
+    PasswordUpdateFailed,
+
+    /// <summary>نشست جانشین (ادمینِ به‌جای کاربر) حق تعیین رمز ندارد.</summary>
+    ImpersonationBlocked
 }
 
 public record ProfileUpdateResult(ProfileUpdateStatus Status);

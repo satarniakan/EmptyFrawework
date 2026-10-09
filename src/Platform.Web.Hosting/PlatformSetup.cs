@@ -120,6 +120,7 @@ public static class PlatformSetup
         app.MapAuthApiEndpoints();
         app.MapPaymentEndpoints();
         app.MapPushEndpoints();
+        app.MapImpersonationEndpoints();
         return app;
     }
 

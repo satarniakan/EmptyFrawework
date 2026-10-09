@@ -11,6 +11,26 @@
     </div>
 
     <main>
+        <AuthorizeView>
+            <Authorized>
+                @{
+                    var impersonatedName = context.User.FindFirst(Platform.Domain.Identity.ImpersonationClaims.ImpersonatedName)?.Value;
+                }
+                @if (!string.IsNullOrWhiteSpace(impersonatedName))
+                {
+                    <div class="alert alert-warning d-flex align-items-center justify-content-between mb-0 rounded-0 border-start-0 border-end-0" role="alert">
+                        <span>
+                            <i class="bi bi-person-exclamation me-1"></i>
+                            حالت جانشینی: شما به‌جای «@impersonatedName» وارد شده‌اید. تغییرات شما ثبت می‌شود.
+                        </span>
+                        <form action="/admin/impersonate/stop" method="post" data-enhance="false" class="mb-0">
+                            <AntiforgeryToken />
+                            <button type="submit" class="btn btn-sm btn-outline-dark">بازگشت به حساب خودم</button>
+                        </form>
+                    </div>
+                }
+            </Authorized>
+        </AuthorizeView>
         <div class="top-row px-4">
             <AuthorizeView>
                 <Authorized>
