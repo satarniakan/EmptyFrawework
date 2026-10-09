@@ -45,6 +45,7 @@ public sealed class SampleNavProvider : INavProvider
         NavItem.Group("سیستم", "bi-gear",
             NavItem.Link("گزارش رویدادها", "audit-logs", "bi-journal-text", Roles.Admin),
             NavItem.Link("اعلان‌ها", "notifications", "bi-bell"),
+            NavItem.Link("نشست‌های فعال", "sessions", "bi-phone"),
             NavItem.Link("پروفایل", "profile", "bi-person"))
     ];
 }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -25,6 +26,8 @@ public class AuthService : IAuthService
     private readonly IOtpService _otpService;
     private readonly ILogger<AuthService> _logger;
     private readonly INotificationService _notifications;
+    private readonly ILoginHistoryService _history;
+    private readonly IHttpContextAccessor _httpContext;
     private readonly string? _firstAdminPhoneNumber;
 
     public AuthService(
@@ -32,6 +35,8 @@ public class AuthService : IAuthService
         SignInManager<ApplicationUser> signInManager,
         IOtpService otpService,
         INotificationService notifications,
+        ILoginHistoryService history,
+        IHttpContextAccessor httpContext,
         IConfiguration configuration,
         ILogger<AuthService> logger)
     {
@@ -39,19 +44,30 @@ public class AuthService : IAuthService
         _signInManager = signInManager;
         _otpService = otpService;
         _notifications = notifications;
+        _history = history;
+        _httpContext = httpContext;
         _logger = logger;
         // شمارهٔ ادمین اول فقط از تنظیمات «Identity:FirstAdminPhoneNumber» خوانده می‌شود.
         // اگر تنظیم نباشد، هیچ شماره‌ای خودکار نقش Admin نمی‌گیرد.
         _firstAdminPhoneNumber = configuration["Identity:FirstAdminPhoneNumber"];
     }
 
+    private (string? Ip, string? UserAgent) RequestInfo()
+    {
+        var http = _httpContext.HttpContext;
+        return (http?.Connection.RemoteIpAddress?.ToString(),
+            http?.Request.Headers.UserAgent.ToString());
+    }
+
     public async Task<PasswordLoginResult> LoginWithPasswordAsync(string userName, string password)
     {
+        var (ip, userAgent) = RequestInfo();
         var user = await FindByUserNameOrEmailAsync(userName);
 
         if (user is null)
         {
             _logger.LogWarning("Login failed: no user found for {UserName}", userName);
+            await _history.RecordAsync(null, userName, false, "Password", ip, userAgent, "invalid-credentials");
             return new PasswordLoginResult(false);
         }
 
@@ -60,8 +76,14 @@ public class AuthService : IAuthService
 
         if (!result.Succeeded)
         {
+            var reason = result.IsLockedOut ? "locked-out" : "invalid-credentials";
             _logger.LogWarning("Login failed for {UserName}: {Reason}", userName,
                 result.IsLockedOut ? "locked out" : result.IsNotAllowed ? "not allowed" : "invalid password");
+            await _history.RecordAsync(user.Id, userName, false, "Password", ip, userAgent, reason);
+        }
+        else
+        {
+            await _history.RecordAsync(user.Id, userName, true, "Password", ip, userAgent);
         }
 
         return new PasswordLoginResult(result.Succeeded);
@@ -71,8 +93,13 @@ public class AuthService : IAuthService
 
     public async Task<OtpVerificationResult> VerifyOtpAsync(string phoneNumber, string code)
     {
+        var (ip, userAgent) = RequestInfo();
+
         if (!await _otpService.VerifyOtpAsync(phoneNumber, code))
+        {
+            await _history.RecordAsync(null, phoneNumber, false, "Otp", ip, userAgent, "invalid-otp");
             return new OtpVerificationResult(false, false);
+        }
 
         var user = await _userManager.FindByNameAsync(phoneNumber);
         var isNewUser = user is null;
@@ -101,6 +128,7 @@ public class AuthService : IAuthService
                 {
                     _logger.LogWarning("User creation failed for {PhoneNumber}: {Errors}",
                         phoneNumber, string.Join(" | ", createResult.Errors.Select(e => e.Description)));
+                    await _history.RecordAsync(null, phoneNumber, false, "Otp", ip, userAgent, "user-creation-failed");
                     return new OtpVerificationResult(false, false);
                 }
             }
@@ -120,6 +148,7 @@ public class AuthService : IAuthService
         }
 
         await _signInManager.SignInAsync(user, isPersistent: true);
+        await _history.RecordAsync(user.Id, phoneNumber, true, "Otp", ip, userAgent);
         return new OtpVerificationResult(true, isNewUser);
     }
 

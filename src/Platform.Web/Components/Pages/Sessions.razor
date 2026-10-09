@@ -1,0 +1,170 @@
+@* Platform.Web/Components/Pages/Sessions.razor *@
+@page "/sessions"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Platform.Application.Services
+@using Platform.Domain.Entities
+<PageTitle>نشست‌های فعال</PageTitle>
+
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">نشست‌های فعال</h3>
+        <div class="text-body-secondary small">توکن‌های API صادرشده برای گوشی و دستگاه‌های شما — هر کدام را می‌توانید لغو کنید</div>
+    </div>
+    @if (tokens is { Count: > 1 })
+    {
+        <button class="btn btn-sm btn-outline-danger" @onclick="RevokeAllAsync">خروج از همهٔ دستگاه‌ها</button>
+    }
+</div>
+
+<div class="card-panel mb-3">
+    @if (tokens is null)
+    {
+        <LoadingSkeleton />
+    }
+    else if (tokens.Count == 0)
+    {
+        <div class="text-center text-body-secondary py-4">
+            <i class="bi bi-phone fs-3 d-block mb-2"></i>
+            <span class="small">هیچ توکن فعالی ندارید. ورود از اپ موبایل، اینجا نشست می‌سازد.</span>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>دستگاه</th>
+                    <th>صدور</th>
+                    <th>آخرین استفاده</th>
+                    <th>انقضا</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in tokens)
+                {
+                    <tr>
+                        <td>@(string.IsNullOrWhiteSpace(t.DeviceName) ? "نامشخص" : t.DeviceName)</td>
+                        <td>@ToPersian(t.CreatedAtUtc)</td>
+                        <td>@(t.LastUsedAtUtc is null ? "هنوز استفاده نشده" : ToPersian(t.LastUsedAtUtc.Value))</td>
+                        <td>@ToPersian(t.ExpiresAtUtc)</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RevokeAsync(t.Id)">لغو</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        </div>
+    }
+</div>
+
+<div class="card-panel">
+    <h5 class="mb-3">ورودهای اخیر</h5>
+    @if (history is null)
+    {
+        <LoadingSkeleton />
+    }
+    else if (history.Count == 0)
+    {
+        <div class="text-center text-body-secondary py-4 small">موردی ثبت نشده است.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>زمان</th>
+                    <th>روش</th>
+                    <th>نتیجه</th>
+                    <th>آدرس</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var h in history)
+                {
+                    <tr>
+                        <td>@ToPersian(h.OccurredAtUtc)</td>
+                        <td>@MethodLabel(h.Method)</td>
+                        <td>
+                            @if (h.Succeeded)
+                            {
+                                <span class="badge text-bg-success">موفق</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-danger">ناموفق</span>
+                            }
+                        </td>
+                        <td class="small">@(h.IpAddress ?? "—")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        </div>
+    }
+</div>
+
+@code {
+    private List<UserApiToken>? tokens;
+    private List<LoginHistory>? history;
+    private string? userId;
+
+    [Inject] private IApiTokenService Tokens { get; set; } = default!;
+    [Inject] private Platform.Domain.Interfaces.ILoginHistoryRepository History { get; set; } = default!;
+    [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
+    [Inject] private Platform.Web.Services.ToastService Toast { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null) return;
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        tokens = await Tokens.GetActiveAsync(userId!);
+        history = await History.GetRecentForUserAsync(userId!, 20);
+    }
+
+    private async Task RevokeAsync(int id)
+    {
+        if (await Tokens.RevokeAsync(id, userId!))
+        {
+            Toast.ShowSuccess("توکن لغو شد.");
+            await LoadAsync();
+        }
+        else
+        {
+            Toast.ShowError("لغو توکن ناموفق بود.");
+        }
+    }
+
+    private async Task RevokeAllAsync()
+    {
+        var count = await Tokens.RevokeAllAsync(userId!);
+        Toast.ShowSuccess($"{count} نشست لغو شد.");
+        await LoadAsync();
+    }
+
+    private static string ToPersian(DateTime utc) =>
+        Platform.Application.Helpers.PersianDateHelper.ToPersianDateTime(utc);
+
+    private static string MethodLabel(string method) => method switch
+    {
+        "Password" => "رمز عبور",
+        "Otp" => "کد پیامکی",
+        "ApiToken" => "توکن موبایل",
+        "DevLogin" => "ورود توسعه",
+        "Impersonation" => "جانشینی ادمین",
+        _ => method
+    };
+}

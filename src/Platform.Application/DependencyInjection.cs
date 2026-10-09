@@ -21,6 +21,8 @@ public static class DependencyInjection
         services.AddScoped<IUserAdminService, UserAdminService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IOutboxService, OutboxService>();
+        services.AddScoped<IApiTokenService, ApiTokenService>();
+        services.AddScoped<ILoginHistoryService, LoginHistoryService>();
 
         return services;
     }

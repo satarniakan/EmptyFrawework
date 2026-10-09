@@ -6,7 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Platform.Application;
 using Platform.Infrastructure;
 using Platform.Infrastructure.Data;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Platform.Web.Authentication;
 using Platform.Web.Authorization;
 using Platform.Web.Endpoints;
 using Platform.Web.Services;
@@ -34,7 +36,15 @@ public static class PlatformSetup
         // پایه خودش سرویس‌های مجوزدهی را ثبت می‌کند تا به «تصادفی» بودنِ
         // AddRazorComponents در میزبان وابسته نباشد (وگرنه هر میزبانی که
         // Razor Components اضافه نکند، هنگام UseAuthorization خطا می‌گیرد).
-        services.AddAuthorization();
+        services.AddAuthentication()
+            .AddScheme<AuthenticationSchemeOptions, ApiTokenAuthenticationHandler>(
+                ApiTokenAuthenticationHandler.SchemeName, displayName: "API Token", configureOptions: _ => { });
+
+        services.AddAuthorizationBuilder()
+            // endpointهای API موبایل: فقط توکن، نه کوکی
+            .AddPolicy("Api", policy => policy
+                .AddAuthenticationSchemes(ApiTokenAuthenticationHandler.SchemeName)
+                .RequireAuthenticatedUser());
 
         // سیاست‌ساز خودکار: هر کلید IPermissionCatalog خودش یک policy است.
         // باید بعد از AddAuthorization بیاید تا جایگزین provider پیش‌فرض شود.
@@ -105,6 +115,7 @@ public static class PlatformSetup
     {
         app.MapAccountEndpoints();
         app.MapNotificationsEndpoints();
+        app.MapAuthApiEndpoints();
         return app;
     }
 

@@ -55,6 +55,8 @@ public class PlatformDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<OtpThrottle> OtpThrottles => Set<OtpThrottle>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<UserApiToken> ApiTokens => Set<UserApiToken>();
+    public DbSet<LoginHistory> LoginHistories => Set<LoginHistory>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -81,6 +83,28 @@ public class PlatformDbContext : IdentityDbContext<ApplicationUser>
         {
             e.HasKey(x => x.PhoneNumber);
             e.Property(x => x.PhoneNumber).HasMaxLength(32);
+        });
+
+        builder.Entity<UserApiToken>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            e.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
+            e.Property(x => x.DeviceName).HasMaxLength(100);
+            e.HasIndex(x => x.TokenHash).IsUnique();
+            e.HasIndex(x => new { x.UserId, x.IsRevoked });
+        });
+
+        builder.Entity<LoginHistory>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).HasMaxLength(450);
+            e.Property(x => x.UserName).HasMaxLength(256);
+            e.Property(x => x.Method).HasMaxLength(32).IsRequired();
+            e.Property(x => x.IpAddress).HasMaxLength(64);
+            e.Property(x => x.UserAgent).HasMaxLength(512);
+            e.Property(x => x.FailureReason).HasMaxLength(256);
+            e.HasIndex(x => new { x.UserId, x.OccurredAtUtc });
         });
 
         builder.Entity<OutboxMessage>(e =>
