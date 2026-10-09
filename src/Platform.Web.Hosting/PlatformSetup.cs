@@ -118,6 +118,7 @@ public static class PlatformSetup
         app.MapAccountEndpoints();
         app.MapNotificationsEndpoints();
         app.MapAuthApiEndpoints();
+        app.MapPaymentEndpoints();
         return app;
     }
 

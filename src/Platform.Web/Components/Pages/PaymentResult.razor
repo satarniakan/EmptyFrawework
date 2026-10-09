@@ -1,0 +1,32 @@
+@* Platform.Web/Components/Pages/PaymentResult.razor *@
+@page "/payment-result"
+<PageTitle>نتیجهٔ پرداخت</PageTitle>
+
+<div style="max-width: 560px;" class="mx-auto">
+    <div class="card-panel text-center py-4">
+        @if (Ok)
+        {
+            <i class="bi bi-check-circle-fill text-success fs-1 d-block mb-3"></i>
+            <h4 class="mb-2">پرداخت موفق بود</h4>
+            @if (!string.IsNullOrWhiteSpace(Ref))
+            {
+                <div class="text-body-secondary small">شمارهٔ پیگیری: <code dir="ltr">@Ref</code></div>
+            }
+        }
+        else
+        {
+            <i class="bi bi-x-circle-fill text-danger fs-1 d-block mb-3"></i>
+            <h4 class="mb-2">پرداخت ناموفق بود</h4>
+            <div class="text-body-secondary small">اگر مبلغی از حساب شما کسر شده، به‌صورت خودکار برمی‌گردد. در غیر این صورت دوباره تلاش کنید.</div>
+        }
+        <a href="/" class="btn btn-outline-secondary btn-sm mt-3">بازگشت به خانه</a>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "ok")]
+    private bool Ok { get; set; }
+
+    [SupplyParameterFromQuery(Name = "ref")]
+    private string? Ref { get; set; }
+}

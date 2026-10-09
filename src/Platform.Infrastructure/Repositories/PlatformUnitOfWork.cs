@@ -18,19 +18,22 @@ public class PlatformUnitOfWork : IPlatformUnitOfWork
         IOtpRepository otpCodes,
         IAuditLogRepository auditLogs,
         INotificationRepository notifications,
-        IOutboxRepository outbox)
+        IOutboxRepository outbox,
+        IPaymentRepository payments)
     {
         _context = context;
         OtpCodes = otpCodes;
         AuditLogs = auditLogs;
         Notifications = notifications;
         Outbox = outbox;
+        Payments = payments;
     }
 
     public IOtpRepository OtpCodes { get; }
     public IAuditLogRepository AuditLogs { get; }
     public INotificationRepository Notifications { get; }
     public IOutboxRepository Outbox { get; }
+    public IPaymentRepository Payments { get; }
 
     public async Task<int> CompleteAsync()
     {

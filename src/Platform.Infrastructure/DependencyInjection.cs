@@ -86,6 +86,7 @@ public static class DependencyInjection
         services.AddScoped<ILoginHistoryRepository, LoginHistoryRepository>();
         services.AddScoped<ISettingRepository, SettingRepository>();
         services.AddScoped<INumberSequenceRepository, NumberSequenceRepository>();
+        services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IOutboxRepository, OutboxRepository>();
 
@@ -101,7 +102,24 @@ public static class DependencyInjection
         // پیامک: بر اساس «Sms:Provider» — Kavenegar واقعی یا Fake.
         // FakeSmsSender فقط در Development متن پیامک (شامل کد OTP) را لاگ می‌کند.
         services.AddHttpClient();
-        services.AddScoped<ISmsSender>(sp =>
+
+        // درگاه پرداخت: بر اساس «Payment:Provider» — ZarinPal واقعی یا Fake نمایشی.
+        // Fake هیچ تماس شبکه‌ای ندارد و callback را به همین میزبان برمی‌گرداند.
+        services.AddScoped<IPaymentGateway>(sp =>
+        {
+            if (string.Equals(configuration["Payment:Provider"], "ZarinPal", StringComparison.OrdinalIgnoreCase))
+            {
+                var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("zarinpal");
+                return new ZarinPalGateway(
+                    http,
+                    configuration["Payment:ZarinPal:MerchantId"] ?? string.Empty,
+                    configuration.GetValue("Payment:ZarinPal:Sandbox", false),
+                    sp.GetRequiredService<ILogger<ZarinPalGateway>>());
+            }
+
+            return new FakePaymentGateway(
+                sp.GetRequiredService<ILogger<FakePaymentGateway>>(), logDetails: isDevelopment);
+        });        services.AddScoped<ISmsSender>(sp =>
         {
             if (string.Equals(configuration["Sms:Provider"], "Kavenegar", StringComparison.OrdinalIgnoreCase))
             {
