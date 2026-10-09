@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Platform.Application.Jobs;
 using Platform.Infrastructure.Data;
 
 namespace Meetings;
@@ -47,6 +48,9 @@ public static class MeetingsSetup
         services.AddScoped<IMeetingRepository, MeetingRepository>();
         services.AddScoped<IMeetingUserDirectory, MeetingUserDirectory>();
         services.AddScoped<IMeetingService, MeetingService>();
+
+        // یادآوری خودکار جلسات — روی RecurringJobRunner پایه می‌نشیند
+        services.AddSingleton<IRecurringJob, MeetingReminderJob>();
 
         return services;
     }

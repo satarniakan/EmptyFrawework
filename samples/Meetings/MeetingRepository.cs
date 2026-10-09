@@ -27,6 +27,12 @@ public interface IMeetingRepository
     // ===== گزارش‌ها =====
     Task<List<Meeting>> GetInRangeAsync(DateTime fromUtc, DateTime toUtc);
     Task<List<MeetingInvitee>> GetUserInvitesInRangeAsync(string userId, DateTime fromUtc, DateTime toUtc);
+
+    /// <summary>
+    /// جلساتی که در بازه شروع می‌شوند و هنوز یادآوری نشده‌اند — برای job یادآوری.
+    /// فقط جلسات آیندهٔ دارای مدعو برمی‌گردند.
+    /// </summary>
+    Task<List<Meeting>> GetUnremindedStartingBetweenAsync(DateTime fromUtc, DateTime toUtc);
 }
 
 public class MeetingRepository : IMeetingRepository
@@ -109,5 +115,12 @@ public class MeetingRepository : IMeetingRepository
             .Include(i => i.Meeting)
             .Where(i => i.UserId == userId && i.Meeting!.StartAt >= fromUtc && i.Meeting!.StartAt < toUtc)
             .OrderBy(i => i.Meeting!.StartAt)
+            .ToListAsync();
+
+    public Task<List<Meeting>> GetUnremindedStartingBetweenAsync(DateTime fromUtc, DateTime toUtc) =>
+        _context.Set<Meeting>()
+            .Include(m => m.Invitees)
+            .Where(m => m.ReminderSentAt == null && m.StartAt >= fromUtc && m.StartAt < toUtc)
+            .OrderBy(m => m.StartAt)
             .ToListAsync();
 }

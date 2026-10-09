@@ -65,6 +65,9 @@ public class Meeting : AuditableEntity
     /// <summary>آخرین زمانی که صورت‌جلسه به کارتابل اعضا ارسال شد؛ null یعنی هنوز ارسال نشده.</summary>
     public DateTime? MinutesSentAt { get; set; }
 
+    /// <summary>آخرین زمانی که یادآوری خودکار برای این جلسه ارسال شد؛ null یعنی هنوز یادآوری نشده.</summary>
+    public DateTime? ReminderSentAt { get; set; }
+
     /// <summary>فایل صوتی جلسه — نام فایل ذخیره‌شده روی دیسک (پوشهٔ AppData/meeting-audio میزبان).</summary>
     public string? AudioFileName { get; set; }
 

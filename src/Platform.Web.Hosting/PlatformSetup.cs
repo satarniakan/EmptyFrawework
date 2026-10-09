@@ -8,6 +8,7 @@ using Platform.Infrastructure;
 using Platform.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Platform.Application.Jobs;
 using Platform.Web.Authentication;
 using Platform.Web.Authorization;
 using Platform.Web.Endpoints;
@@ -51,8 +52,9 @@ public static class PlatformSetup
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
         services.AddScoped<ToastService>();
-        services.AddHostedService<OtpCleanupService>();
         services.AddHostedService<OutboxProcessor>();
+        services.AddHostedService<RecurringJobRunner>();
+        services.AddSingleton<IRecurringJob, OtpCleanupJob>();
 
         services.AddRateLimiter(options =>
         {
