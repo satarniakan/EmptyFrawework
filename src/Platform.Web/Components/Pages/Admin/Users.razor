@@ -19,16 +19,23 @@
     </div>
     <a href="/admin/users/add" class="btn btn-primary btn-sm">افزودن کاربر جدید</a>
 </div>
+<div class="card-panel mb-3">
+    <div class="d-flex gap-2">
+        <input class="form-control form-control-sm" placeholder="جست‌وجو: شماره، نام یا ایمیل…"
+               @bind="search" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+        <button class="btn btn-sm btn-outline-secondary" @onclick="SearchAsync">جست‌وجو</button>
+    </div>
+</div>
 <div class="card-panel">
-    @if (users is null)
+    @if (page is null)
     {
         <LoadingSkeleton />
     }
-    else if (!users.Any())
+    else if (!page.Items.Any())
     {
         <div class="text-center text-body-secondary py-4">
             <i class="bi bi-people fs-3 d-block mb-2"></i>
-            <span class="small">هنوز کاربری ثبت نشده است.</span>
+            <span class="small">کاربری یافت نشد.</span>
         </div>
     }
     else
@@ -45,7 +52,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var u in users)
+                @foreach (var u in page.Items)
                 {
                     <tr>
                         <td>@u.PhoneNumber</td>
@@ -74,6 +81,8 @@
             </tbody>
         </table>
         </div>
+        <Pager CurrentPage="page.Page" TotalPages="page.TotalPages" TotalCount="page.TotalCount"
+               OnPageChanged="GoToPage" />
     }
 </div>
 
@@ -83,7 +92,10 @@
     [SupplyParameterFromQuery(Name = "success")]
     private string? Success { get; set; }
 
-    private List<UserListItemDto>? users;
+    private PagedResult<UserListItemDto>? page;
+    private string? search;
+    private int currentPage = 1;
+    private const int PageSize = 20;
     private string? currentUserId;
     private AppConfirmDialog confirmDialog = default!;
 
@@ -95,7 +107,30 @@
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         currentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        users = (await UserAdminService.GetAllUsersAsync()).ToList();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        page = await UserAdminService.GetUsersPagedAsync(search, currentPage, PageSize);
+    }
+
+    private async Task GoToPage(int newPage)
+    {
+        currentPage = newPage;
+        await LoadAsync();
+    }
+
+    private async Task SearchAsync()
+    {
+        currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await SearchAsync();
     }
 
     private async Task AskDelete(UserListItemDto user)
@@ -109,7 +144,7 @@
         if (result.Succeeded)
         {
             ToastService.ShowSuccess("کاربر حذف شد.");
-            users = (await UserAdminService.GetAllUsersAsync()).ToList();
+            await LoadAsync();
         }
         else
         {

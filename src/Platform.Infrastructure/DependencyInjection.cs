@@ -47,6 +47,16 @@ public static class DependencyInjection
 
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>
         {
+            // سیاست رمز صریح و مستند — پیش‌فرض‌های Identity (از جمله حداقل ۶ کاراکتر)
+            // قبلاً هیچ‌جا نوشته نشده بود و فرم «حداقل ۳ کاراکتر» وعده می‌داد ولی
+            // ذخیره‌سازی رد می‌کرد. این دو باید همیشه با هم به‌روز شوند.
+            options.Password.RequiredLength = 6;
+            options.Password.RequireDigit = true;
+            options.Password.RequireLowercase = true;
+            options.Password.RequireUppercase = false;
+            options.Password.RequireNonAlphanumeric = false;
+            options.Password.RequiredUniqueChars = 1;
+
             // تنظیمات قفل موقت حساب — AuthService با lockoutOnFailure:true کار می‌کند
             // (در Identity پیش‌فرض FALSE است)؛ بدون این، مهاجم می‌توانست بی‌نهایت رمز
             // روی یک حساب امتحان کند. محدودیت نرخ فقط جلوی انبوه IP را می‌گیرد.
@@ -56,6 +66,7 @@ public static class DependencyInjection
         })
         .AddEntityFrameworkStores<PlatformDbContext>()
         .AddDefaultTokenProviders()
+        .AddErrorDescriber<PersianIdentityErrorDescriber>()
         .AddClaimsPrincipalFactory<AppUserClaimsPrincipalFactory>();
 
         // AddIdentity به‌صورت پیش‌فرض "/Account/Login" را برای صفحهٔ ورود می‌داند،

@@ -96,6 +96,13 @@ public class PlatformDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => new { x.UserId, x.IsRead });
         });
 
+        // سقف نام نمایشی در دیتابیس هم هست، چون اعتبارسنجی فرم (DataAnnotations)
+        // روی مسیرهای API/endpoint اجرا نمی‌شود — آخرین دیوار، خودِ ستون است
+        builder.Entity<ApplicationUser>(e =>
+        {
+            e.Property(x => x.FullName).HasMaxLength(100);
+        });
+
         foreach (var module in _modules)
         {
             module.ConfigureModel(builder);

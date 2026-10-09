@@ -1,4 +1,5 @@
 using Platform.Application.DTOs;
+using Platform.Application.Queries;
 using Platform.Domain.Entities;
 using Platform.Domain.Interfaces;
 
@@ -39,6 +40,8 @@ public class AuditService : IAuditService
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 20;
+        // سقف مشترک با ToPagedAsync: ?pageSize=10000000 نباید کل جدول را به حافظه بکشد
+        if (pageSize > PagedQueryExtensions.MaxPageSize) pageSize = PagedQueryExtensions.MaxPageSize;
 
         var (items, totalCount) = await _repository.GetPagedAsync(page, pageSize, search);
 

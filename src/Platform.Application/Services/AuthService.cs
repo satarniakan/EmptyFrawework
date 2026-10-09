@@ -146,7 +146,11 @@ public class AuthService : IAuthService
 
         if (!string.IsNullOrWhiteSpace(fullName))
         {
-            user.FullName = fullName.Trim();
+            var trimmed = fullName.Trim();
+            if (trimmed.Length > 100)
+                return new ProfileUpdateResult(ProfileUpdateStatus.FullNameTooLong);
+
+            user.FullName = trimmed;
             await _userManager.UpdateAsync(user);
         }
 

@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Platform.Application.DTOs;
+using Platform.Application.Queries;
 using Platform.Domain.Identity;
 
 namespace Platform.Application.Services;
@@ -7,6 +9,13 @@ namespace Platform.Application.Services;
 public interface IUserAdminService
 {
     Task<IEnumerable<UserListItemDto>> GetAllUsersAsync();
+
+    /// <summary>
+    /// فهرست صفحه‌بندی‌شدهٔ کاربران با جست‌وجو (شماره، نام، ایمیل). نقش‌های هر کاربر
+    /// فقط برای همان صفحه خوانده می‌شوند تا لیست هزاران‌نفره N+1 نشود.
+    /// </summary>
+    Task<PagedResult<UserListItemDto>> GetUsersPagedAsync(string? search, int page, int pageSize);
+
     Task<UserListItemDto?> GetUserAsync(string userId);
     Task<IdentityResult> SetRolesAsync(string userId, List<string> roleNames);
 
@@ -40,6 +49,48 @@ public class UserAdminService : IUserAdminService
         }
 
         return result;
+    }
+
+    public async Task<PagedResult<UserListItemDto>> GetUsersPagedAsync(string? search, int page, int pageSize)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+        if (pageSize > PagedQueryExtensions.MaxPageSize) pageSize = PagedQueryExtensions.MaxPageSize;
+
+        var query = _userManager.Users.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(u =>
+                (u.PhoneNumber != null && u.PhoneNumber.Contains(term)) ||
+                (u.FullName != null && u.FullName.Contains(term)) ||
+                (u.Email != null && u.Email.Contains(term)));
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var users = await query
+            .OrderBy(u => u.UserName)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var items = new List<UserListItemDto>(users.Count);
+        foreach (var user in users)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            items.Add(new UserListItemDto(
+                user.Id, user.PhoneNumber, user.FullName, user.Email, roles.ToList()));
+        }
+
+        return new PagedResult<UserListItemDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
     }
 
     public async Task<UserListItemDto?> GetUserAsync(string userId)
@@ -102,6 +153,12 @@ public class UserAdminService : IUserAdminService
 
     public async Task<IdentityResult> CreateUserAsync(CreateUserDto model)
     {
+        if (!string.IsNullOrWhiteSpace(model.FullName) && model.FullName.Trim().Length > 100)
+        {
+            return IdentityResult.Failed(new IdentityError
+                { Description = "نام کامل نمی‌تواند بیشتر از ۱۰۰ کاراکتر باشد." });
+        }
+
         if (!string.IsNullOrWhiteSpace(model.Email))
         {
             var existingByEmail = await _userManager.FindByEmailAsync(model.Email);
@@ -147,6 +204,12 @@ public class UserAdminService : IUserAdminService
         var user = await _userManager.FindByIdAsync(model.UserId);
         if (user is null)
             return IdentityResult.Failed(new IdentityError { Description = "کاربر یافت نشد." });
+
+        if (model.FullName.Trim().Length > 100)
+        {
+            return IdentityResult.Failed(new IdentityError
+                { Description = "نام کامل نمی‌تواند بیشتر از ۱۰۰ کاراکتر باشد." });
+        }
 
         var phone = model.PhoneNumber.Trim();
         var phoneOwner = await _userManager.FindByNameAsync(phone);

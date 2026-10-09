@@ -16,7 +16,7 @@ public class CreateUserDto
     public string? Email { get; set; }
 
     [Required(ErrorMessage = "رمز عبور الزامی است.")]
-    [MinLength(3, ErrorMessage = "رمز عبور باید حداقل ۳ کاراکتر باشد.")]
+    [MinLength(6, ErrorMessage = "رمز عبور باید حداقل ۶ کاراکتر باشد.")]
     public string Password { get; set; } = string.Empty;
 
     [MinLength(1, ErrorMessage = "انتخاب حداقل یک نقش الزامی است.")]

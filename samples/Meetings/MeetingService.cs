@@ -1,5 +1,6 @@
 using Platform.Application.Helpers;
 using Platform.Application.Services;
+using Platform.Application.Validators;
 using Platform.Domain.Entities;
 using Platform.Domain.Enums;
 using Platform.Domain.Exceptions;
@@ -171,8 +172,7 @@ public class MeetingService : IMeetingService
             throw new BusinessRuleException("برای جلسهٔ غیرحضوری، لینک فضای جلسه الزامی است.");
 
         var inviteeIds = request.InviteeUserIds.Distinct().ToList();
-        if (inviteeIds.Count == 0)
-            throw new BusinessRuleException("حداقل یک مدعو انتخاب کنید.");
+        CommonValidations.ValidateItemsNotEmpty(inviteeIds, "حداقل یک مدعو انتخاب کنید.");
 
         // همهٔ نوشته‌ها (جلسه + اعلان‌ها + صف پیام) در یک تراکنش: اگر وسط راه
         // (مثلاً ثبت پیام در Outbox) خطایی بیاید، جلسهٔ نیمه‌دعوت‌شده باقی نمی‌ماند.

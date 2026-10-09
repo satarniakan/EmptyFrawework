@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Platform.Domain.Exceptions;
+using Platform.Application.Errors;
 
 namespace Platform.Web.Hosting.Middleware;
 
@@ -26,22 +26,17 @@ public record ExceptionTranslation(int StatusCode, string Message, bool IsExpect
 public static class PlatformExceptionHandler
 {
     /// <summary>پیام عمومی برای خطاهای غیرمنتظره — جزئیات داخل آن نمی‌آید.</summary>
-    public const string UnexpectedMessage = ErrorMessages.Unexpected;
+    public const string UnexpectedMessage = ExceptionTranslator.UnexpectedMessage;
 
     /// <summary>
-    /// نگاشت استثنا به کد وضعیت و پیام. فقط پیام‌هایی که خودِ پایه می‌سازد امن‌اند
-    /// و نشان داده می‌شوند؛ هر خطای دیگری پیام عمومی می‌گیرد.
+    /// نگاشت استثنا به کد وضعیت و پیام. منطق در <see cref="ExceptionTranslator"/> است تا
+    /// کامپوننت‌های Blazor هم همان پیام را نشان دهند؛ اینجا فقط رکورد خودش را می‌سازد.
     /// </summary>
-    public static ExceptionTranslation Translate(Exception? exception) => exception switch
+    public static ExceptionTranslation Translate(Exception? exception)
     {
-        BusinessRuleException business => new(400, business.Message, IsExpected: true),
-        NotFoundException notFound => new(404, notFound.Message, IsExpected: true),
-        // محدودیت یکتایی/طول فیلد — پیامش از قبل فارسی و روشن است
-        DataIntegrityException integrity => new(409, integrity.Message, IsExpected: true),
-        // لغو درخواست توسط خودِ کاربر/مرورگر، خطای برنامه نیست
-        OperationCanceledException => new(499, "درخواست لغو شد.", IsExpected: true),
-        _ => new(500, UnexpectedMessage, IsExpected: false)
-    };
+        var translation = ExceptionTranslator.Translate(exception);
+        return new(translation.StatusCode, translation.Message, translation.IsExpected);
+    }
 
     /// <summary>
     /// ثبت مدیریت خطای سراسری. باید اولِ پایپ‌لاین باشد تا همهٔ middlewareها را پوشش دهد.
