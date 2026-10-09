@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Platform.Application.DTOs;
 using Platform.Application.Services;
 using Platform.Domain.Exceptions;
+using Platform.Domain.Interfaces;
 
 namespace Platform.Web.Endpoints;
 
@@ -16,10 +17,17 @@ public static class AuthApiEndpoints
     {
         var group = app.MapGroup("/api/v1/auth");
 
-        group.MapPost("/otp/request", async (IAuthService auth, OtpRequestApiDto dto) =>
+        group.MapPost("/otp/request", async (HttpContext http, IAuthService auth,
+            ICaptchaValidator captcha, OtpRequestApiDto dto) =>
         {
             try
             {
+                if (!await captcha.ValidateAsync(dto.CaptchaToken,
+                        http.Connection.RemoteIpAddress?.ToString()))
+                {
+                    return Results.BadRequest(new { message = "اعتبارسنجی امنیتی ناموفق بود." });
+                }
+
                 await auth.RequestOtpAsync(dto.PhoneNumber);
                 return Results.Ok(new { message = "کد ورود ارسال شد." });
             }

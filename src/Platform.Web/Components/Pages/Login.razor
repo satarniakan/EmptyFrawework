@@ -11,7 +11,7 @@
 
         @if (Error is not null)
         {
-            <div class="alert alert-danger">شماره موبایل معتبر نیست.</div>
+            <div class="alert alert-danger">@(Error == "captcha" ? "اعتبارسنجی امنیتی ناموفق بود؛ دوباره تلاش کنید." : "شماره موبایل معتبر نیست.")</div>
         }
 
         <form method="post" action="/Account/RequestOtp" data-enhance="false">
@@ -21,6 +21,15 @@
                 <label class="form-label">شماره موبایل</label>
                 <input type="tel" name="phoneNumber" class="form-control" placeholder="09xxxxxxxxx" required pattern="09[0-9]{9}" />
             </div>
+
+            @if (!string.IsNullOrWhiteSpace(turnstileSiteKey))
+            {
+                @* کپچا فقط وقتی SiteKey تنظیم شده رندر می‌شود؛ در غیر این صورت endpoint بدون کپچا کار می‌کند *@
+                <div class="mb-4">
+                    <div class="cf-turnstile" data-sitekey="@turnstileSiteKey" data-language="fa"></div>
+                </div>
+                <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+            }
 
             <button type="submit" class="btn btn-primary w-100">ارسال کد ورود</button>
         </form>
@@ -48,4 +57,6 @@
     private bool showDevLogin =>
         Environment.IsDevelopment() &&
         !string.IsNullOrWhiteSpace(Configuration["Dev:AutoLoginPhone"]);
+
+    private string? turnstileSiteKey => Configuration["Captcha:Turnstile:SiteKey"];
 }

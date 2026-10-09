@@ -119,6 +119,26 @@ public static class DependencyInjection
 
             return new FakePaymentGateway(
                 sp.GetRequiredService<ILogger<FakePaymentGateway>>(), logDetails: isDevelopment);
+        });
+
+        // کپچا: بر اساس «Captcha:Provider» — Turnstile واقعی، وگرنه غیرفعال.
+        // غیرفعال یعنی endpointها بدون کپچا کار می‌کنند (توسعه)؛ در Production حتماً Turnstile بگذارید.
+        services.AddScoped<ICaptchaValidator>(sp =>
+        {
+            if (string.Equals(configuration["Captcha:Provider"], "Turnstile", StringComparison.OrdinalIgnoreCase))
+            {
+                var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("turnstile");
+                return new TurnstileCaptchaValidator(
+                    http,
+                    configuration["Captcha:Turnstile:SecretKey"] ?? string.Empty,
+                    sp.GetRequiredService<ILogger<TurnstileCaptchaValidator>>());
+            }
+
+            var fake = string.Equals(configuration["Captcha:Provider"], "Fake", StringComparison.OrdinalIgnoreCase);
+            return new PermissiveCaptchaValidator(
+                sp.GetRequiredService<ILogger<PermissiveCaptchaValidator>>(),
+                name: fake ? "fake" : "none",
+                logTokens: fake && isDevelopment);
         });        services.AddScoped<ISmsSender>(sp =>
         {
             if (string.Equals(configuration["Sms:Provider"], "Kavenegar", StringComparison.OrdinalIgnoreCase))

@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Platform.Application.DTOs;
 using Platform.Application.Services;
 using Microsoft.AspNetCore.Mvc;
+using Platform.Domain.Interfaces;
 
 namespace Platform.Web.Endpoints;
 
@@ -27,11 +28,20 @@ public static class AccountEndpoints
         }).RequireRateLimiting("login");
 
         app.MapPost("/Account/RequestOtp", async (
+            HttpContext httpContext,
             IAuthService authService,
-            [FromForm] string phoneNumber) =>
+            ICaptchaValidator captcha,
+            [FromForm] string phoneNumber,
+            [FromForm(Name = "cf-turnstile-response")] string? captchaToken) =>
         {
             try
             {
+                if (!await captcha.ValidateAsync(captchaToken,
+                        httpContext.Connection.RemoteIpAddress?.ToString()))
+                {
+                    return Results.Redirect("/login?error=captcha");
+                }
+
                 await authService.RequestOtpAsync(phoneNumber);
                 return Results.Redirect($"/verify-otp?phone={Uri.EscapeDataString(phoneNumber)}");
             }

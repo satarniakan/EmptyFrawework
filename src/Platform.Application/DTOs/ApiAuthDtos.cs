@@ -1,7 +1,7 @@
 namespace Platform.Application.DTOs;
 
 /// <summary>ورودی‌های JSON مسیرهای <c>/api/v1</c> (اپ موبایل و کلاینت‌های غیرمرورگری).</summary>
-public record OtpRequestApiDto(string PhoneNumber);
+public record OtpRequestApiDto(string PhoneNumber, string? CaptchaToken = null);
 
 public record OtpVerifyApiDto(string PhoneNumber, string Code, string? DeviceName);
 
