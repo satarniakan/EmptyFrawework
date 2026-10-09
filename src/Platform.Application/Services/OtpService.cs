@@ -4,6 +4,7 @@ using Platform.Domain.Entities;
 using Platform.Domain.Exceptions;
 using Platform.Domain.Identity;
 using Platform.Domain.Interfaces;
+using Platform.Domain.Queries;
 
 namespace Platform.Application.Services;
 
@@ -160,6 +161,8 @@ public class OtpService : IOtpService
 
     public async Task GenerateAndSendOtpAsync(string phoneNumber)
     {
+        phoneNumber = PersianSearch.NormalizePhone(phoneNumber);
+
         // شماره‌ای که چند بار پشت‌سرهم کد اشتباه داده، فعلاً ورودی جدید نمی‌گیرد
         // تا مهاجم نتواند با درخواست‌های مکرر، کدهای معتبر کاربر را باطل کند
         if (await IsBlockedAsync(phoneNumber))

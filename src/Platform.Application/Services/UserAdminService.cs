@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Platform.Application.DTOs;
 using Platform.Application.Queries;
 using Platform.Domain.Identity;
+using Platform.Domain.Queries;
 
 namespace Platform.Application.Services;
 
@@ -61,11 +62,14 @@ public class UserAdminService : IUserAdminService
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var term = search.Trim();
-            query = query.Where(u =>
-                (u.PhoneNumber != null && u.PhoneNumber.Contains(term)) ||
-                (u.FullName != null && u.FullName.Contains(term)) ||
-                (u.Email != null && u.Email.Contains(term)));
+            // عبارت نرمال می‌شود (ي/ك عربی، ارقام فارسی) و ستون‌ها هم در کوئری
+            // همان نرمال‌سازی را می‌بینند — به REPLACE تودرتو در SQL ترجمه می‌شود
+            var term = PersianSearch.Normalize(search);
+            if (term.Length > 0)
+            {
+                query = query.Where(PersianSearch.ContainsNormalized<ApplicationUser>(
+                    term, u => u.PhoneNumber, u => u.FullName, u => u.Email));
+            }
         }
 
         var totalCount = await query.CountAsync();
@@ -159,6 +163,9 @@ public class UserAdminService : IUserAdminService
                 { Description = "نام کامل نمی‌تواند بیشتر از ۱۰۰ کاراکتر باشد." });
         }
 
+        // شماره همیشه با ارقام انگلیسی ذخیره می‌شود تا جست‌وجو و ورود یکدست باشد
+        var phone = PersianSearch.NormalizePhone(model.PhoneNumber);
+
         if (!string.IsNullOrWhiteSpace(model.Email))
         {
             var existingByEmail = await _userManager.FindByEmailAsync(model.Email);
@@ -170,8 +177,8 @@ public class UserAdminService : IUserAdminService
 
         var user = new ApplicationUser
         {
-            UserName = model.PhoneNumber,
-            PhoneNumber = model.PhoneNumber,
+            UserName = phone,
+            PhoneNumber = phone,
             Email = model.Email,
             FullName = model.FullName,
             EmailConfirmed = true
@@ -211,7 +218,7 @@ public class UserAdminService : IUserAdminService
                 { Description = "نام کامل نمی‌تواند بیشتر از ۱۰۰ کاراکتر باشد." });
         }
 
-        var phone = model.PhoneNumber.Trim();
+        var phone = PersianSearch.NormalizePhone(model.PhoneNumber);
         var phoneOwner = await _userManager.FindByNameAsync(phone);
         if (phoneOwner is not null && phoneOwner.Id != user.Id)
             return IdentityResult.Failed(new IdentityError { Description = "این شماره موبایل برای کاربر دیگری ثبت شده است." });

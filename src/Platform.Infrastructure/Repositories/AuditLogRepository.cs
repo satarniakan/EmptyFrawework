@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Platform.Domain.Entities;
 using Platform.Domain.Interfaces;
+using Platform.Domain.Queries;
 using Platform.Infrastructure.Data;
 
 namespace Platform.Infrastructure.Repositories;
@@ -28,10 +29,14 @@ public class AuditLogRepository : IAuditLogRepository
         var query = _context.AuditLogs.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(a =>
-                a.EventType.Contains(search) ||
-                (a.UserEmail != null && a.UserEmail.Contains(search)) ||
-                a.Details.Contains(search));
+        {
+            var term = PersianSearch.Normalize(search);
+            if (term.Length > 0)
+            {
+                query = query.Where(PersianSearch.ContainsNormalized<AuditLog>(
+                    term, a => a.EventType, a => a.UserEmail, a => a.Details));
+            }
+        }
 
         var totalCount = await query.CountAsync();
 

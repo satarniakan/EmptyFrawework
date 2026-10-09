@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging;
 using Platform.Application.DTOs;
 using Platform.Domain.Enums;
 using Platform.Domain.Identity;
+using Platform.Domain.Interfaces;
+using Platform.Domain.Queries;
 
 namespace Platform.Application.Services;
 
@@ -49,7 +51,8 @@ public class AuthService : IAuthService
         _logger = logger;
         // شمارهٔ ادمین اول فقط از تنظیمات «Identity:FirstAdminPhoneNumber» خوانده می‌شود.
         // اگر تنظیم نباشد، هیچ شماره‌ای خودکار نقش Admin نمی‌گیرد.
-        _firstAdminPhoneNumber = configuration["Identity:FirstAdminPhoneNumber"];
+        // هر دو سمت مقایسه نرمال می‌شوند (ارقام فارسیِ تنظیمات هم ممکن است فارسی تایپ شده باشد).
+        _firstAdminPhoneNumber = PersianSearch.NormalizePhone(configuration["Identity:FirstAdminPhoneNumber"]);
     }
 
     private (string? Ip, string? UserAgent) RequestInfo()
@@ -89,10 +92,15 @@ public class AuthService : IAuthService
         return new PasswordLoginResult(result.Succeeded);
     }
 
-    public Task RequestOtpAsync(string phoneNumber) => _otpService.GenerateAndSendOtpAsync(phoneNumber);
+    public Task RequestOtpAsync(string phoneNumber) =>
+        _otpService.GenerateAndSendOtpAsync(PersianSearch.NormalizePhone(phoneNumber));
 
     public async Task<OtpVerificationResult> VerifyOtpAsync(string phoneNumber, string code)
     {
+        // ارقام فارسی/عربیِ شماره به انگلیسی — وگرنه هش OTP و جست‌وجوی کاربر با
+        // چیزی که هنگام درخواست بود نمی‌خواند. نرمال‌سازی idempotent است.
+        phoneNumber = PersianSearch.NormalizePhone(phoneNumber);
+
         var (ip, userAgent) = RequestInfo();
 
         if (!await _otpService.VerifyOtpAsync(phoneNumber, code))
