@@ -66,6 +66,9 @@ if (builder.Configuration.GetValue<bool>("ForwardedHeaders:TrustAllProxies"))
 }
 app.UseForwardedHeaders(forwardedHeadersOptions);
 
+// هدرهای امنیتی (nosniff، SAMEORIGIN، Referrer-Policy) — روی همهٔ پاسخ‌ها، از جمله خطاها.
+app.UsePlatformSecurityHeaders();
+
 // مدیریت خطای سراسری — باید اولِ پایپ‌لاین باشد تا همهٔ خطاها را ببیند.
 // پیام فارسیِ امن + کد وضعیت درست؛ جزئیات فنی فقط در لاگ (و در Development در پاسخ).
 app.UsePlatformExceptionHandler();

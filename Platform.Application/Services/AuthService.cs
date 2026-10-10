@@ -37,6 +37,7 @@ public class AuthService : IAuthService
     private readonly INotificationService _notifications;
     private readonly ILoginHistoryService _history;
     private readonly IHttpContextAccessor _httpContext;
+    private readonly IApiTokenService _tokens;
     private readonly string? _firstAdminPhoneNumber;
 
     public AuthService(
@@ -46,6 +47,7 @@ public class AuthService : IAuthService
         INotificationService notifications,
         ILoginHistoryService history,
         IHttpContextAccessor httpContext,
+        IApiTokenService tokens,
         IConfiguration configuration,
         ILogger<AuthService> logger)
     {
@@ -55,6 +57,7 @@ public class AuthService : IAuthService
         _notifications = notifications;
         _history = history;
         _httpContext = httpContext;
+        _tokens = tokens;
         _logger = logger;
         // شمارهٔ ادمین اول فقط از تنظیمات «Identity:FirstAdminPhoneNumber» خوانده می‌شود.
         // اگر تنظیم نباشد، هیچ شماره‌ای خودکار نقش Admin نمی‌گیرد.
@@ -244,6 +247,11 @@ public class AuthService : IAuthService
     {
         phoneNumber = PersianSearch.NormalizePhone(phoneNumber);
 
+        // عدم تطابق پیش از مصرف کد بررسی می‌شود: کد یک‌بارمصرف است و کاربر نباید
+        // به‌خاطر تایپ اشتباه رمز (خطای سمت کلاینت) دوباره منتظر پیامک بماند.
+        if (newPassword != confirmPassword)
+            return new PasswordResetResult(PasswordResetStatus.PasswordMismatch);
+
         // کد اول مصرف می‌شود (تک‌مصرف): اگر ریست بعدش شکست بخورد، کاربر باید کد تازه بگیرد
         if (!await _otpService.VerifyOtpAsync(phoneNumber, code))
             return new PasswordResetResult(PasswordResetStatus.InvalidOtp);
@@ -251,9 +259,6 @@ public class AuthService : IAuthService
         var user = await _userManager.FindByNameAsync(phoneNumber);
         if (user is null)
             return new PasswordResetResult(PasswordResetStatus.UserNotFound);
-
-        if (newPassword != confirmPassword)
-            return new PasswordResetResult(PasswordResetStatus.PasswordMismatch, user.Id);
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
         var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
@@ -264,6 +269,11 @@ public class AuthService : IAuthService
                 phoneNumber, string.Join(" | ", result.Errors.Select(e => e.Description)));
             return new PasswordResetResult(PasswordResetStatus.ResetFailed, user.Id);
         }
+
+        // رمز عوض شد: توکن‌های API قبلی دیگر معتبر نیستند (وگرنه دارندهٔ توکنِ
+        // دزدیده‌شده با وجود ریست، تا ۱۸۰ روز دسترسی داشت). کوکی‌ها هم با تغییر
+        // SecurityStamp در Identity حداکثر تا بازاعتبارسنجی بعدی می‌میرند.
+        await _tokens.RevokeAllAsync(user.Id);
 
         return new PasswordResetResult(PasswordResetStatus.Success, user.Id);
     }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -77,6 +78,19 @@ public static class DependencyInjection
         {
             options.LoginPath = "/login";
             options.AccessDeniedPath = "/login";
+
+            // سفت‌وبندی صریح به‌جای اتکا به پیش‌فرض‌ها:
+            // - SecurePolicy در Development همان SameAsRequest می‌ماند تا لاگین روی
+            //   http://localhost هم کار کند؛ در Production همیشه Always (کوکی فقط روی HTTPS).
+            // - SameSite=Lax: تعادل CSRF و ناوبری عادی (برگشت از درگاه پرداخت top-level است و مشکلی ندارد).
+            // - انقضای ۸ ساعته با تمدید لغزان به‌جای ۱۴ روز پیش‌فرض Identity.
+            options.Cookie.SecurePolicy = isDevelopment
+                ? CookieSecurePolicy.SameAsRequest
+                : CookieSecurePolicy.Always;
+            options.Cookie.SameSite = SameSiteMode.Lax;
+            options.Cookie.HttpOnly = true;
+            options.ExpireTimeSpan = TimeSpan.FromHours(8);
+            options.SlidingExpiration = true;
         });
 
         services.AddScoped<IPlatformUnitOfWork, PlatformUnitOfWork>();

@@ -18,14 +18,12 @@ public class AuditableEntityTests
     /// <summary>انتیتی آزمایشی به‌جای انتیتی دامنه.</summary>
     private sealed class TestNote : AuditableEntity
     {
-        public int Id { get; set; }
         public string Title { get; set; } = string.Empty;
         public List<TestNoteLine> Lines { get; set; } = [];
     }
 
     private sealed class TestNoteLine : AuditableEntity
     {
-        public int Id { get; set; }
         public int TestNoteId { get; set; }
         public TestNote? TestNote { get; set; }
         public string Content { get; set; } = string.Empty;

@@ -1,5 +1,7 @@
 using System.Security.Claims;
+using Platform.Application.Services;
 using Platform.Domain.Entities;
+using Platform.Domain.Identity;
 using Platform.Domain.Interfaces;
 
 namespace Platform.Web.Endpoints;
@@ -13,12 +15,23 @@ public static class PushEndpoints
 
     public static IEndpointRouteBuilder MapPushEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/v1/push/public-key", (IConfiguration configuration) =>
-            Results.Ok(new
+        // منبع کلید عمومی: ابتدا ردیف تنظیم یکپارچه‌سازی (دیتابیس)، سپس appsettings.
+        // خواندن از ISettingService (نه IConfiguration خالص) تا کلیدی که ادمین در
+        // «تنظیمات» ذخیره کرده هم معتبر باشد. endpoint در scope درخواست HTTP خودش است،
+        // پس با DbContext مدار Blazor برخورد هم‌روندی ندارد.
+        app.MapGet("/api/v1/push/public-key", async (
+            ISettingService settings) =>
+        {
+            var key = await settings.GetEffectiveAsync(
+                IntegrationSettingKeys.VapidPublicKey,
+                "Push:Vapid:PublicKey");
+
+            return Results.Ok(new
             {
-                publicKey = configuration["Push:Vapid:PublicKey"],
-                enabled = !string.IsNullOrWhiteSpace(configuration["Push:Vapid:PublicKey"])
-            }));
+                publicKey = key,
+                enabled = !string.IsNullOrWhiteSpace(key)
+            });
+        });
 
         app.MapPost("/api/v1/push/subscriptions", async (
             ClaimsPrincipal user,

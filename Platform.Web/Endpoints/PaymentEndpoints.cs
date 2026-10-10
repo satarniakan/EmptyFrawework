@@ -36,7 +36,7 @@ public static class PaymentEndpoints
             {
                 return Results.BadRequest(new { message = ex.Message });
             }
-        }).RequireAuthorization("App");
+        }).RequireAuthorization("App").RequireRateLimiting("payment-start");
 
         app.MapGet("/payments/callback", async (
             string? authority, string? status, IPaymentService payments) =>

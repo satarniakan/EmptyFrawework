@@ -88,7 +88,7 @@ cd MyProject   # خروجی داخل پوشهٔ هم‌نام می‌نشیند<
     <h2><span class="step">۳</span>بیلد و تست</h2>
 <pre>dotnet build MyProject.slnx
 dotnet test MyProject.Tests/MyProject.Tests.csproj</pre>
-    <p>هر دو باید سبز شوند (≈۱۳۰ تست). اگر قرمز شد همان خطا را بخوانید — معمولاً رشته اتصال است.</p>
+    <p>هر دو باید سبز شوند (≈۱۴۷ تست). اگر قرمز شد همان خطا را بخوانید — معمولاً رشته اتصال است.</p>
   </section>
 
   <section class="card" id="s4">
@@ -98,6 +98,7 @@ dotnet test MyProject.Tests/MyProject.Tests.csproj</pre>
       <li>با شماره‌ای که در <code class="inline">FirstAdminPhoneNumber</code> گذاشتید وارد شوید (کد پیامکی؛ در حالت توسعه با <code class="inline">Dev:AutoLoginPhone</code> و مسیر <code class="inline">/dev-login</code> بدون پیامک).</li>
       <li>اولین ورودِ آن شماره، نقش <b>ادمین</b> می‌گیرد؛ بقیه «کاربر» می‌شوند.</li>
       <li>منو را ببینید: مدیریت کاربران، تنظیمات، گزارش رویدادها.</li>
+      <li>صفحه‌های مدیریتی آماده: <code class="inline">/admin/users</code> (با <b>ایمپورت اکسل</b> + گزارش خطای هر سطر)، <code class="inline">/admin/outbox</code> (صف پیامک/ایمیل/پوش + <b>تلاش دوباره</b> برای ناموفق‌ها)، <code class="inline">/admin/payments</code> و داشبورد.</li>
     </ol>
   </section>
 
@@ -133,7 +134,9 @@ dotnet test MyProject.Tests/MyProject.Tests.csproj</pre>
       <li>ورود: <code class="inline">POST /api/v1/auth/otp/verify</code> (پیامک) یا <code class="inline">POST /api/v1/auth/login</code> (رمز — وقتی پیامک قطع است) → توکن <code class="inline">pat_…</code></li>
       <li>استفاده: هدر <code class="inline">Authorization: Bearer pat_…</code> — مستندات کامل در Development: <code class="inline">/openapi/v1.json</code></li>
       <li>مدیریت نشست: <code class="inline">GET/DELETE /api/v1/auth/tokens</code> (لیست و لغو، از جمله «خروج از همه دستگاه‌ها»)</li>
+      <li><b>فراموشی/تعیین رمز موبایل:</b> کاربر بی‌رمز (مثلاً واردشده با اکسل) یا فراموش‌کار، کد پیامکی می‌گیرد و رمز تعیین می‌کند (<code class="inline">IAuthService.ResetPasswordWithOtpAsync</code>). برای کاربرِ بی‌رمز همان مسیر «تعیین اول» است. کد یک‌بارمصرف است.</li>
     </ul>
+    <div class="note"><b>وب‌پوش (Push):</b> کلید عمومی از <code class="inline">GET /api/v1/push/public-key</code> خوانده می‌شود (اول تنظیم یکپارچه‌سازی، بعد appsettings). اگر <code class="inline">Push:Vapid:PublicKey</code> خالی باشد، دکمهٔ اشتراک خودش را پنهان می‌کند. کلید VAPID با <code class="inline">npx web-push generate-vapid-keys</code> ساخته می‌شود.</div>
   </section>
 
   <section class="card" id="s8">
@@ -157,6 +160,8 @@ dotnet test MyProject.Tests/MyProject.Tests.csproj</pre>
       <tr><td>policy ناشناخته در صفحه جدید</td><td>کلید مجوز در <code class="inline">IPermissionCatalog</code> نیست یا املایش با <code class="inline">Policy</code> فرق دارد</td></tr>
       <tr><td>مایگریشن جدول ماژول را نساخت</td><td>ماژول در DI ثبت نشده (<code class="inline">AddSingleton&lt;IPlatformModule,…&gt;</code>) یا پروژه اشتباه به <code class="inline">dotnet ef</code> داده‌اید</td></tr>
       <tr><td>کد OTP نمی‌رسد</td><td><code class="inline">Sms:Provider</code> روی Fake است (لاگ را ببینید) یا سقف ۳ کد در ۱۵ دقیقه خورده‌اید</td></tr>
+      <tr><td><b>«A second operation was started on this context»</b> هنگام رفتن به صفحه (مثل <code class="inline">/notifications</code>)</td><td>دو کامپوننت هم‌زمان روی <b>یک</b> <code class="inline">DbContext</code> سیرکیت کوئری زدند. در Blazor Server، هر سیرکیت یک <code class="inline">DbContext</code> اسکوپ‌شده دارد. <b>راه‌حل:</b> داده‌ای که در <code class="inline">OnInitializedAsync</code> یک کامپوننت مشترک داخل Layout لازم دارید، با fetch از یک endpoint سبک JSON بخوانید (نه <code class="inline">@inject</code> سرویس مدار). نمونهٔ درست: <code class="inline">NotificationBell</code> و <code class="inline">PushSubscribeButton</code> — هر دو <code class="inline">platformApi.get()</code> می‌زنند.</td></tr>
+      <tr><td>خطای رندر فقط در مرورگر (نه در تست)</td><td>کد JS‌بین‌رایانه (<code class="inline">IJSRuntime</code>) را در <code class="inline">OnAfterRenderAsync</code> بگذارید و <code class="inline">RendererInfo.Name == "Static"</code> را چک کنید؛ در prerender استاتیک JS در دسترس نیست.</td></tr>
     </table>
   </section>
 </main>

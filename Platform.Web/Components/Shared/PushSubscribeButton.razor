@@ -1,7 +1,8 @@
 @* دکمهٔ فعال‌سازی اعلان‌های مرورگر (وب‌پوش). اگر VAPID تنظیم نشده باشد، خودش را پنهان می‌کند. *@
+@* کلید عمومی با fetch از endpoint سبک خوانده می‌شود (نه از سرویس مدار) تا هم‌روندی
+   DbContext با صفحهٔ میزبان پیش نیاید — همان الگوی NotificationBell. *@
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
-@inject Platform.Application.Services.ISettingService Settings
 
 @if (!string.IsNullOrWhiteSpace(publicKey))
 {
@@ -22,13 +23,22 @@
     private bool subscribed;
     private string? statusMessage;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        publicKey = await Settings.GetEffectiveAsync(
-            Platform.Domain.Identity.IntegrationSettingKeys.VapidPublicKey,
-            "Push:Vapid:PublicKey");
-        if (string.IsNullOrWhiteSpace(publicKey))
-            publicKey = null;
+        if (!firstRender || RendererInfo.Name == "Static") return;
+
+        // خواندن کلید با fetch (خارج از DbContext مدار). اگر شکست خورد، دکمه پنهان
+        // می‌ماند ولی صفحه نباید خطای رندر بدهد — پس بی‌صدا نادیده می‌گیریم.
+        try
+        {
+            var info = await JS.InvokeAsync<PublicKeyDto>("platformApi.get", "/api/v1/push/public-key");
+            publicKey = info?.Enabled == true ? info.PublicKey : null;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (JSException)
+        {
+            // مرورگر از fetch پشتیبانی نمی‌کند یا JS هنوز آماده نیست — بی‌صدا رد شو.
+        }
     }
 
     private async Task SubscribeAsync()
@@ -70,5 +80,11 @@
     {
         public bool Ok { get; set; }
         public string? Reason { get; set; }
+    }
+
+    private sealed class PublicKeyDto
+    {
+        public string? PublicKey { get; set; }
+        public bool Enabled { get; set; }
     }
 }

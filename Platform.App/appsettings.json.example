@@ -8,6 +8,7 @@
     "Default": "Server=(localdb)\\mssqllocaldb;Database=EmptyFrameworkDev;Trusted_Connection=True;TrustServerCertificate=True"
   },
   "Serilog": {
+    "//log-note": "سطح System را از Warning پایین نیاورید: کلید API کاوه‌نگار داخل URL درخواست است و لاگ HttpClient آن را با آدرس کامل ثبت می‌کند.",
     "MinimumLevel": {
       "Default": "Information",
       "Override": {

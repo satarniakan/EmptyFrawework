@@ -11,6 +11,7 @@ using Platform.Application.Services;
 using Platform.Domain.Identity;
 using Platform.Domain.Interfaces;
 using Platform.Web;
+using Platform.Web.Middleware;
 using Xunit;
 
 namespace Platform.Tests;
@@ -59,6 +60,7 @@ public class WebHostingTests : IAsyncLifetime
         _app = builder.Build();
 
         // همان ترتیبی که میزبان واقعی به کار می‌برد
+        _app.UsePlatformSecurityHeaders();
         _app.UseAuthentication();
         _app.UseAuthorization();
         _app.UseRateLimiter();
@@ -87,6 +89,23 @@ public class WebHostingTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("pong", await response.Content.ReadAsStringAsync());
     }
+
+    [Fact]
+    public async Task SecurityHeaders_ArePresentOnResponses()
+    {
+        var response = await _client.GetAsync("/ping");
+
+        Assert.Equal("nosniff", GetHeader(response, "X-Content-Type-Options"));
+        Assert.Equal("SAMEORIGIN", GetHeader(response, "X-Frame-Options"));
+        Assert.Equal("strict-origin-when-cross-origin", GetHeader(response, "Referrer-Policy"));
+    }
+
+    private static string? GetHeader(HttpResponseMessage response, string name) =>
+        response.Headers.TryGetValues(name, out var values)
+            ? string.Join(",", values)
+            : response.Content.Headers.TryGetValues(name, out var contentValues)
+                ? string.Join(",", contentValues)
+                : null;
 
     [Fact]
     public async Task ProtectedPlatformEndpoint_RedirectsAnonymousCallerToLogin()

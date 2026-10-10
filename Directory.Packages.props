@@ -4,6 +4,9 @@
        همهٔ بسته‌های یک خانواده (EF Core، Identity، Extensions) هم‌نسخه می‌مانند. -->
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- حسابرسی آسیب‌پذیری‌ها در هر restore (هشدار NU190x). چون TreatWarningsAsErrors
+         خاموش است، بیلد را قرمز نمی‌کند ولی در خروجی build/CI دیده می‌شود. -->
+    <NuGetAuditMode>all</NuGetAuditMode>
   </PropertyGroup>
 
   <ItemGroup>

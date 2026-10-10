@@ -112,6 +112,18 @@ public static class PlatformSetup
                         Window = TimeSpan.FromMinutes(10),
                         QueueLimit = 0
                     }));
+
+            // شروع پرداخت: هر درخواست یک فراخوانی واقعی به درگاه + یک ردیف دیتابیس است،
+            // پس کاربر لاگین‌کرده هم نباید بتواند با حلقه درگاه را بمباران کند.
+            options.AddPolicy("payment-start", httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 10,
+                        Window = TimeSpan.FromMinutes(15),
+                        QueueLimit = 0
+                    }));
         });
 
         return services;

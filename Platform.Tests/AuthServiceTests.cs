@@ -18,6 +18,7 @@ public class AuthServiceTests
     {
         public Mock<UserManager<ApplicationUser>> Users { get; } = CreateUserManager();
         public Mock<IOtpService> Otp { get; } = new();
+        public Mock<IApiTokenService> Tokens { get; } = new();
 
         public AuthService Build()
         {
@@ -34,6 +35,7 @@ public class AuthServiceTests
                 Mock.Of<INotificationService>(),
                 Mock.Of<ILoginHistoryService>(),
                 Mock.Of<IHttpContextAccessor>(),
+                Tokens.Object,
                 new ConfigurationBuilder().Build(),
                 NullLogger<AuthService>.Instance);
         }
@@ -78,7 +80,7 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task ResetPassword_Mismatch_ReturnsPasswordMismatch()
+    public async Task ResetPassword_Mismatch_ReturnsPasswordMismatch_WithoutConsumingOtp()
     {
         var h = new Harness();
         h.Otp.Setup(o => o.VerifyOtpAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
@@ -87,7 +89,8 @@ public class AuthServiceTests
         var result = await h.Build().ResetPasswordWithOtpAsync("09120000000", "123456", "aaa", "bbb");
 
         Assert.Equal(PasswordResetStatus.PasswordMismatch, result.Status);
-        Assert.Equal("u1", result.UserId);
+        // کد پیامکی مصرف نمی‌شود — کاربر بدون گرفتن کد تازه می‌تواند تصحیح کند.
+        h.Otp.Verify(o => o.VerifyOtpAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         h.Users.Verify(u => u.GeneratePasswordResetTokenAsync(It.IsAny<ApplicationUser>()), Times.Never);
     }
 
@@ -124,5 +127,35 @@ public class AuthServiceTests
 
         Assert.Equal(PasswordResetStatus.Success, result.Status);
         Assert.Equal("u1", result.UserId);
+    }
+
+    [Fact]
+    public async Task ResetPassword_Success_RevokesApiTokens()
+    {
+        var h = new Harness();
+        var user = User();
+        h.Otp.Setup(o => o.VerifyOtpAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
+        h.Users.Setup(u => u.FindByNameAsync("09120000000")).ReturnsAsync(user);
+        h.Users.Setup(u => u.GeneratePasswordResetTokenAsync(user)).ReturnsAsync("tok");
+        h.Users.Setup(u => u.ResetPasswordAsync(user, "tok", "new-pass-1"))
+            .ReturnsAsync(IdentityResult.Success);
+
+        var result = await h.Build().ResetPasswordWithOtpAsync(
+            "09120000000", "123456", "new-pass-1", "new-pass-1");
+
+        Assert.Equal(PasswordResetStatus.Success, result.Status);
+        h.Tokens.Verify(t => t.RevokeAllAsync("u1"), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResetPassword_Failure_DoesNotRevokeApiTokens()
+    {
+        var h = new Harness();
+        h.Otp.Setup(o => o.VerifyOtpAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(false);
+
+        var result = await h.Build().ResetPasswordWithOtpAsync("09120000000", "000000", "x", "x");
+
+        Assert.Equal(PasswordResetStatus.InvalidOtp, result.Status);
+        h.Tokens.Verify(t => t.RevokeAllAsync(It.IsAny<string>()), Times.Never);
     }
 }
