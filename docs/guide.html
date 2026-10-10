@@ -88,7 +88,7 @@ cd MyProject   # خروجی داخل پوشهٔ هم‌نام می‌نشیند<
     <h2><span class="step">۳</span>بیلد و تست</h2>
 <pre>dotnet build MyProject.slnx
 dotnet test MyProject.Tests/MyProject.Tests.csproj</pre>
-    <p>هر دو باید سبز شوند (≈۱۴۷ تست). اگر قرمز شد همان خطا را بخوانید — معمولاً رشته اتصال است.</p>
+    <p>هر دو باید سبز شوند (≈۱۵۰ تست). اگر قرمز شد همان خطا را بخوانید — معمولاً رشته اتصال است.</p>
   </section>
 
   <section class="card" id="s4">
@@ -99,6 +99,7 @@ dotnet test MyProject.Tests/MyProject.Tests.csproj</pre>
       <li>اولین ورودِ آن شماره، نقش <b>ادمین</b> می‌گیرد؛ بقیه «کاربر» می‌شوند.</li>
       <li>منو را ببینید: مدیریت کاربران، تنظیمات، گزارش رویدادها.</li>
       <li>صفحه‌های مدیریتی آماده: <code class="inline">/admin/users</code> (با <b>ایمپورت اکسل</b> + گزارش خطای هر سطر)، <code class="inline">/admin/outbox</code> (صف پیامک/ایمیل/پوش + <b>تلاش دوباره</b> برای ناموفق‌ها)، <code class="inline">/admin/payments</code> و داشبورد.</li>
+      <li><b>تعیین/فراموشی رمز:</b> در صفحهٔ ورود، لینک «رمز عبور را فراموش کرده‌اید؟» به <code class="inline">/reset-password</code> می‌رود؛ یک جریان <b>دو مرحله‌ای</b> (وارد کردن شماره → کد پیامکی + رمز جدید). برای کاربرِ بی‌رمز (مثلاً واردشده با اکسل) همین مسیر «تعیین اول» است. کد یک‌بارمصرف است و عدم تطابق رمز پیش از مصرف کد پیام می‌دهد.</li>
     </ol>
   </section>
 

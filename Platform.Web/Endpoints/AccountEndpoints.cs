@@ -95,6 +95,56 @@ public static class AccountEndpoints
             };
         }).WithMetadata(new RequireAntiforgeryTokenAttribute()).RequireRateLimiting("profile");
 
+        // مرحلهٔ ۱ «فراموشی/تعیین رمز موبایل»: کد پیامکی می‌فرستد و به صفحهٔ تعیین رمز می‌رود.
+        app.MapPost("/Account/RequestPasswordReset", async (
+            HttpContext httpContext,
+            IAuthService authService,
+            ICaptchaValidator captcha,
+            [FromForm] string phoneNumber,
+            [FromForm(Name = "cf-turnstile-response")] string? captchaToken) =>
+        {
+            try
+            {
+                if (!await captcha.ValidateAsync(captchaToken,
+                        httpContext.Connection.RemoteIpAddress?.ToString()))
+                {
+                    return Results.Redirect("/reset-password?error=captcha");
+                }
+
+                await authService.RequestOtpAsync(phoneNumber);
+                return Results.Redirect($"/reset-password?phone={Uri.EscapeDataString(phoneNumber)}");
+            }
+            catch (Platform.Domain.Exceptions.BusinessRuleException ex)
+            {
+                return Results.Redirect($"/reset-password?error={Uri.EscapeDataString(ex.Message)}");
+            }
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute()).RequireRateLimiting("otp-request");
+
+        // مرحلهٔ ۲: کد + رمز جدید را می‌گیرد و رمز را تعیین می‌کند (سرویس، کد را می‌سوزاند).
+        app.MapPost("/Account/ResetPassword", async (
+            IAuthService authService,
+            [FromForm] string phoneNumber,
+            [FromForm] string code,
+            [FromForm] string newPassword,
+            [FromForm] string confirmPassword) =>
+        {
+            var result = await authService.ResetPasswordWithOtpAsync(
+                phoneNumber, code, newPassword, confirmPassword);
+
+            return result.Status switch
+            {
+                PasswordResetStatus.Success => Results.Redirect("/login-password?reset=success"),
+                PasswordResetStatus.InvalidOtp =>
+                    Results.Redirect($"/reset-password?phone={Uri.EscapeDataString(phoneNumber)}&error=otp"),
+                PasswordResetStatus.UserNotFound =>
+                    Results.Redirect($"/reset-password?phone={Uri.EscapeDataString(phoneNumber)}&error=user"),
+                PasswordResetStatus.PasswordMismatch =>
+                    Results.Redirect($"/reset-password?phone={Uri.EscapeDataString(phoneNumber)}&error=mismatch"),
+                _ =>
+                    Results.Redirect($"/reset-password?phone={Uri.EscapeDataString(phoneNumber)}&error=failed")
+            };
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute()).RequireRateLimiting("otp-verify");
+
         app.MapPost("/logout", async (IAuthService authService) =>
         {
             await authService.LogoutAsync();
