@@ -1,5 +1,6 @@
 // Platform.Web/Endpoints/AccountEndpoints.cs
 using System.Security.Claims;
+using Microsoft.AspNetCore.Antiforgery;
 using Platform.Application.DTOs;
 using Platform.Application.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -25,7 +26,7 @@ public static class AccountEndpoints
             return result.Succeeded
                 ? Results.Redirect("/")
                 : Results.Redirect("/login-password?error=1");
-        }).RequireRateLimiting("login");
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute()).RequireRateLimiting("login");
 
         app.MapPost("/Account/RequestOtp", async (
             HttpContext httpContext,
@@ -50,7 +51,7 @@ public static class AccountEndpoints
                 // مثلاً شماره به‌خاطر تلاش‌های ناموفقِ زیاد موقتاً قفل شده است
                 return Results.Redirect($"/login?error={Uri.EscapeDataString(ex.Message)}");
             }
-        }).RequireRateLimiting("otp-request");
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute()).RequireRateLimiting("otp-request");
 
         app.MapPost("/Account/VerifyOtp", async (
             IAuthService authService,
@@ -67,7 +68,7 @@ public static class AccountEndpoints
             return result.IsNewUser
                 ? Results.Redirect("/profile?welcome=true")
                 : Results.Redirect("/");
-        }).RequireRateLimiting("otp-verify");
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute()).RequireRateLimiting("otp-verify");
 
         app.MapPost("/Account/UpdateProfile", async (
             HttpContext httpContext,
@@ -92,13 +93,13 @@ public static class AccountEndpoints
                 ProfileUpdateStatus.UserNotFound => Results.Redirect("/login"),
                 _ => Results.Redirect($"/profile?error={result.Status}")
             };
-        }).RequireRateLimiting("profile");
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute()).RequireRateLimiting("profile");
 
         app.MapPost("/logout", async (IAuthService authService) =>
         {
             await authService.LogoutAsync();
             return Results.Redirect("/login");
-        });
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute());
 
         return app;
     }

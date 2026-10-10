@@ -110,6 +110,13 @@ app.UseRateLimiter();
 app.MapPlatform();
 app.MapHealthChecks("/health");
 
+// مستندات خودکار API موبایل — فقط در Development (شامل کلید عمومی پوش و مسیرهای auth).
+// مرور JSON در: /openapi/v1.json
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+}
+
 // ورود مستقیم بدون OTP — فقط در Development و فقط برای شمارهٔ Dev:AutoLoginPhone.
 // در Production همین مسیر ۴۰۴ می‌دهد و سیدینگ EnsureDevAdminAsync هم اجرا نمی‌شود.
 app.MapGet("/dev-login", async (

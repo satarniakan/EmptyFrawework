@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -56,7 +57,7 @@ public static class ImpersonationEndpoints
                 $"ادمین {adminId} به‌جای کاربر {target.Id} وارد شد.");
 
             return Results.Redirect("/");
-        }).RequireAuthorization(adminOnly);
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute()).RequireAuthorization(adminOnly);
 
         app.MapPost("/admin/impersonate/stop", async (
             HttpContext http,
@@ -79,7 +80,7 @@ public static class ImpersonationEndpoints
                 http.Request.Headers.UserAgent.ToString());
 
             return Results.Redirect("/admin/users");
-        }).RequireAuthorization();
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute()).RequireAuthorization();
 
         return app;
     }

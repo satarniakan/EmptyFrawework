@@ -103,7 +103,7 @@ git push -u origin master
 |---|---|---|
 | ۱ | فهرست مجوزهای سامانه | `IPermissionCatalog` |
 | ۲ | ساختار منو | `INavProvider` |
-| ۳ | مدل EF دامنه + ریپازیتوری‌ها | `IPlatformModule` و `IDomainUnitOfWork : IPlatformUnitOfWork` |
+| ۳ | مدل EF دامنه + ریپازیتوری‌ها | `IPlatformModule` برای مدل + اینترفیس `IDomainUnitOfWork : IPlatformUnitOfWork` و کلاس مشتق از `PlatformUnitOfWork` (سازنده‌اش فقط context و provider می‌گیرد تا با به‌روزرسانی پایه نشکند) |
 
 الگوی هر سه — یک `IPermissionCatalog` با چند کلید، یک `INavProvider` با چند گروه،
 و یک کلاس `IPlatformModule` با `ConfigureModel` — در `Platform.App/AppSetup.cs`
@@ -156,7 +156,7 @@ dotnet new install .
 | `Platform.Domain` | هویت (`ApplicationUser`)، مجوز (`Permissions` فقط `ClaimType` دارد)، نقش‌های پایه + `IPermissionCatalog`، قراردادهای زیرساخت (`IFileStorage`، `ISmsSender`، `IEmailSender`، `IPaymentGateway`، `ICaptchaValidator`)، انتیتی‌های پایه (AuditLog، OtpCode، OtpThrottle، OutboxMessage، Notification، Setting، Payment، ApiToken، LoginHistory، PushSubscription)، `IPlatformUnitOfWork`، جست‌وجوی فارسی (`PersianSearch`) |
 | `Platform.Application` | سرویس‌های پایه (Auth، Otp، Audit، Permission، UserAdmin، Notification، Outbox، ApiToken، LoginHistory، Setting، NumberSeries، Payment، Push، Impersonation) + Helpers فارسی + Exports اکسل/PDF + ایمپورت اکسل + ترجمهٔ یکتای خطا (`ExceptionTranslator`) + کارهای تکرارشونده (`IRecurringJob`) |
 | `Platform.Infrastructure` | `PlatformDbContext` (ماژولار با `IPlatformModule`) + `PlatformUnitOfWork` (تراکنش واقعی)، `RoleSeeder`، فرستنده‌های پیامک/ایمیل، درگاه زرین‌پال، Turnstile، وب‌پوش VAPID — بدون هیچ مایگریشن (مال میزبان است) |
-| `Platform.Web` | کتابخانهٔ وب پایه (کامپوننت + زیرساخت اجرا): صفحات ورود/OTP/پروفایل/نشست‌ها/ادمین/تنظیمات/نتیجهٔ پرداخت، صفحات ورود/OTP/پروفایل/نشست‌ها/ادمین/تنظیمات/نتیجهٔ پرداخت، `MainLayout` (بنر جانشینی)، `NavMenu` داده‌محور (`INavProvider`)، `Routes`، کامپوننت‌های `Shared/App*` + دکمهٔ وب‌پوش |
+| `Platform.Web` | کتابخانهٔ وب پایه (کامپوننت + زیرساخت اجرا): صفحات ورود/OTP/پروفایل/خانه/نشست‌ها/ادمین/تنظیمات/نتیجهٔ پرداخت، `MainLayout` (بنر جانشینی)، `NavMenu` داده‌محور (`INavProvider`)، `Routes`، کامپوننت‌های `Shared/App*` + دکمهٔ وب‌پوش |
 | `Platform.App` | **تنها پروژهٔ اجرایی (startup)** — میزبان خالی که پایه را بالا می‌آورد؛ مایگریشن‌ها (`Migrations/`) و فکتوری design-time اینجاست |
 
 ## خطاهای پرتکرار
@@ -340,12 +340,16 @@ docker compose up --build
 
 نقاط توسعهٔ دامنه (بدون ویرایش پایه): `IPermissionCatalog` (مجوز ← policy خودکار)،
 `INavProvider` (منو)، `ISettingCatalog` (تنظیمات قابل‌ویرایش)، `IPlatformModule`
-(جدول‌های EF)، `IRecurringJob` (کار دوره‌ای)، `INumberSeries` (شمارهٔ سند)،
+(جدول‌های EF)، `IDomainUnitOfWork : IPlatformUnitOfWork` (ریپوهای دامنه با همان تراکنش)،
+`IRecurringJob` (کار دوره‌ای)، `INumberSeries` (شمارهٔ سند)،
 `ExcelImporter` (ایمپورت با خطای سطری)، `IPaymentGateway` (درگاه جدید).
+
+مستندات خودکار API موبایل فقط در Development است: `/openapi/v1.json`.
 
 ## قراردادها
 
 - همهٔ متون فارسی، سمت راست‌به‌چپ؛ تاریخ شمسی و اعداد فارسی در UI.
 - لاگ با Serilog (کنسول + فایل روزانه، نگهداری ۱۴ روز).
 - محدودیت نرخ روی endpointهای auth (`login`، `otp-request`، `otp-verify`، `profile`).
+- endpointهای کوکیِ POST (ورود، OTP، خروج، جانشینی) antiforgery را اعتبارسنجی می‌کنند؛ endpointهای توکن موبایل نه (توکن هدر، کوکی نیست).
 - صفحه‌ها تک‌فرم نگه داشته شوند تا DbContext اسکوپ‌دار مدارها به هم نریزد.

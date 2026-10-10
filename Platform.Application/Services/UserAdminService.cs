@@ -9,8 +9,6 @@ namespace Platform.Application.Services;
 
 public interface IUserAdminService
 {
-    Task<IEnumerable<UserListItemDto>> GetAllUsersAsync();
-
     /// <summary>
     /// فهرست صفحه‌بندی‌شدهٔ کاربران با جست‌وجو (شماره، نام، ایمیل). نقش‌های هر کاربر
     /// فقط برای همان صفحه خوانده می‌شوند تا لیست هزاران‌نفره N+1 نشود.
@@ -35,21 +33,6 @@ public class UserAdminService : IUserAdminService
     {
         _userManager = userManager;
         _roleManager = roleManager;
-    }
-
-    public async Task<IEnumerable<UserListItemDto>> GetAllUsersAsync()
-    {
-        var users = _userManager.Users.ToList();
-        var result = new List<UserListItemDto>();
-
-        foreach (var user in users)
-        {
-            var roles = await _userManager.GetRolesAsync(user);
-            result.Add(new UserListItemDto(
-                user.Id, user.PhoneNumber, user.FullName, user.Email, roles.ToList()));
-        }
-
-        return result;
     }
 
     public async Task<PagedResult<UserListItemDto>> GetUsersPagedAsync(string? search, int page, int pageSize)

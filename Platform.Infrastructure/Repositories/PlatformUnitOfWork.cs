@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Platform.Domain.Interfaces;
 using Platform.Infrastructure.Data;
 
@@ -7,26 +8,24 @@ namespace Platform.Infrastructure.Repositories;
 /// <summary>
 /// واحد کارِ پایه. عمداً فقط چهار ریپازیتوری زیرساختی دارد؛ پروژهٔ مصرف‌کننده
 /// یک واحد کار دامنه‌ای جدا می‌سازد که از این ارث می‌برد.
+/// <para>
+/// سازنده فقط <c>DbContext</c> و <c>IServiceProvider</c> می‌گیرد تا با اضافه‌شدن
+/// ریپازیتوری جدید به پایه، سازنده عوض نشود و کلاس‌های مشتق‌شدهٔ مصرف‌کننده نشکنند.
+/// </para>
 /// </summary>
 public class PlatformUnitOfWork : IPlatformUnitOfWork
 {
     private readonly PlatformDbContext _context;
     private int _transactionDepth;
 
-    public PlatformUnitOfWork(
-        PlatformDbContext context,
-        IOtpRepository otpCodes,
-        IAuditLogRepository auditLogs,
-        INotificationRepository notifications,
-        IOutboxRepository outbox,
-        IPaymentRepository payments)
+    public PlatformUnitOfWork(PlatformDbContext context, IServiceProvider services)
     {
         _context = context;
-        OtpCodes = otpCodes;
-        AuditLogs = auditLogs;
-        Notifications = notifications;
-        Outbox = outbox;
-        Payments = payments;
+        OtpCodes = services.GetRequiredService<IOtpRepository>();
+        AuditLogs = services.GetRequiredService<IAuditLogRepository>();
+        Notifications = services.GetRequiredService<INotificationRepository>();
+        Outbox = services.GetRequiredService<IOutboxRepository>();
+        Payments = services.GetRequiredService<IPaymentRepository>();
     }
 
     public IOtpRepository OtpCodes { get; }
