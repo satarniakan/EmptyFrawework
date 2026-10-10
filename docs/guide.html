@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>راهنمای توسعه روی فریم‌ورک | از صفر تا کد بیزینس</title>
+<style>
+  :root { --brand: #2563eb; --bg: #f8f9fb; --card: #fff; --text: #1f2937; --muted: #6b7280; --border: #e5e7eb; --ok: #15803d; --warn: #b45309; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Tahoma, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); line-height: 1.9; }
+  header { background: linear-gradient(135deg, #1e3a8a, var(--brand)); color: #fff; padding: 2.5rem 1.5rem; text-align: center; }
+  header h1 { margin: 0 0 .5rem; font-size: 1.6rem; }
+  header p { margin: 0; opacity: .9; }
+  main { max-width: 900px; margin: -1.5rem auto 3rem; padding: 0 1rem; }
+  section.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+  h2 { margin-top: 0; font-size: 1.25rem; border-bottom: 2px solid var(--brand); padding-bottom: .4rem; }
+  h2 .step { display: inline-block; background: var(--brand); color: #fff; width: 2rem; height: 2rem; line-height: 2rem; text-align: center; border-radius: 50%; font-size: 1rem; margin-left: .5rem; }
+  pre { background: #111827; color: #e5e7eb; padding: 1rem; border-radius: 8px; overflow-x: auto; direction: ltr; text-align: left; font-size: .85rem; }
+  code.inline { background: #eef2ff; color: #1e3a8a; padding: .1rem .4rem; border-radius: 4px; font-size: .9em; }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  th, td { border: 1px solid var(--border); padding: .5rem .7rem; text-align: right; vertical-align: top; }
+  th { background: #eff6ff; }
+  .note { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: .8rem 1rem; margin: 1rem 0; }
+  .ok { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: .8rem 1rem; margin: 1rem 0; }
+  .rule { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: .8rem 1rem; margin: 1rem 0; font-weight: bold; }
+  ol li, ul li { margin-bottom: .4rem; }
+  footer { text-align: center; color: var(--muted); font-size: .85rem; padding-bottom: 2rem; }
+  .toc a { color: var(--brand); text-decoration: none; }
+  .toc li { margin-bottom: .2rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>راهنمای توسعه روی فریم‌ورک</h1>
+  <p>از ساخت پروژه تا نوشتن اولین کد بیزینس — بدون دست‌زدن به پایه</p>
+</header>
+
+<main>
+  <section class="card toc">
+    <h2>نقشه راه</h2>
+    <ol>
+      <li><a href="#s0">پیش‌نیازها</a></li>
+      <li><a href="#s1">ساخت پروژه از قالب</a></li>
+      <li><a href="#s2">دیتابیس (سه راه)</a></li>
+      <li><a href="#s3">بیلد و تست</a></li>
+      <li><a href="#s4">اولین اجرا و ادمین‌شدن</a></li>
+      <li><a href="#s5">نقشه پروژه‌ها و قانون طلایی</a></li>
+      <li><a href="#s6">افزودن ماژول دامنه قدم‌به‌قدم (مثال: سفارش‌ها)</a></li>
+      <li><a href="#s7">اتصال موبایل و API</a></li>
+      <li><a href="#s8">چک‌لیست رفتن به Production</a></li>
+      <li><a href="#s9">عیب‌یابی</a></li>
+    </ol>
+  </section>
+
+  <section class="card" id="s0">
+    <h2><span class="step">۰</span>پیش‌نیازها</h2>
+    <ul>
+      <li><code class="inline">.NET 10 SDK</code> — نسخه در <code class="inline">global.json</code> قفل است.</li>
+      <li>ابزار EF (فقط برای ساخت مایگریشن): <code class="inline">dotnet tool install --global dotnet-ef</code></li>
+      <li>SQL Server — یا همان داکر مرحله ۲ (نصب جدا لازم نیست).</li>
+    </ul>
+  </section>
+
+  <section class="card" id="s1">
+    <h2><span class="step">۱</span>ساخت پروژه از قالب</h2>
+<pre>git clone https://github.com/satarniakan/EmptyFrawework.git
+cd EmptyFrawework
+dotnet new install .
+mkdir MyProject
+cd MyProject
+dotnet new empty-platform -n MyProject
+cd MyProject   # خروجی داخل پوشهٔ هم‌نام می‌نشیند</pre>
+    <div class="note">نام‌ها خودکار جایگزین می‌شوند: <code class="inline">Platform.X</code> می‌شود <code class="inline">MyProject.X</code>. ساختار تخت است؛ <b>تنها پروژهٔ اجرایی <code class="inline">MyProject.App</code> است</b> — همان را اجرا کنید.</div>
+  </section>
+
+  <section class="card" id="s2">
+    <h2><span class="step">۲</span>دیتابیس (یکی از سه راه)</h2>
+    <table>
+      <tr><th>راه</th><th>دستور</th><th>کی؟</th></tr>
+      <tr><td><b>الف) داکر</b> (پیشنهاد)</td><td><code class="inline">docker compose up --build</code> سپس مرورگر روی <code class="inline">http://localhost:8080</code></td><td>سریع‌ترین؛ SQL Server جدا نمی‌خواهد</td></tr>
+      <tr><td><b>ب) اسکریپت آماده</b></td><td>فایل <code class="inline">docs/database.sql</code> را روی دیتابیس تازه اجرا کنید (دستورش اول فایل هست)</td><td>وقتی DBA جداگانه دیتابیس می‌سازد یا می‌خواهید ریستور کنید</td></tr>
+      <tr><td><b>ج) خودکار</b></td><td>هیچ‌کار — اپ با <code class="inline">MigrateAsync</code> هنگام استارتاپ جدول‌ها را می‌سازد</td><td>توسعه روزمره</td></tr>
+    </table>
+    <p>بعد فایل <code class="inline">Platform.App/appsettings.json.example</code> را به <code class="inline">appsettings.json</code> (کنار خودش) کپی کنید و رشته اتصال + <code class="inline">Identity:FirstAdminPhoneNumber</code> (شماره خودتان) را بگذارید. این فایل در گیت نمی‌رود.</p>
+  </section>
+
+  <section class="card" id="s3">
+    <h2><span class="step">۳</span>بیلد و تست</h2>
+<pre>dotnet build MyProject.slnx
+dotnet test MyProject.Tests/MyProject.Tests.csproj</pre>
+    <p>هر دو باید سبز شوند (≈۱۳۰ تست). اگر قرمز شد همان خطا را بخوانید — معمولاً رشته اتصال است.</p>
+  </section>
+
+  <section class="card" id="s4">
+    <h2><span class="step">۴</span>اولین اجرا و ادمین‌شدن</h2>
+<pre>dotnet run --project MyProject.App</pre>
+    <ol>
+      <li>با شماره‌ای که در <code class="inline">FirstAdminPhoneNumber</code> گذاشتید وارد شوید (کد پیامکی؛ در حالت توسعه با <code class="inline">Dev:AutoLoginPhone</code> و مسیر <code class="inline">/dev-login</code> بدون پیامک).</li>
+      <li>اولین ورودِ آن شماره، نقش <b>ادمین</b> می‌گیرد؛ بقیه «کاربر» می‌شوند.</li>
+      <li>منو را ببینید: مدیریت کاربران، تنظیمات، گزارش رویدادها.</li>
+    </ol>
+  </section>
+
+  <section class="card" id="s5">
+    <h2><span class="step">۵</span>نقشه پروژه‌ها و قانون طلایی</h2>
+    <table>
+      <tr><th>پروژه</th><th>نقش</th><th>دست می‌زنید؟</th></tr>
+      <tr><td><code class="inline">MyProject.App</code></td><td><b>تنها پروژه اجرایی</b> — مایگریشن‌ها و سه نقطه اتصال دامنه اینجاست</td><td>بله (فقط همین)</td></tr>
+      <tr><td><code class="inline">MyProject.Web</code></td><td>کتابخانه وب پایه (صفحات، endpointها، سرویس‌ها)</td><td>نه</td></tr>
+      <tr><td><code class="inline">MyProject.Application</code> / <code class="inline">Infrastructure</code> / <code class="inline">Domain</code></td><td>سرویس‌ها، دیتابیس، قراردادها</td><td>نه</td></tr>
+      <tr><td><code class="inline">MyProject.Tests</code></td><td>تست‌ها — تست بیزینس خودتان را اینجا اضافه کنید</td><td>بله</td></tr>
+    </table>
+    <div class="rule">قانون طلایی: پایه را ویرایش نکنید. همه نیاز دامنه از سه نقطه اتصال می‌گذرد — اگر جایی مجبور به ویرایش پایه شدید، یعنی نقطه اتصال کم است؛ همان را به پایه اضافه کنید.</div>
+  </section>
+
+  <section class="card" id="s6">
+    <h2><span class="step">۶</span>افزودن ماژول دامنه قدم‌به‌قدم (مثال: سفارش‌ها)</h2>
+    <ol>
+      <li><b>انتیتی:</b> کلاس در پروژه جدا (مثلاً <code class="inline">Orders/Order.cs</code>، ارث از <code class="inline">AuditableEntity</code> برای حذف نرم و رد پیگیری خودکار).</li>
+      <li><b>مدل EF:</b> کلاس <code class="inline">IPlatformModule</code> با <code class="inline">ConfigureModel</code> و ثبت با <code class="inline">services.AddSingleton&lt;IPlatformModule, OrdersModule&gt;()</code>.</li>
+      <li><b>ریپازیتوری + سرویس:</b> اینترفیس و پیاده‌سازی؛ چندنوشته‌ها را در <code class="inline">ExecuteInTransactionAsync</code> بگذارید. واحد کار اختصاصی: اینترفیس از <code class="inline">IPlatformUnitOfWork</code> + کلاس مشتق از <code class="inline">PlatformUnitOfWork</code>.</li>
+      <li><b>مجوز:</b> کلید (مثلاً <code class="inline">orders.manage</code>) را به <code class="inline">IPermissionCatalog</code> اضافه کنید — policy و آیتم نقش‌ها خودکار می‌آیند؛ صفحه با <code class="inline">[Authorize(Policy = "orders.manage")]</code> بسته می‌شود.</li>
+      <li><b>منو:</b> یک <code class="inline">NavItem.Link</code> با همان کلید مجوز به <code class="inline">INavProvider</code> اضافه کنید.</li>
+      <li><b>مایگریشن:</b> <code class="inline">dotnet ef migrations add AddOrders --project MyProject.App --startup-project MyProject.App</code></li>
+      <li><b>صفحه:</b> Razor در میزبان + ثبت در منو. برای آپلود فایل از <code class="inline">IFileStorage</code>، برای شماره سند از <code class="inline">INumberSeries</code>، برای ایمپورت اکسل از <code class="inline">ExcelImporter</code> استفاده کنید.</li>
+    </ol>
+    <div class="ok">اعلان/پیامک/ایمیل/پوش لازم داشتید؟ فقط <code class="inline">INotificationService</code> و <code class="inline">IOutboxService</code> را صدا بزنید — ارسال و retry با پردازنده صف است.</div>
+  </section>
+
+  <section class="card" id="s7">
+    <h2><span class="step">۷</span>اتصال موبایل و API</h2>
+    <ul>
+      <li>ورود: <code class="inline">POST /api/v1/auth/otp/verify</code> (پیامک) یا <code class="inline">POST /api/v1/auth/login</code> (رمز — وقتی پیامک قطع است) → توکن <code class="inline">pat_…</code></li>
+      <li>استفاده: هدر <code class="inline">Authorization: Bearer pat_…</code> — مستندات کامل در Development: <code class="inline">/openapi/v1.json</code></li>
+      <li>مدیریت نشست: <code class="inline">GET/DELETE /api/v1/auth/tokens</code> (لیست و لغو، از جمله «خروج از همه دستگاه‌ها»)</li>
+    </ul>
+  </section>
+
+  <section class="card" id="s8">
+    <h2><span class="step">۸</span>چک‌لیست رفتن به Production</h2>
+    <ul>
+      <li><code class="inline">Sms:Provider=Kavenegar</code> + کلید واقعی؛ قالب‌ها در صفحه تنظیمات بازبینی شوند.</li>
+      <li><code class="inline">Captcha:Provider=Turnstile</code> + SiteKey/SecretKey.</li>
+      <li><code class="inline">Payment:Provider=ZarinPal</code> + MerchantId (مبالغ به تومان).</li>
+      <li><code class="inline">Push:Vapid</code> با <code class="inline">npx web-push generate-vapid-keys</code>.</li>
+      <li><code class="inline">Support:ImpersonationEnabled</code> خاموش بماند مگر برای پشتیبانی.</li>
+      <li>HTTPS + بکاپ دوره‌ای دیتابیس + نگهداری لاگ Serilog.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="s9">
+    <h2><span class="step">۹</span>عیب‌یابی</h2>
+    <table>
+      <tr><th>علامت</th><th>علت و راه‌حل</th></tr>
+      <tr><td>خطای اتصال SQL هنگام run</td><td>رشته اتصال <code class="inline">appsettings.json</code> و بالابودن SQL Server (یا <code class="inline">docker compose up sqlserver</code>)</td></tr>
+      <tr><td>منوی ادمین دیده نمی‌شود</td><td>با شماره ادمین اول وارد نشده‌اید؛ نقش را در <code class="inline">/admin/users</code> چک کنید</td></tr>
+      <tr><td>policy ناشناخته در صفحه جدید</td><td>کلید مجوز در <code class="inline">IPermissionCatalog</code> نیست یا املایش با <code class="inline">Policy</code> فرق دارد</td></tr>
+      <tr><td>مایگریشن جدول ماژول را نساخت</td><td>ماژول در DI ثبت نشده (<code class="inline">AddSingleton&lt;IPlatformModule,…&gt;</code>) یا پروژه اشتباه به <code class="inline">dotnet ef</code> داده‌اید</td></tr>
+      <tr><td>کد OTP نمی‌رسد</td><td><code class="inline">Sms:Provider</code> روی Fake است (لاگ را ببینید) یا سقف ۳ کد در ۱۵ دقیقه خورده‌اید</td></tr>
+    </table>
+  </section>
+</main>
+<footer>تولیدشده از همین ریپو — اگر پایه عوض شد، این راهنما را هم به‌روز کنید.</footer>
+</body>
+</html>
