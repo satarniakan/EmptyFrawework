@@ -15,9 +15,11 @@ public class CreateUserDto
     [EmailAddress(ErrorMessage = "ایمیل معتبر نیست.")]
     public string? Email { get; set; }
 
-    [Required(ErrorMessage = "رمز عبور الزامی است.")]
-    [MinLength(6, ErrorMessage = "رمز عبور باید حداقل ۶ کاراکتر باشد.")]
-    public string Password { get; set; } = string.Empty;
+    /// <summary>
+    /// خالی یعنی «بدون رمز» — کاربر فقط با پیامک وارد می‌شود (برای ایمپورت گروهی).
+    /// اگر داده شود، سیاست رمز Identity (حداقل ۶ کاراکتر و…) روی همان اعمال می‌شود.
+    /// </summary>
+    public string? Password { get; set; }
 
     [MinLength(1, ErrorMessage = "انتخاب حداقل یک نقش الزامی است.")]
     public List<string> RoleNames { get; set; } = new();

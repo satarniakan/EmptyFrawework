@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Platform.Application.DTOs;
 using Platform.Application.Queries;
@@ -28,12 +29,20 @@ public class UserAdminService : IUserAdminService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole> _roleManager;
+    private readonly IAuditService _audit;
+    private readonly IHttpContextAccessor _httpContext;
 
-    public UserAdminService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+    public UserAdminService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager,
+        IAuditService audit, IHttpContextAccessor httpContext)
     {
         _userManager = userManager;
         _roleManager = roleManager;
+        _audit = audit;
+        _httpContext = httpContext;
     }
+
+    /// <summary>عامل فعلی (ادمین انجام‌دهنده) برای رد حسابرسی؛ بیرون از درخواست HTTP تهی است.</summary>
+    private string? ActorName => _httpContext.HttpContext?.User.Identity?.Name;
 
     public async Task<PagedResult<UserListItemDto>> GetUsersPagedAsync(string? search, int page, int pageSize)
     {
@@ -135,6 +144,8 @@ public class UserAdminService : IUserAdminService
             if (!addResult.Succeeded) return addResult;
         }
 
+        await _audit.LogEventAsync("user.roles-changed", ActorName,
+            $"نقش‌های کاربر {user.PhoneNumber} به «{string.Join("، ", roleNames)}» تغییر کرد.");
         return IdentityResult.Success;
     }
 
@@ -167,7 +178,9 @@ public class UserAdminService : IUserAdminService
             EmailConfirmed = true
         };
 
-        var result = await _userManager.CreateAsync(user, model.Password);
+        var result = string.IsNullOrWhiteSpace(model.Password)
+            ? await _userManager.CreateAsync(user)
+            : await _userManager.CreateAsync(user, model.Password);
 
         if (result.Succeeded && model.RoleNames is { Count: > 0 })
         {
@@ -184,6 +197,12 @@ public class UserAdminService : IUserAdminService
             {
                 await _userManager.AddToRolesAsync(user, validRoles);
             }
+        }
+
+        if (result.Succeeded)
+        {
+            await _audit.LogEventAsync("user.created", ActorName,
+                $"کاربر {phone} ساخته شد.");
         }
 
         return result;
@@ -220,7 +239,14 @@ public class UserAdminService : IUserAdminService
         user.UserName = phone;
         user.Email = string.IsNullOrWhiteSpace(email) ? null : email;
 
-        return await _userManager.UpdateAsync(user);
+        var updateResult = await _userManager.UpdateAsync(user);
+        if (updateResult.Succeeded)
+        {
+            await _audit.LogEventAsync("user.updated", ActorName,
+                $"کاربر {phone} ویرایش شد.");
+        }
+
+        return updateResult;
     }
 
     public async Task<IdentityResult> DeleteUserAsync(string userId, string currentUserId)
@@ -245,7 +271,14 @@ public class UserAdminService : IUserAdminService
                 });
         }
 
-        return await _userManager.DeleteAsync(user);
+        var deleteResult = await _userManager.DeleteAsync(user);
+        if (deleteResult.Succeeded)
+        {
+            await _audit.LogEventAsync("user.deleted", ActorName,
+                $"کاربر {user.PhoneNumber} حذف شد.");
+        }
+
+        return deleteResult;
     }
 
     public async Task<List<RoleDto>> GetAllRolesAsync()

@@ -1,7 +1,13 @@
-@* صفحهٔ خانهٔ پایه: خوش‌آمد + میان‌بر بخش‌ها. پروژهٔ میزبان می‌تواند صفحهٔ خودش را جایگزین کند. *@
+@* صفحهٔ خانهٔ پایه: خوش‌آمد + میان‌بر بخش‌ها با شمارش زنده. پروژهٔ میزبان می‌تواند صفحهٔ خودش را جایگزین کند. *@
 @page "/"
 @attribute [Authorize]
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Platform.Application.Services
+@using Platform.Domain.Identity
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IDashboardService Dashboard
 <PageTitle>خانه</PageTitle>
 
 <div class="mb-3">
@@ -13,14 +19,26 @@
     <div class="col-md-4">
         <a href="notifications" class="card-panel d-block text-decoration-none">
             <i class="bi bi-bell fs-4"></i>
-            <div class="fw-semibold mt-2">اعلان‌ها</div>
+            <div class="fw-semibold mt-2">
+                اعلان‌ها
+                @if (stats is not null && stats.UnreadNotifications > 0)
+                {
+                    <span class="badge text-bg-danger ms-1">@stats.UnreadNotifications خوانده‌نشده</span>
+                }
+            </div>
             <div class="text-body-secondary small">آرشیو اعلان‌های شما</div>
         </a>
     </div>
     <div class="col-md-4">
         <a href="sessions" class="card-panel d-block text-decoration-none">
             <i class="bi bi-phone fs-4"></i>
-            <div class="fw-semibold mt-2">نشست‌های فعال</div>
+            <div class="fw-semibold mt-2">
+                نشست‌های فعال
+                @if (stats is not null)
+                {
+                    <span class="badge text-bg-secondary ms-1">@stats.ActiveTokens فعال</span>
+                }
+            </div>
             <div class="text-body-secondary small">توکن‌ها و ورودهای اخیر</div>
         </a>
     </div>
@@ -32,3 +50,54 @@
         </a>
     </div>
 </div>
+
+<AuthorizeView Roles="@Roles.Admin">
+    <Authorized>
+        @if (stats?.TotalUsers is not null)
+        {
+            <div class="row g-3 mt-1">
+                <div class="col-md-4">
+                    <a href="admin/users" class="card-panel d-block text-decoration-none">
+                        <i class="bi bi-people fs-4"></i>
+                        <div class="fw-semibold mt-2">@stats.TotalUsers کاربر</div>
+                        <div class="text-body-secondary small">مدیریت کاربران و نقش‌ها</div>
+                    </a>
+                </div>
+                <div class="col-md-4">
+                    <a href="admin/outbox" class="card-panel d-block text-decoration-none">
+                        <i class="bi bi-send fs-4"></i>
+                        <div class="fw-semibold mt-2">
+                            صف پیام‌ها
+                            @if (stats.FailedOutbox > 0)
+                            {
+                                <span class="badge text-bg-danger ms-1">@stats.FailedOutbox ناموفق</span>
+                            }
+                        </div>
+                        <div class="text-body-secondary small">نظارت و تلاش دوباره</div>
+                    </a>
+                </div>
+                <div class="col-md-4">
+                    <a href="admin/payments" class="card-panel d-block text-decoration-none">
+                        <i class="bi bi-credit-card fs-4"></i>
+                        <div class="fw-semibold mt-2">پرداخت‌ها</div>
+                        <div class="text-body-secondary small">مشاهدهٔ وضعیت پرداخت‌ها</div>
+                    </a>
+                </div>
+            </div>
+        }
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private HomeStats? stats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null) return;
+
+        stats = await Dashboard.GetHomeStatsAsync(userId, user.IsInRole(Roles.Admin));
+    }
+}

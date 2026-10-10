@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -59,12 +60,14 @@ public class SettingService : ISettingService
     private readonly IConfiguration _configuration;
     private readonly IDataProtector? _protector;
     private readonly ILogger<SettingService> _logger;
+    private readonly IAuditService _audit;
+    private readonly IHttpContextAccessor _httpContext;
     private readonly TimeProvider _clock;
 
     public SettingService(ISettingRepository repository, ISettingCatalog catalog,
         IPlatformUnitOfWork unitOfWork, IMemoryCache cache, IConfiguration configuration,
-        ILogger<SettingService> logger, TimeProvider? clock = null,
-        IDataProtectionProvider? dataProtection = null)
+        ILogger<SettingService> logger, IAuditService audit, IHttpContextAccessor httpContext,
+        TimeProvider? clock = null, IDataProtectionProvider? dataProtection = null)
     {
         _repository = repository;
         _catalog = catalog;
@@ -72,6 +75,8 @@ public class SettingService : ISettingService
         _cache = cache;
         _configuration = configuration;
         _logger = logger;
+        _audit = audit;
+        _httpContext = httpContext;
         _clock = clock ?? TimeProvider.System;
         _protector = dataProtection?.CreateProtector(ProtectorPurpose);
     }
@@ -116,6 +121,9 @@ public class SettingService : ISettingService
         });
         await _unitOfWork.CompleteAsync();
         _cache.Remove(CacheKey(key));
+
+        // فقط کلید ثبت می‌شود، هرگز مقدار (محرمانه‌ها قابل‌بازگشت نیستند)
+        await _audit.LogEventAsync("setting.changed", ActorName, $"تنظیم «{key}» تغییر کرد.");
     }
 
     public async Task<bool> HasValueAsync(string key)
@@ -129,7 +137,12 @@ public class SettingService : ISettingService
         await _repository.DeleteAsync(key);
         await _unitOfWork.CompleteAsync();
         _cache.Remove(CacheKey(key));
+
+        await _audit.LogEventAsync("setting.cleared", ActorName,
+            $"تنظیم «{key}» به مقدار appsettings/پیش‌فرض برگشت.");
     }
+
+    private string? ActorName => _httpContext.HttpContext?.User.Identity?.Name;
 
     /// <summary>
     /// پیش‌فرض اول از کاتالوگ میزبان (که ماژول‌ها هم می‌توانند به آن اضافه کنند)،

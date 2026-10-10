@@ -30,6 +30,7 @@ Thumbs.db
 # Real connection strings stay on the machine, never in git
 /Platform.App/appsettings.json
 /Platform.App/appsettings.Development.json
+.env
 
 # Data Protection keys (created at runtime by the sample host)
 DataProtection-Keys/

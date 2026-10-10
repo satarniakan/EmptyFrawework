@@ -23,7 +23,15 @@ jobs:
         run: dotnet build Platform.slnx --no-restore -c Release
 
       - name: Test
-        run: dotnet test Platform.slnx --no-build -c Release --verbosity normal
+        run: dotnet test Platform.slnx --no-build -c Release --verbosity normal --collect:"XPlat Code Coverage"
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: "**/TestResults/**/coverage.cobertura.xml"
+          if-no-files-found: warn
 
   # مهم‌ترین تست ریپو: خروجی قالب باید بسازد و سبز باشد. بدون این، قالب می‌تواند
   # بشکند در حالی که build/test خودِ ریپو سبز است.

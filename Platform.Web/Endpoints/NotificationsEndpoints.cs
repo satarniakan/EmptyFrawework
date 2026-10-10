@@ -52,4 +52,48 @@ public static class NotificationsEndpoints
 
         return app;
     }
+
+    /// <summary>
+    /// دوقلوهای موبایل با همان منطق: توکن Bearer + خطای 401 (نه ریدایرکت لاگین).
+    /// مسیرهای مرورگر بالا کوکی‌محور می‌مانند تا ریدایرکت به /login حفظ شود.
+    /// </summary>
+    public static IEndpointRouteBuilder MapNotificationsApiEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/v1/notifications");
+        group.RequireAuthorization("Api");
+
+        group.MapGet("/recent", async (ClaimsPrincipal user,
+            [FromServices] INotificationService notifications) =>
+        {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Results.Unauthorized();
+
+            return Results.Json(await notifications.GetFeedAsync(userId));
+        });
+
+        group.MapPost("/{id:int}/read", async (ClaimsPrincipal user,
+            [FromServices] INotificationService notifications, int id) =>
+        {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Results.Unauthorized();
+
+            await notifications.MarkReadAsync(id, userId);
+            return Results.Ok();
+        });
+
+        group.MapPost("/read-all", async (ClaimsPrincipal user,
+            [FromServices] INotificationService notifications) =>
+        {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Results.Unauthorized();
+
+            await notifications.MarkAllReadAsync(userId);
+            return Results.Ok();
+        });
+
+        return app;
+    }
 }

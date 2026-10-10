@@ -8,6 +8,7 @@ using Platform.Infrastructure;
 using Platform.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Platform.Application.Jobs;
 using Platform.Web.Authentication;
 using Platform.Web.Authorization;
@@ -45,6 +46,12 @@ public static class PlatformSetup
             // endpointهای API موبایل: فقط توکن، نه کوکی
             .AddPolicy("Api", policy => policy
                 .AddAuthenticationSchemes(ApiTokenAuthenticationHandler.SchemeName)
+                .RequireAuthenticatedUser())
+            // endpointهای مشترک وب و موبایل (اعلان‌ها، شروع پرداخت): کوکی یا توکن
+            .AddPolicy("App", policy => policy
+                .AddAuthenticationSchemes(
+                    IdentityConstants.ApplicationScheme,
+                    ApiTokenAuthenticationHandler.SchemeName)
                 .RequireAuthenticatedUser());
 
         // سیاست‌ساز خودکار: هر کلید IPermissionCatalog خودش یک policy است.
@@ -117,6 +124,7 @@ public static class PlatformSetup
     {
         app.MapAccountEndpoints();
         app.MapNotificationsEndpoints();
+        app.MapNotificationsApiEndpoints();
         app.MapAuthApiEndpoints();
         app.MapPaymentEndpoints();
         app.MapPushEndpoints();

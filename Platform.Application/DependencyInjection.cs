@@ -24,6 +24,8 @@ public static class DependencyInjection
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IUserAdminService, UserAdminService>();
+        services.AddScoped<IUserImportService, UserImportService>();
+        services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IOutboxService, OutboxService>();
         services.AddScoped<IApiTokenService, ApiTokenService>();

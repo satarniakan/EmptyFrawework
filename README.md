@@ -327,6 +327,18 @@ docker compose up --build
 هست؛ `Identity:FirstAdminPhoneNumber` را همان‌جا با شمارهٔ خودتان پر کنید تا با اولین
 ورود ادمین شوید.
 
+### استقرار production
+
+```bash
+cp .env.example .env   # و مقادیر واقعی را بگذارید (.env در گیت نمی‌رود)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+```
+
+تفاوت‌ها با حالت توسعه: محیط `Production`، رمز `sa` از `.env` (نه داخل فایل)،
+پورت SQL به بیرون بسته، ری‌استارت خودکار، و بدون `Dev__AutoLoginPhone`.
+بکاپ دیتابیس را با Agent/تسک زمان‌بندی سرور بگیرید؛ برای ریستور، `docs/database.sql`
+و دستورهای اول همان فایل را ببینید.
+
 ## قابلیت‌های پایه (راهنمای تنظیمات)
 
 همه از `appsettings.json` (الگو: `appsettings.json.example`) تنظیم می‌شوند —

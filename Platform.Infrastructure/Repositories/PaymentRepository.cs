@@ -21,4 +21,23 @@ public class PaymentRepository : IPaymentRepository
 
     public Task<Payment?> GetByIdForUserAsync(int paymentId, string userId) =>
         _context.Payments.FirstOrDefaultAsync(p => p.Id == paymentId && p.UserId == userId);
+
+    public async Task<(IEnumerable<Payment> Items, int TotalCount)> GetPagedAsync(
+        PaymentStatus? status, int page, int pageSize)
+    {
+        var query = _context.Payments.AsNoTracking().AsQueryable();
+
+        if (status.HasValue)
+            query = query.Where(p => p.Status == status.Value);
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .OrderByDescending(p => p.CreatedAtUtc)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, totalCount);
+    }
 }

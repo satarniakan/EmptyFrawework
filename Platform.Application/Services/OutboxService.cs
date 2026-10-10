@@ -1,3 +1,5 @@
+using Platform.Application.DTOs;
+using Platform.Application.Queries;
 using Platform.Domain.Entities;
 using Platform.Domain.Enums;
 using Platform.Domain.Interfaces;
@@ -22,6 +24,13 @@ public interface IOutboxService
     /// OutboxProcessor با IPushNotificationService انجام می‌دهد.
     /// </summary>
     Task QueuePushAsync(string userId, string title, string? body, string? linkUrl = null);
+
+    /// <summary>فهرست صفحه‌بندی‌شده برای صفحهٔ نظارت ادمین.</summary>
+    Task<PagedResult<OutboxMessage>> GetMessagesPagedAsync(
+        OutboxChannel? channel, OutboxStatus? status, int page, int pageSize);
+
+    /// <summary>بازگرداندن پیام Failed به صف برای تلاش دوبارهٔ دستی.</summary>
+    Task<bool> RetryAsync(int messageId);
 }
 
 public class OutboxService : IOutboxService
@@ -43,6 +52,27 @@ public class OutboxService : IOutboxService
 
     public Task QueuePushAsync(string userId, string title, string? body, string? linkUrl = null) =>
         QueueAsync(OutboxChannel.Push, userId, title, body ?? string.Empty, linkUrl);
+
+    public async Task<PagedResult<OutboxMessage>> GetMessagesPagedAsync(
+        OutboxChannel? channel, OutboxStatus? status, int page, int pageSize)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+        if (pageSize > PagedQueryExtensions.MaxPageSize) pageSize = PagedQueryExtensions.MaxPageSize;
+
+        var (items, totalCount) = await _unitOfWork.Outbox.GetPagedAsync(channel, status, page, pageSize);
+
+        return new PagedResult<OutboxMessage>
+        {
+            Items = items.ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
+    public Task<bool> RetryAsync(int messageId) =>
+        _unitOfWork.Outbox.RequeueAsync(messageId);
 
     private async Task QueueAsync(OutboxChannel channel, string recipient, string? subject,
         string body, string? linkUrl = null)

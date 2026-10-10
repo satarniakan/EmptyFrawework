@@ -24,7 +24,30 @@
         <input class="form-control form-control-sm" placeholder="جست‌وجو: شماره، نام یا ایمیل…"
                @bind="search" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
         <button class="btn btn-sm btn-outline-secondary" @onclick="SearchAsync">جست‌وجو</button>
+        <label class="btn btn-sm btn-outline-secondary mb-0" title="ستون‌ها: شماره موبایل، نام، ایمیل (اختیاری)، رمز (اختیاری)">
+            <i class="bi bi-file-earmark-excel me-1"></i>ایمپورت از اکسل
+            <InputFile accept=".xlsx" OnChange="ImportAsync" style="display:none;" />
+        </label>
     </div>
+    @if (!string.IsNullOrEmpty(importSummary))
+    {
+        <div class="alert alert-success small py-2 mt-2 mb-0">@importSummary</div>
+    }
+    @if (importErrors.Count > 0)
+    {
+        <div class="alert alert-warning small py-2 mt-2 mb-0">
+            <ul class="mb-0 ps-3">
+                @foreach (var error in importErrors.Take(10))
+                {
+                    <li>سطر @error.RowNumber (@error.Column): @error.Message</li>
+                }
+                @if (importErrors.Count > 10)
+                {
+                    <li>و @(importErrors.Count - 10) خطای دیگر…</li>
+                }
+            </ul>
+        </div>
+    }
 </div>
 <div class="card-panel">
     @if (page is null)
@@ -109,9 +132,12 @@
     private const int PageSize = 20;
     private string? currentUserId;
     private bool impersonationEnabled;
+    private string? importSummary;
+    private List<Platform.Application.Imports.ImportRowError> importErrors = new();
     private AppConfirmDialog confirmDialog = default!;
 
     [Inject] private IUserAdminService UserAdminService { get; set; } = default!;
+    [Inject] private IUserImportService UserImportService { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
     [Inject] private Platform.Web.Services.ToastService ToastService { get; set; } = default!;
     [Inject] private IConfiguration Configuration { get; set; } = default!;
@@ -145,6 +171,33 @@
     {
         if (e.Key == "Enter")
             await SearchAsync();
+    }
+
+    private async Task ImportAsync(InputFileChangeEventArgs e)
+    {
+        importSummary = null;
+        importErrors = new();
+
+        try
+        {
+            await using var source = e.File.OpenReadStream(5 * 1024 * 1024);
+            using var buffer = new MemoryStream();
+            await source.CopyToAsync(buffer);
+            buffer.Position = 0;
+
+            var result = await UserImportService.ImportAsync(buffer);
+            importSummary = $"{result.ImportedCount} کاربر از {result.TotalRows} سطر وارد شد.";
+            importErrors = result.RowErrors;
+            if (result.ImportedCount > 0)
+            {
+                currentPage = 1;
+                await LoadAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(Platform.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex));
+        }
     }
 
     private async Task AskDelete(UserListItemDto user)

@@ -21,6 +21,17 @@ public enum ProfileUpdateStatus
 
 public record ProfileUpdateResult(ProfileUpdateStatus Status);
 
+public enum PasswordResetStatus
+{
+    Success,
+    InvalidOtp,
+    UserNotFound,
+    PasswordMismatch,
+    ResetFailed
+}
+
+public record PasswordResetResult(PasswordResetStatus Status, string? UserId = null);
+
 /// <summary>
 /// پروفایل پایهٔ کاربر. عمداً فقط شماره، ایمیل، نام و وضعیت رمز است؛ هر فیلد دامنه‌ای
 /// (آدرس، سازمان، …) باید در ماژول پروژهٔ مصرف‌کننده تعریف شود.

@@ -1,0 +1,19 @@
+# استقرار production: روی همان docker-compose.yml می‌نشیند و فقط تفاوت‌ها را عوض می‌کند.
+# اجرا:  docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+# پیش‌نیاز: فایل .env کنار همین فایل (از .env.example کپی و پر شود).
+
+services:
+  sqlserver:
+    # پورت دیتابیس به بیرون باز نمی‌شود؛ فقط اپ داخل شبکهٔ compose می‌بیندش
+    ports: []
+    restart: unless-stopped
+    environment:
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?MSSQL_SA_PASSWORD در .env لازم است}
+
+  web:
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Default: "Server=sqlserver;Database=PlatformProd;User Id=sa;Password=${MSSQL_SA_PASSWORD:?MSSQL_SA_PASSWORD در .env لازم است};TrustServerCertificate=True"
+      Identity__FirstAdminPhoneNumber: ${APP_ADMIN_PHONE:?APP_ADMIN_PHONE در .env لازم است}
+      # Dev__AutoLoginPhone عمداً اینجا نیست — ورود مستقیم فقط مال Development است

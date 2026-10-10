@@ -1,0 +1,188 @@
+@page "/admin/outbox"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = Platform.Domain.Identity.Roles.Admin)]
+@using Microsoft.AspNetCore.Authorization
+@using Platform.Application.Services
+@using Platform.Application.Helpers
+@using Platform.Domain.Entities
+@using Platform.Domain.Enums
+@inject IOutboxService OutboxService
+@inject Platform.Web.Services.ToastService ToastService
+
+<PageTitle>صف پیام‌ها</PageTitle>
+
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">صف پیام‌ها</h3>
+        <div class="text-body-secondary small">پیامک/ایمیل/پوش در انتظار ارسال یا ناموفق — ناموفق‌ها را می‌توانید دوباره به صف برگردانید.</div>
+    </div>
+</div>
+
+<div class="card-panel">
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <select class="form-select form-select-sm" style="max-width: 180px;" value="@statusFilter" @onchange="OnStatusChanged">
+            <option value="">همهٔ وضعیت‌ها</option>
+            @foreach (var s in Enum.GetValues<OutboxStatus>())
+            {
+                <option value="@s">@StatusLabel(s)</option>
+            }
+        </select>
+        <select class="form-select form-select-sm" style="max-width: 180px;" value="@channelFilter" @onchange="OnChannelChanged">
+            <option value="">همهٔ کانال‌ها</option>
+            @foreach (var c in Enum.GetValues<OutboxChannel>())
+            {
+                <option value="@c">@ChannelLabel(c)</option>
+            }
+        </select>
+    </div>
+
+    @if (page is null)
+    {
+        <LoadingSkeleton />
+    }
+    else if (!page.Items.Any())
+    {
+        <div class="text-center text-body-secondary py-4">
+            <i class="bi bi-send fs-3 d-block mb-2"></i>
+            <span class="small">پیامی با این فیلتر نیست.</span>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>زمان</th>
+                    <th>کانال</th>
+                    <th>گیرنده</th>
+                    <th>متن</th>
+                    <th>تلاش</th>
+                    <th>وضعیت</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var m in page.Items)
+                {
+                    <tr>
+                        <td class="text-muted" style="white-space: nowrap;">@m.CreatedAt.ToPersianDateTime()</td>
+                        <td><span class="badge bg-body-tertiary text-body border">@ChannelLabel(m.Channel)</span></td>
+                        <td class="small" dir="ltr">@Truncate(m.Recipient, 28)</td>
+                        <td class="small text-muted">@Truncate(m.Subject is null ? m.Body : $"{m.Subject} — {m.Body}", 60)</td>
+                        <td>@m.Attempts</td>
+                        <td>
+                            <span class="badge @StatusClass(m.Status)">@StatusLabel(m.Status)</span>
+                            @if (!string.IsNullOrWhiteSpace(m.LastError))
+                            {
+                                <div class="small text-danger" title="@m.LastError">@Truncate(m.LastError, 40)</div>
+                            }
+                        </td>
+                        <td class="text-end">
+                            @if (m.Status == OutboxStatus.Failed)
+                            {
+                                <button class="btn btn-sm btn-outline-primary" disabled="@retryingIds.Contains(m.Id)"
+                                        @onclick="() => RetryAsync(m.Id)">تلاش دوباره</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        </div>
+    }
+
+    <Platform.Web.Components.Shared.Pager CurrentPage="currentPage" TotalPages="totalPages"
+                                           TotalCount="totalCount" OnPageChanged="OnPageChanged" />
+</div>
+
+@code {
+    private Platform.Application.DTOs.PagedResult<OutboxMessage>? page;
+    private string? statusFilter;
+    private string? channelFilter;
+    private int currentPage = 1;
+    private int totalPages;
+    private int totalCount;
+    private const int PageSize = 20;
+    private readonly HashSet<int> retryingIds = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        Enum.TryParse<OutboxStatus>(statusFilter, out var status);
+        Enum.TryParse<OutboxChannel>(channelFilter, out var channel);
+        var result = await OutboxService.GetMessagesPagedAsync(
+            string.IsNullOrEmpty(channelFilter) ? null : channel,
+            string.IsNullOrEmpty(statusFilter) ? null : status,
+            currentPage, PageSize);
+        page = result;
+        totalPages = result.TotalPages;
+        totalCount = result.TotalCount;
+    }
+
+    private async Task OnStatusChanged(ChangeEventArgs e)
+    {
+        statusFilter = e.Value?.ToString();
+        currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task OnChannelChanged(ChangeEventArgs e)
+    {
+        channelFilter = e.Value?.ToString();
+        currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task OnPageChanged(int p)
+    {
+        currentPage = p;
+        await LoadAsync();
+    }
+
+    private async Task RetryAsync(int id)
+    {
+        retryingIds.Add(id);
+        try
+        {
+            if (await OutboxService.RetryAsync(id))
+                ToastService.ShowSuccess("پیام به صف برگشت.");
+            else
+                ToastService.ShowError("پیام دیگر در وضعیت ناموفق نیست.");
+            await LoadAsync();
+        }
+        finally
+        {
+            retryingIds.Remove(id);
+        }
+    }
+
+    private static string StatusLabel(OutboxStatus s) => s switch
+    {
+        OutboxStatus.Pending => "در انتظار",
+        OutboxStatus.Sent => "ارسال‌شده",
+        OutboxStatus.Processing => "در حال ارسال",
+        OutboxStatus.Failed => "ناموفق",
+        _ => s.ToString()
+    };
+
+    private static string StatusClass(OutboxStatus s) => s switch
+    {
+        OutboxStatus.Sent => "text-bg-success",
+        OutboxStatus.Failed => "text-bg-danger",
+        OutboxStatus.Processing => "text-bg-warning",
+        _ => "text-bg-secondary"
+    };
+
+    private static string ChannelLabel(OutboxChannel c) => c switch
+    {
+        OutboxChannel.Sms => "پیامک",
+        OutboxChannel.Email => "ایمیل",
+        OutboxChannel.Push => "پوش",
+        _ => c.ToString()
+    };
+
+    private static string Truncate(string? text, int max) =>
+        string.IsNullOrEmpty(text) || text.Length <= max ? text ?? string.Empty : text[..max] + "…";
+}

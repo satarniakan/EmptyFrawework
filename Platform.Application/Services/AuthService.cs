@@ -19,6 +19,13 @@ public interface IAuthService
     Task<UserProfileDto?> GetProfileAsync(string userId);
     Task<ProfileUpdateResult> UpdateProfileAsync(
         string userId, string? fullName, string? email, string? password, string? confirmPassword);
+
+    /// <summary>
+    /// تعیین رمز جدید با کد پیامکی (فراموشی رمز موبایل): کد مصرف می‌شود و بعد رمز
+    /// با توکن Identity ریست می‌شود. برای کاربرِ بی‌رمز هم کار می‌کند (تعیین اول).
+    /// </summary>
+    Task<PasswordResetResult> ResetPasswordWithOtpAsync(
+        string phoneNumber, string code, string newPassword, string? confirmPassword);
 }
 
 public class AuthService : IAuthService
@@ -230,5 +237,34 @@ public class AuthService : IAuthService
     {
         var byEmail = await _userManager.FindByEmailAsync(userName);
         return byEmail ?? await _userManager.FindByNameAsync(userName);
+    }
+
+    public async Task<PasswordResetResult> ResetPasswordWithOtpAsync(
+        string phoneNumber, string code, string newPassword, string? confirmPassword)
+    {
+        phoneNumber = PersianSearch.NormalizePhone(phoneNumber);
+
+        // کد اول مصرف می‌شود (تک‌مصرف): اگر ریست بعدش شکست بخورد، کاربر باید کد تازه بگیرد
+        if (!await _otpService.VerifyOtpAsync(phoneNumber, code))
+            return new PasswordResetResult(PasswordResetStatus.InvalidOtp);
+
+        var user = await _userManager.FindByNameAsync(phoneNumber);
+        if (user is null)
+            return new PasswordResetResult(PasswordResetStatus.UserNotFound);
+
+        if (newPassword != confirmPassword)
+            return new PasswordResetResult(PasswordResetStatus.PasswordMismatch, user.Id);
+
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+
+        if (!result.Succeeded)
+        {
+            _logger.LogWarning("Password reset via OTP failed for {PhoneNumber}: {Errors}",
+                phoneNumber, string.Join(" | ", result.Errors.Select(e => e.Description)));
+            return new PasswordResetResult(PasswordResetStatus.ResetFailed, user.Id);
+        }
+
+        return new PasswordResetResult(PasswordResetStatus.Success, user.Id);
     }
 }

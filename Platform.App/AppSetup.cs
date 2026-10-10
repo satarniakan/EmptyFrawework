@@ -70,6 +70,8 @@ public sealed class AppNavProvider : INavProvider
             NavItem.Link("کاربران", "admin/users", "bi-people", Roles.Admin),
             NavItem.Link("مجوز نقش‌ها", "admin/roles", "bi-key", Roles.Admin),
             NavItem.Link("اعلان سراسری", "admin/broadcast", "bi-megaphone", Roles.Admin),
+            NavItem.Link("صف پیام‌ها", "admin/outbox", "bi-send", Roles.Admin),
+            NavItem.Link("پرداخت‌ها", "admin/payments", "bi-credit-card", Roles.Admin),
             NavItem.Link("تنظیمات", "admin/settings", "bi-sliders", Roles.Admin)),
 
         // سیستم — لاگ‌ها و تنظیمات حساب

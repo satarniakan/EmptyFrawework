@@ -1,3 +1,5 @@
+using Platform.Application.DTOs;
+using Platform.Application.Queries;
 using Platform.Domain.Entities;
 using Platform.Domain.Exceptions;
 using Platform.Domain.Interfaces;
@@ -18,6 +20,9 @@ public interface IPaymentService
     Task<Payment> HandleCallbackAsync(string authority, string? gatewayStatus);
 
     Task<Payment?> GetAsync(int paymentId, string userId);
+
+    /// <summary>فهرست صفحه‌بندی‌شده برای صفحهٔ نظارت ادمین.</summary>
+    Task<PagedResult<Payment>> GetPagedAsync(PaymentStatus? status, int page, int pageSize);
 }
 
 public class PaymentService : IPaymentService
@@ -104,4 +109,21 @@ public class PaymentService : IPaymentService
 
     public Task<Payment?> GetAsync(int paymentId, string userId) =>
         _unitOfWork.Payments.GetByIdForUserAsync(paymentId, userId);
+
+    public async Task<PagedResult<Payment>> GetPagedAsync(PaymentStatus? status, int page, int pageSize)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+        if (pageSize > PagedQueryExtensions.MaxPageSize) pageSize = PagedQueryExtensions.MaxPageSize;
+
+        var (items, totalCount) = await _unitOfWork.Payments.GetPagedAsync(status, page, pageSize);
+
+        return new PagedResult<Payment>
+        {
+            Items = items.ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
 }

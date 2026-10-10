@@ -82,6 +82,36 @@ public static class AuthApiEndpoints
                 : Results.Unauthorized();
         }).RequireRateLimiting("login");
 
+        group.MapPost("/password/reset", async (
+            HttpContext http,
+            IAuthService auth,
+            ILoginHistoryService history,
+            PasswordResetApiDto dto) =>
+        {
+            var result = await auth.ResetPasswordWithOtpAsync(
+                dto.PhoneNumber, dto.Code, dto.NewPassword, dto.ConfirmPassword);
+
+            await history.RecordAsync(
+                userId: result.UserId,
+                userName: dto.PhoneNumber,
+                succeeded: result.Status == PasswordResetStatus.Success,
+                method: "ApiToken",
+                ipAddress: http.Connection.RemoteIpAddress?.ToString(),
+                userAgent: http.Request.Headers.UserAgent.ToString(),
+                failureReason: result.Status == PasswordResetStatus.Success
+                    ? null
+                    : result.Status.ToString());
+
+            return result.Status switch
+            {
+                PasswordResetStatus.Success => Results.Ok(new { message = "رمز عبور تعیین شد." }),
+                PasswordResetStatus.InvalidOtp => Results.Unauthorized(),
+                PasswordResetStatus.UserNotFound => Results.NotFound(new { message = "کاربر یافت نشد." }),
+                PasswordResetStatus.PasswordMismatch => Results.BadRequest(new { message = "رمز و تکرار آن یکسان نیستند." }),
+                _ => Results.BadRequest(new { message = "تعیین رمز ناموفق بود." })
+            };
+        }).RequireRateLimiting("otp-verify");
+
         group.MapGet("/tokens", async (ClaimsPrincipal user, IApiTokenService tokens) =>
         {
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);

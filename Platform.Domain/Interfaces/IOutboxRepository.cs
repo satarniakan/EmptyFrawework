@@ -33,4 +33,17 @@ public interface IOutboxRepository
     /// بی‌آستانه باعث ارسال دوبارهٔ همان پیامک/ایمیل می‌شود.
     /// </summary>
     Task<int> ReclaimAbandonedAsync(TimeSpan lease);
+
+    /// <summary>فهرست صفحه‌بندی‌شده برای صفحهٔ نظارت ادمین (جدیدترین اول).</summary>
+    Task<(IEnumerable<OutboxMessage> Items, int TotalCount)> GetPagedAsync(
+        OutboxChannel? channel, OutboxStatus? status, int page, int pageSize);
+
+    /// <summary>
+    /// بازگرداندن یک پیام Failed به صف (Pending با شمارندهٔ صفر) برای تلاش دوبارهٔ دستی.
+    /// بازگشت: آیا رکوردی بود و برگشت؟
+    /// </summary>
+    Task<bool> RequeueAsync(int messageId);
+
+    /// <summary>تعداد پیام‌ها در یک وضعیت — برای داشبورد.</summary>
+    Task<int> CountAsync(OutboxStatus status);
 }

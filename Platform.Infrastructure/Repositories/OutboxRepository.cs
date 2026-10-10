@@ -78,4 +78,40 @@ public class OutboxRepository : IOutboxRepository
                 // شکلِ per-row برای null گذاشتن: ثابتِ null در SetProperty ترجمه نمی‌شود
                 .SetProperty(m => m.ProcessingStartedAt, m => (DateTime?)null));
     }
+
+    public async Task<(IEnumerable<OutboxMessage> Items, int TotalCount)> GetPagedAsync(
+        OutboxChannel? channel, OutboxStatus? status, int page, int pageSize)
+    {
+        var query = _context.OutboxMessages.AsNoTracking().AsQueryable();
+
+        if (channel.HasValue)
+            query = query.Where(m => m.Channel == channel.Value);
+        if (status.HasValue)
+            query = query.Where(m => m.Status == status.Value);
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .OrderByDescending(m => m.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, totalCount);
+    }
+
+    public async Task<bool> RequeueAsync(int messageId)
+    {
+        var rows = await _context.OutboxMessages
+            .Where(m => m.Id == messageId && m.Status == OutboxStatus.Failed)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(m => m.Status, OutboxStatus.Pending)
+                .SetProperty(m => m.Attempts, 0)
+                .SetProperty(m => m.LastError, m => (string?)null)
+                .SetProperty(m => m.ProcessingStartedAt, m => (DateTime?)null));
+        return rows > 0;
+    }
+
+    public Task<int> CountAsync(OutboxStatus status) =>
+        _context.OutboxMessages.CountAsync(m => m.Status == status);
 }

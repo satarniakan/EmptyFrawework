@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Caching.Memory;
@@ -27,7 +28,7 @@ public class SettingServiceTests
         ];
     }
 
-    private static (SettingService service, PlatformDbContext db) Build(
+    private static (SettingService service, PlatformDbContext db, Mock<IAuditService> audit) Build(
         Dictionary<string, string?>? configValues = null,
         IDataProtectionProvider? dataProtection = null)
     {
@@ -47,19 +48,22 @@ public class SettingServiceTests
             .AddInMemoryCollection(configValues ?? new Dictionary<string, string?>())
             .Build();
 
+        var audit = new Mock<IAuditService>();
+        var http = new Mock<IHttpContextAccessor>();
+
         var service = new SettingService(
             new SettingRepository(db), new TestCatalog(), uow.Object,
             new MemoryCache(new MemoryCacheOptions()), configuration,
-            NullLogger<SettingService>.Instance,
+            NullLogger<SettingService>.Instance, audit.Object, http.Object,
             dataProtection: dataProtection);
 
-        return (service, db);
+        return (service, db, audit);
     }
 
     [Fact]
     public async Task GetAsync_FrameworkKeyWithoutRow_ReturnsFrameworkDefault()
     {
-        var (service, _) = Build();
+        var (service, _, _) = Build();
 
         Assert.Equal("سامانه", await service.GetAsync(FrameworkSettingKeys.SiteName));
         Assert.Contains("{Code}", await service.GetAsync(FrameworkSettingKeys.OtpSmsTemplate));
@@ -68,7 +72,7 @@ public class SettingServiceTests
     [Fact]
     public async Task GetAsync_ModuleKeyWithoutRow_ReturnsCatalogDefault()
     {
-        var (service, _) = Build();
+        var (service, _, _) = Build();
 
         Assert.Equal("سلام پیش‌فرض", await service.GetAsync("test:greeting"));
     }
@@ -76,7 +80,7 @@ public class SettingServiceTests
     [Fact]
     public async Task SetThenGet_ReturnsSavedValue_AndInvalidatesCache()
     {
-        var (service, _) = Build();
+        var (service, _, _) = Build();
 
         await service.SetAsync("test:greeting", "سلام اول");
         Assert.Equal("سلام اول", await service.GetAsync("test:greeting"));
@@ -88,7 +92,7 @@ public class SettingServiceTests
     [Fact]
     public async Task SetAsync_EmptyValue_FallsBackToDefault()
     {
-        var (service, _) = Build();
+        var (service, _, _) = Build();
 
         await service.SetAsync("test:greeting", "مقداری");
         await service.SetAsync("test:greeting", "");
@@ -99,7 +103,7 @@ public class SettingServiceTests
     [Fact]
     public async Task GetEffectiveAsync_PrefersDb_ThenConfig_ThenDefault()
     {
-        var (service, _) = Build(new Dictionary<string, string?>
+        var (service, _, _) = Build(new Dictionary<string, string?>
         {
             ["App:Name"] = "از کانفیگ"
         });
@@ -119,7 +123,7 @@ public class SettingServiceTests
     public async Task SecretValue_IsEncryptedAtRest_AndReadable()
     {
         var dp = new EphemeralDataProtectionProvider();
-        var (service, db) = Build(dataProtection: dp);
+        var (service, db, _) = Build(dataProtection: dp);
 
         await service.SetAsync("test:secret", "s3cr3t-value");
 
@@ -133,7 +137,7 @@ public class SettingServiceTests
     [Fact]
     public async Task SecretValue_WithoutDataProtection_RefusesToStore()
     {
-        var (service, _) = Build(); // بدون DataProtection
+        var (service, _, _) = Build(); // بدون DataProtection
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.SetAsync("test:secret", "s3cr3t-value"));
@@ -142,7 +146,7 @@ public class SettingServiceTests
     [Fact]
     public async Task ClearAsync_RemovesRow_FallsBackToDefault()
     {
-        var (service, _) = Build();
+        var (service, _, _) = Build();
 
         await service.SetAsync("test:greeting", "مقداری");
         Assert.True(await service.HasValueAsync("test:greeting"));
@@ -151,5 +155,20 @@ public class SettingServiceTests
 
         Assert.False(await service.HasValueAsync("test:greeting"));
         Assert.Equal("سلام پیش‌فرض", await service.GetAsync("test:greeting"));
+    }
+
+    [Fact]
+    public async Task SetAsync_LogsAudit_WithoutSecretValue()
+    {
+        var dp = new EphemeralDataProtectionProvider();
+        var (service, _, audit) = Build(dataProtection: dp);
+
+        await service.SetAsync("test:secret", "s3cr3t-value");
+
+        audit.Verify(a => a.LogEventAsync(
+            "setting.changed",
+            It.IsAny<string?>(),
+            It.Is<string>(d => d.Contains("test:secret") && !d.Contains("s3cr3t-value"))),
+            Times.Once);
     }
 }

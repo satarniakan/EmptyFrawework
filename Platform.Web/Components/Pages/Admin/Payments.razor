@@ -1,0 +1,129 @@
+@page "/admin/payments"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = Platform.Domain.Identity.Roles.Admin)]
+@using Microsoft.AspNetCore.Authorization
+@using Platform.Application.Services
+@using Platform.Application.Helpers
+@using Platform.Domain.Entities
+@inject IPaymentService PaymentService
+
+<PageTitle>پرداخت‌ها</PageTitle>
+
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">پرداخت‌ها</h3>
+        <div class="text-body-secondary small">فقط مشاهده — پرداخت از مسیر درگاه ساخته و نهایی می‌شود.</div>
+    </div>
+</div>
+
+<div class="card-panel">
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <select class="form-select form-select-sm" style="max-width: 180px;" value="@statusFilter" @onchange="OnStatusChanged">
+            <option value="">همهٔ وضعیت‌ها</option>
+            @foreach (var s in Enum.GetValues<PaymentStatus>())
+            {
+                <option value="@s">@StatusLabel(s)</option>
+            }
+        </select>
+    </div>
+
+    @if (page is null)
+    {
+        <LoadingSkeleton />
+    }
+    else if (!page.Items.Any())
+    {
+        <div class="text-center text-body-secondary py-4">
+            <i class="bi bi-credit-card fs-3 d-block mb-2"></i>
+            <span class="small">پرداختی با این فیلتر نیست.</span>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>زمان</th>
+                    <th>مبلغ</th>
+                    <th>شرح</th>
+                    <th>درگاه</th>
+                    <th>پیگیری</th>
+                    <th>وضعیت</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in page.Items)
+                {
+                    <tr>
+                        <td class="text-muted" style="white-space: nowrap;">@p.CreatedAtUtc.ToPersianDateTime()</td>
+                        <td style="white-space: nowrap;">@CurrencyFormatter.ToToman(p.AmountTomans)</td>
+                        <td class="small">@p.Description</td>
+                        <td class="small">@p.Gateway</td>
+                        <td class="small" dir="ltr">@(p.RefId?.ToString() ?? p.Authority)</td>
+                        <td>
+                            <span class="badge @StatusClass(p.Status)">@StatusLabel(p.Status)</span>
+                            @if (!string.IsNullOrWhiteSpace(p.FailureReason))
+                            {
+                                <div class="small text-danger">@p.FailureReason</div>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        </div>
+    }
+
+    <Platform.Web.Components.Shared.Pager CurrentPage="currentPage" TotalPages="totalPages"
+                                           TotalCount="totalCount" OnPageChanged="OnPageChanged" />
+</div>
+
+@code {
+    private Platform.Application.DTOs.PagedResult<Payment>? page;
+    private string? statusFilter;
+    private int currentPage = 1;
+    private int totalPages;
+    private int totalCount;
+    private const int PageSize = 20;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        Enum.TryParse<PaymentStatus>(statusFilter, out var status);
+        var result = await PaymentService.GetPagedAsync(
+            string.IsNullOrEmpty(statusFilter) ? null : status, currentPage, PageSize);
+        page = result;
+        totalPages = result.TotalPages;
+        totalCount = result.TotalCount;
+    }
+
+    private async Task OnStatusChanged(ChangeEventArgs e)
+    {
+        statusFilter = e.Value?.ToString();
+        currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task OnPageChanged(int p)
+    {
+        currentPage = p;
+        await LoadAsync();
+    }
+
+    private static string StatusLabel(PaymentStatus s) => s switch
+    {
+        PaymentStatus.Pending => "در انتظار",
+        PaymentStatus.Paid => "پرداخت‌شده",
+        PaymentStatus.Failed => "ناموفق",
+        _ => s.ToString()
+    };
+
+    private static string StatusClass(PaymentStatus s) => s switch
+    {
+        PaymentStatus.Paid => "text-bg-success",
+        PaymentStatus.Failed => "text-bg-danger",
+        _ => "text-bg-secondary"
+    };
+}
