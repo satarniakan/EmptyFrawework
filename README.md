@@ -334,7 +334,7 @@ docker compose up --build
 | `Payment` | `Provider`: `Fake`/`ZarinPal` | شروع: `POST /api/v1/payments`؛ برگشت: `/payments/callback` |
 | `Captcha` | `Provider`: `Turnstile`/`Fake`/خالی | کپچای مسیر درخواست OTP؛ ویجت لاگین خودکار می‌آید |
 | `Push:Vapid` | `Subject`، `PublicKey`، `PrivateKey` | وب‌پوش؛ ساخت کلید: `npx web-push generate-vapid-keys` |
-| `ApiTokens` | `LifetimeDays` (پیش‌فرض ۱۸۰) | عمر توکن موبایل؛ ورود موبایل: `POST /api/v1/auth/otp/verify` |
+| `ApiTokens` | `LifetimeDays` (پیش‌فرض ۱۸۰) | عمر توکن موبایل؛ ورود موبایل با OTP (`POST /api/v1/auth/otp/verify`) یا با رمز (`POST /api/v1/auth/login` — مسیر جایگزین وقتی پیامک قطع است) |
 | `Support` | `ImpersonationEnabled` | جانشینی ادمین (پیش‌فرض خاموش) |
 | `Storage` | `RootPath`، `MaxFileSizeBytes`، `AllowedExtensions` | فایل‌استوریج محلی |
 

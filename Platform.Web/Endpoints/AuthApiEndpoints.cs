@@ -46,7 +46,7 @@ public static class AuthApiEndpoints
             var result = await tokens.VerifyOtpAndIssueTokenAsync(dto.PhoneNumber, dto.Code, dto.DeviceName);
 
             await history.RecordAsync(
-                userId: null,
+                userId: result.UserId,
                 userName: dto.PhoneNumber,
                 succeeded: result.Succeeded,
                 method: "ApiToken",
@@ -58,6 +58,29 @@ public static class AuthApiEndpoints
                 ? Results.Ok(new TokenResponseDto(result.Token!, result.ExpiresAtUtc!.Value))
                 : Results.Unauthorized();
         }).RequireRateLimiting("otp-verify");
+
+        group.MapPost("/login", async (
+            HttpContext http,
+            IApiTokenService tokens,
+            ILoginHistoryService history,
+            PasswordLoginApiDto dto) =>
+        {
+            var result = await tokens.LoginWithPasswordAndIssueTokenAsync(
+                dto.Username, dto.Password, dto.DeviceName);
+
+            await history.RecordAsync(
+                userId: result.UserId,
+                userName: dto.Username,
+                succeeded: result.Succeeded,
+                method: "ApiToken",
+                ipAddress: http.Connection.RemoteIpAddress?.ToString(),
+                userAgent: http.Request.Headers.UserAgent.ToString(),
+                failureReason: result.Succeeded ? null : "invalid-credentials");
+
+            return result.Succeeded
+                ? Results.Ok(new TokenResponseDto(result.Token!, result.ExpiresAtUtc!.Value))
+                : Results.Unauthorized();
+        }).RequireRateLimiting("login");
 
         group.MapGet("/tokens", async (ClaimsPrincipal user, IApiTokenService tokens) =>
         {

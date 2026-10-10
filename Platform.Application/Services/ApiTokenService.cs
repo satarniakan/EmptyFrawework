@@ -15,6 +15,13 @@ public interface IApiTokenService
     /// <summary>تأیید OTP و صدور توکن در یک قدم — مسیر ورود اپ موبایل.</summary>
     Task<TokenIssueResult> VerifyOtpAndIssueTokenAsync(string phoneNumber, string code, string? deviceName);
 
+    /// <summary>
+    /// ورود با نام‌کاربری/ایمیل و رمز + صدور توکن — مسیر جایگزین وقتی سرویس پیامک قطع است.
+    /// قفل موقت حساب دقیقاً مثل ورود وب اعمال می‌شود، ولی کوکی ست نمی‌شود.
+    /// </summary>
+    Task<TokenIssueResult> LoginWithPasswordAndIssueTokenAsync(
+        string userName, string password, string? deviceName);
+
     /// <summary>صدور توکن برای کاربر موجود (مثلاً پس از ورود با رمز در پنل).</summary>
     Task<(string Token, DateTime ExpiresAtUtc)> IssueAsync(string userId, string? deviceName);
 
@@ -30,9 +37,11 @@ public interface IApiTokenService
     Task<int> RevokeAllAsync(string userId);
 }
 
-/// <param name="Succeeded">آیا OTP درست بود؟</param>
+/// <param name="Succeeded">آیا ورود موفق بود؟</param>
 /// <param name="Token">توکن خام — فقط همین‌بار دیده می‌شود.</param>
-public record TokenIssueResult(bool Succeeded, string? Token = null, DateTime? ExpiresAtUtc = null);
+/// <param name="UserId">شناسهٔ کاربر برای ثبت تاریخچه (null یعنی کاربر یافت نشد).</param>
+public record TokenIssueResult(bool Succeeded, string? Token = null, DateTime? ExpiresAtUtc = null,
+    string? UserId = null);
 
 public class ApiTokenService : IApiTokenService
 {
@@ -42,6 +51,7 @@ public class ApiTokenService : IApiTokenService
     private readonly IApiTokenRepository _tokens;
     private readonly IOtpService _otpService;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IUserClaimsPrincipalFactory<ApplicationUser> _principalFactory;
     private readonly IPlatformUnitOfWork _unitOfWork;
     private readonly ILogger<ApiTokenService> _logger;
@@ -52,6 +62,7 @@ public class ApiTokenService : IApiTokenService
         IApiTokenRepository tokens,
         IOtpService otpService,
         UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
         IUserClaimsPrincipalFactory<ApplicationUser> principalFactory,
         IPlatformUnitOfWork unitOfWork,
         IConfiguration configuration,
@@ -61,6 +72,7 @@ public class ApiTokenService : IApiTokenService
         _tokens = tokens;
         _otpService = otpService;
         _userManager = userManager;
+        _signInManager = signInManager;
         _principalFactory = principalFactory;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -79,7 +91,30 @@ public class ApiTokenService : IApiTokenService
             return new TokenIssueResult(false);
 
         var issued = await IssueAsync(user.Id, deviceName);
-        return new TokenIssueResult(true, issued.Token, issued.ExpiresAtUtc);
+        return new TokenIssueResult(true, issued.Token, issued.ExpiresAtUtc, user.Id);
+    }
+
+    public async Task<TokenIssueResult> LoginWithPasswordAndIssueTokenAsync(
+        string userName, string password, string? deviceName)
+    {
+        var user = await FindByUserNameOrEmailAsync(userName);
+        if (user is null)
+        {
+            _logger.LogWarning("API password login failed: no user found");
+            return new TokenIssueResult(false);
+        }
+
+        // فقط بررسی رمز + قفل موقت — برخلاف PasswordSignInAsync، کوکی ست نمی‌شود
+        var check = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
+        if (!check.Succeeded)
+        {
+            _logger.LogWarning("API password login failed: {Reason}",
+                check.IsLockedOut ? "locked out" : "invalid password");
+            return new TokenIssueResult(false, UserId: user.Id);
+        }
+
+        var issued = await IssueAsync(user.Id, deviceName);
+        return new TokenIssueResult(true, issued.Token, issued.ExpiresAtUtc, user.Id);
     }
 
     public async Task<(string Token, DateTime ExpiresAtUtc)> IssueAsync(string userId, string? deviceName)
@@ -169,4 +204,10 @@ public class ApiTokenService : IApiTokenService
 
     private static string ToUrlSafe(byte[] bytes) =>
         Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+    private async Task<ApplicationUser?> FindByUserNameOrEmailAsync(string userName)
+    {
+        var byEmail = await _userManager.FindByEmailAsync(userName);
+        return byEmail ?? await _userManager.FindByNameAsync(userName);
+    }
 }

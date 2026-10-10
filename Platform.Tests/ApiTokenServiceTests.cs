@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -29,6 +30,7 @@ public class ApiTokenServiceTests
         public Mock<IApiTokenRepository> Repo { get; } = new();
         public Mock<IOtpService> Otp { get; } = new();
         public Mock<UserManager<ApplicationUser>> Users { get; } = CreateUserManager();
+        public Mock<SignInManager<ApplicationUser>> SignIn { get; } = CreateSignInManager();
         public Mock<IUserClaimsPrincipalFactory<ApplicationUser>> Factory { get; } = new();
         public Mock<IPlatformUnitOfWork> Uow { get; } = new();
 
@@ -46,7 +48,7 @@ public class ApiTokenServiceTests
         }
 
         public ApiTokenService Build() => new(
-            Repo.Object, Otp.Object, Users.Object, Factory.Object, Uow.Object,
+            Repo.Object, Otp.Object, Users.Object, SignIn.Object, Factory.Object, Uow.Object,
             new ConfigurationBuilder().Build(),
             NullLogger<ApiTokenService>.Instance,
             new FixedTimeProvider());
@@ -56,6 +58,16 @@ public class ApiTokenServiceTests
             var store = new Mock<IUserStore<ApplicationUser>>();
             return new Mock<UserManager<ApplicationUser>>(
                 store.Object, null!, null!, null!, null!, null!, null!, null!, null!);
+        }
+
+        private static Mock<SignInManager<ApplicationUser>> CreateSignInManager()
+        {
+            var users = CreateUserManager();
+            return new Mock<SignInManager<ApplicationUser>>(
+                users.Object,
+                Mock.Of<IHttpContextAccessor>(),
+                Mock.Of<IUserClaimsPrincipalFactory<ApplicationUser>>(),
+                null, null, null, null);
         }
     }
 
@@ -154,5 +166,73 @@ public class ApiTokenServiceTests
         Assert.False(result.Succeeded);
         Assert.Null(result.Token);
         Assert.Empty(h.TokensByHash);
+    }
+
+    [Fact]
+    public async Task LoginWithPassword_UnknownUser_ReturnsFailure_WithoutPasswordCheck()
+    {
+        var h = new Harness();
+        var service = h.Build();
+        h.Users.Setup(u => u.FindByEmailAsync("ghost")).ReturnsAsync((ApplicationUser?)null);
+        h.Users.Setup(u => u.FindByNameAsync("ghost")).ReturnsAsync((ApplicationUser?)null);
+
+        var result = await service.LoginWithPasswordAndIssueTokenAsync("ghost", "whatever", null);
+
+        Assert.False(result.Succeeded);
+        Assert.Null(result.Token);
+        h.SignIn.Verify(s => s.CheckPasswordSignInAsync(
+            It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Never);
+        Assert.Empty(h.TokensByHash);
+    }
+
+    [Fact]
+    public async Task LoginWithPassword_WrongPassword_ReturnsFailure()
+    {
+        var h = new Harness();
+        var service = h.Build();
+        var user = User("u1");
+        h.Users.Setup(u => u.FindByNameAsync("09120000000")).ReturnsAsync(user);
+        h.SignIn.Setup(s => s.CheckPasswordSignInAsync(user, "wrong", true))
+            .ReturnsAsync(SignInResult.Failed);
+
+        var result = await service.LoginWithPasswordAndIssueTokenAsync("09120000000", "wrong", "Goshi");
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("u1", result.UserId);
+        Assert.Empty(h.TokensByHash);
+    }
+
+    [Fact]
+    public async Task LoginWithPassword_LockedOut_ReturnsFailure()
+    {
+        var h = new Harness();
+        var service = h.Build();
+        var user = User("u1");
+        h.Users.Setup(u => u.FindByEmailAsync("u1@test.ir")).ReturnsAsync(user);
+        h.SignIn.Setup(s => s.CheckPasswordSignInAsync(user, It.IsAny<string>(), true))
+            .ReturnsAsync(SignInResult.LockedOut);
+
+        var result = await service.LoginWithPasswordAndIssueTokenAsync("u1@test.ir", "x", null);
+
+        Assert.False(result.Succeeded);
+        Assert.Empty(h.TokensByHash);
+    }
+
+    [Fact]
+    public async Task LoginWithPassword_Success_IssuesToken()
+    {
+        var h = new Harness();
+        var service = h.Build();
+        var user = User("u1");
+        h.Users.Setup(u => u.FindByNameAsync("09120000000")).ReturnsAsync(user);
+        h.SignIn.Setup(s => s.CheckPasswordSignInAsync(user, "correct", true))
+            .ReturnsAsync(SignInResult.Success);
+
+        var result = await service.LoginWithPasswordAndIssueTokenAsync("09120000000", "correct", "Goshi");
+
+        Assert.True(result.Succeeded);
+        Assert.StartsWith(ApiTokenService.TokenPrefix, result.Token);
+        Assert.Equal("u1", result.UserId);
+        Assert.Single(h.TokensByHash);
     }
 }
