@@ -54,9 +54,10 @@ public class ApiTokenService : IApiTokenService
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IUserClaimsPrincipalFactory<ApplicationUser> _principalFactory;
     private readonly IPlatformUnitOfWork _unitOfWork;
+    private readonly ISettingService _settings;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<ApiTokenService> _logger;
     private readonly TimeProvider _clock;
-    private readonly int _lifetimeDays;
 
     public ApiTokenService(
         IApiTokenRepository tokens,
@@ -65,6 +66,7 @@ public class ApiTokenService : IApiTokenService
         SignInManager<ApplicationUser> signInManager,
         IUserClaimsPrincipalFactory<ApplicationUser> principalFactory,
         IPlatformUnitOfWork unitOfWork,
+        ISettingService settings,
         IConfiguration configuration,
         ILogger<ApiTokenService> logger,
         TimeProvider? clock = null)
@@ -75,9 +77,10 @@ public class ApiTokenService : IApiTokenService
         _signInManager = signInManager;
         _principalFactory = principalFactory;
         _unitOfWork = unitOfWork;
+        _settings = settings;
+        _configuration = configuration;
         _logger = logger;
         _clock = clock ?? TimeProvider.System;
-        _lifetimeDays = configuration.GetValue("ApiTokens:LifetimeDays", 180);
     }
 
     public async Task<TokenIssueResult> VerifyOtpAndIssueTokenAsync(
@@ -121,7 +124,10 @@ public class ApiTokenService : IApiTokenService
     {
         var raw = TokenPrefix + ToUrlSafe(RandomNumberGenerator.GetBytes(32));
         var now = _clock.GetUtcNow().UtcDateTime;
-        var expiresAt = now.AddDays(_lifetimeDays);
+        var lifetimeText = await _settings.GetEffectiveAsync(
+            IntegrationSettingKeys.ApiTokenLifetimeDays, "ApiTokens:LifetimeDays", "180");
+        var expiresAt = now.AddDays(
+            int.TryParse(lifetimeText, out var days) && days > 0 ? days : 180);
 
         await _tokens.AddAsync(new UserApiToken
         {

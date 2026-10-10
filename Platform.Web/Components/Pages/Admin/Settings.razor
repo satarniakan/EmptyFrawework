@@ -8,8 +8,19 @@
 <PageTitle>تنظیمات سامانه</PageTitle>
 
 <div class="mb-3">
-    <h3 class="mb-1">تنظیمات سامانه</h3>
-    <div class="text-body-secondary small">نام سایت و قالب پیام‌ها — بدون نیاز به تغییر کد و استقرار دوباره. خالی گذاشتن یعنی «مقدار پیش‌فرض».</div>
+    <h3 class="mb-1">تنظیمات سامانه و اتصال‌ها</h3>
+    <div class="text-body-secondary small">
+        نام سایت، قالب پیام‌ها و همهٔ مقادیر اتصال (کاوه‌نگار، SMTP، زرین‌پال، کپچا، وب‌پوش) —
+        بدون نیاز به تغییر کد و استقرار دوباره.
+        ترتیب مقدار مؤثر: <b>همین صفحه</b> ← <code>appsettings.json</code> ← پیش‌فرض.
+        انتخابِ درگاه (کدام provider) در <code>appsettings</code> می‌ماند.
+    </div>
+</div>
+
+<div class="alert alert-warning small">
+    <i class="bi bi-shield-lock me-1"></i>
+    مقادیر محرمانه (کلید API، رمز) <b>رمزنگاری‌شده</b> ذخیره می‌شوند و هرگز نمایش داده نمی‌شوند —
+    فقط با نوشتن مقدار جدید عوض می‌شوند. دکمهٔ «بازگشت» ردیف را حذف می‌کند تا مقدار از <code>appsettings</code> خوانده شود.
 </div>
 
 @if (groups is null)
@@ -25,16 +36,51 @@ else
             @foreach (var row in group.Rows)
             {
                 <div class="mb-3">
-                    <label class="form-label">@row.Descriptor.Title</label>
+                    <label class="form-label">
+                        @row.Descriptor.Title
+                        @if (row.Descriptor.IsSecret)
+                        {
+                            <span class="badge text-bg-warning ms-1">محرمانه</span>
+                        }
+                        @if (row.HasDbValue)
+                        {
+                            <span class="badge text-bg-success ms-1">تنظیم‌شده اینجا</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-secondary ms-1">از appsettings/پیش‌فرض</span>
+                        }
+                    </label>
                     <div class="input-group">
-                        <input class="form-control" dir="auto"
-                               value="@row.Value" @onchange="(e) => row.Value = e.Value?.ToString()" />
+                        @if (row.Descriptor.IsSecret)
+                        {
+                            <input type="@(row.Reveal ? "text" : "password")" class="form-control" dir="ltr"
+                                   placeholder="@(row.HasDbValue ? "••• ذخیره شده — برای تغییر، مقدار جدید بنویسید" : "خالی = appsettings")"
+                                   value="@row.Value" @onchange="(e) => row.Value = e.Value?.ToString()" />
+                            <button class="btn btn-outline-secondary" title="نمایش/پنهان"
+                                    @onclick="() => row.Reveal = !row.Reveal">
+                                <i class="bi @(row.Reveal ? "bi-eye-slash" : "bi-eye")"></i>
+                            </button>
+                        }
+                        else
+                        {
+                            <input class="form-control" dir="auto"
+                                   placeholder="@(string.IsNullOrEmpty(row.Descriptor.DefaultValue) ? "خالی = appsettings" : $"پیش‌فرض: {row.Descriptor.DefaultValue}")"
+                                   value="@row.Value" @onchange="(e) => row.Value = e.Value?.ToString()" />
+                        }
                         <button class="btn btn-outline-primary" @onclick="() => SaveAsync(row)"
                                 disabled="@row.Saving">
                             @(row.Saving ? "…" : "ذخیره")
                         </button>
+                        @if (row.HasDbValue)
+                        {
+                            <button class="btn btn-outline-secondary" title="حذف و بازگشت به appsettings"
+                                    @onclick="() => ClearAsync(row)" disabled="@row.Saving">
+                                بازگشت
+                            </button>
+                        }
                     </div>
-                    <div class="form-text">کلید: <code>@row.Descriptor.Key</code> — پیش‌فرض: @row.Descriptor.DefaultValue</div>
+                    <div class="form-text">کلید: <code dir="ltr">@row.Descriptor.Key</code></div>
                 </div>
             }
         </div>
@@ -52,6 +98,8 @@ else
     {
         public SettingDescriptor Descriptor { get; set; } = default!;
         public string? Value { get; set; }
+        public bool HasDbValue { get; set; }
+        public bool Reveal { get; set; }
         public bool Saving { get; set; }
     }
 
@@ -66,7 +114,6 @@ else
         var loaded = new List<SettingGroup>();
         foreach (var descriptor in Catalog.All)
         {
-            var value = await SettingService.GetAsync(descriptor.Key);
             var group = loaded.FirstOrDefault(g => g.Name == descriptor.Group);
             if (group is null)
             {
@@ -74,11 +121,13 @@ else
                 loaded.Add(group);
             }
 
-            // اگر مقدار فعلی همان پیش‌فرض است، فیلد خالی نشان داده می‌شود تا معلوم باشد دستی تنظیم نشده
+            // secret هرگز پیش‌پر نمی‌شود؛ بقیه مقدار مؤثر را نشان می‌دهند
+            var hasDbValue = await SettingService.HasValueAsync(descriptor.Key);
             group.Rows.Add(new SettingRow
             {
                 Descriptor = descriptor,
-                Value = value == descriptor.DefaultValue ? null : value
+                HasDbValue = hasDbValue,
+                Value = descriptor.IsSecret ? null : await SettingService.GetAsync(descriptor.Key)
             });
         }
 
@@ -87,11 +136,41 @@ else
 
     private async Task SaveAsync(SettingRow row)
     {
+        // secret خالی یعنی «دست نزن» — وگرنه ردیف با مقدار خالی رونویسی می‌شد
+        if (row.Descriptor.IsSecret && string.IsNullOrWhiteSpace(row.Value))
+        {
+            Toast.ShowError("برای تغییر مقدار محرمانه، مقدار جدید را بنویسید.");
+            return;
+        }
+
         row.Saving = true;
         try
         {
             await SettingService.SetAsync(row.Descriptor.Key, row.Value);
+            row.HasDbValue = await SettingService.HasValueAsync(row.Descriptor.Key);
+            if (row.Descriptor.IsSecret)
+                row.Value = null; // مقدار خام در حافظه صفحه نماند
             Toast.ShowSuccess("تنظیم ذخیره شد.");
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError(Platform.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex));
+        }
+        finally
+        {
+            row.Saving = false;
+        }
+    }
+
+    private async Task ClearAsync(SettingRow row)
+    {
+        row.Saving = true;
+        try
+        {
+            await SettingService.ClearAsync(row.Descriptor.Key);
+            row.HasDbValue = false;
+            row.Value = row.Descriptor.IsSecret ? null : await SettingService.GetAsync(row.Descriptor.Key);
+            Toast.ShowSuccess("به مقدار appsettings/پیش‌فرض برگشت.");
         }
         catch (Exception ex)
         {

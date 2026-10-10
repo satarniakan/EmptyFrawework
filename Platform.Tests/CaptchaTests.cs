@@ -1,6 +1,10 @@
 using System.Net;
 using System.Text;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
+using Platform.Application.Services;
+using Platform.Domain.Identity;
 using Platform.Domain.Interfaces;
 using Platform.Infrastructure.Services;
 
@@ -21,13 +25,24 @@ public class CaptchaTests
             });
     }
 
+    private static TurnstileCaptchaValidator ValidatorWithSecret(HttpClient http)
+    {
+        var settings = new Mock<ISettingService>();
+        settings.Setup(s => s.GetEffectiveAsync(
+                IntegrationSettingKeys.TurnstileSecretKey, It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync("secret");
+
+        return new TurnstileCaptchaValidator(
+            http, settings.Object,
+            new ConfigurationBuilder().Build(),
+            NullLogger<TurnstileCaptchaValidator>.Instance);
+    }
+
     [Fact]
     public async Task Turnstile_SuccessTrue_ReturnsTrue()
     {
-        var validator = new TurnstileCaptchaValidator(
-            new HttpClient(new CannedHandler("""{"success":true}""")),
-            "secret",
-            NullLogger<TurnstileCaptchaValidator>.Instance);
+        var validator = ValidatorWithSecret(
+            new HttpClient(new CannedHandler("""{"success":true}""")));
 
         Assert.True(await validator.ValidateAsync("token", "1.2.3.4"));
     }
@@ -35,10 +50,8 @@ public class CaptchaTests
     [Fact]
     public async Task Turnstile_SuccessFalse_ReturnsFalse()
     {
-        var validator = new TurnstileCaptchaValidator(
-            new HttpClient(new CannedHandler("""{"success":false,"error-codes":["invalid-input-response"]}""")),
-            "secret",
-            NullLogger<TurnstileCaptchaValidator>.Instance);
+        var validator = ValidatorWithSecret(
+            new HttpClient(new CannedHandler("""{"success":false,"error-codes":["invalid-input-response"]}""")));
 
         Assert.False(await validator.ValidateAsync("bad-token", null));
     }
@@ -48,10 +61,8 @@ public class CaptchaTests
     {
         var calls = 0;
         var handler = new CannedHandler("""{"success":true}""");
-        var validator = new TurnstileCaptchaValidator(
-            new HttpClient(new CountingHandler(handler, () => calls++)),
-            "secret",
-            NullLogger<TurnstileCaptchaValidator>.Instance);
+        var validator = ValidatorWithSecret(
+            new HttpClient(new CountingHandler(handler, () => calls++)));
 
         Assert.False(await validator.ValidateAsync(null, null));
         Assert.False(await validator.ValidateAsync("  ", null));

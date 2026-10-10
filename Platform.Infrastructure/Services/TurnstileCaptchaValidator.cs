@@ -1,27 +1,33 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Platform.Application.Services;
+using Platform.Domain.Identity;
 using Platform.Domain.Interfaces;
 
 namespace Platform.Infrastructure.Services;
 
 /// <summary>
-/// کپچای Cloudflare Turnstile. تنظیمات از «Captcha:Turnstile:SecretKey» (سرور) و
-/// «Captcha:Turnstile:SiteKey» (ویجت فرم لاگین). هر دو خالی = این provider انتخاب نمی‌شود.
+/// کپچای Cloudflare Turnstile.
+/// مقدار مؤثر هر بار اعتبارسنجی خوانده می‌شود: ردیف دیتابیس ← appsettings
+/// («Captcha:Turnstile:SecretKey» برای سرور؛ SiteKey عمومیِ ویجت لاگین جدا خوانده می‌شود).
 /// </summary>
 public class TurnstileCaptchaValidator : ICaptchaValidator
 {
     public string Name => "turnstile";
 
     private readonly HttpClient _http;
-    private readonly string _secretKey;
+    private readonly ISettingService _settings;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<TurnstileCaptchaValidator> _logger;
 
-    public TurnstileCaptchaValidator(HttpClient http, string secretKey,
-        ILogger<TurnstileCaptchaValidator> logger)
+    public TurnstileCaptchaValidator(HttpClient http, ISettingService settings,
+        IConfiguration configuration, ILogger<TurnstileCaptchaValidator> logger)
     {
         _http = http;
-        _secretKey = secretKey;
+        _settings = settings;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -31,9 +37,17 @@ public class TurnstileCaptchaValidator : ICaptchaValidator
         if (string.IsNullOrWhiteSpace(token))
             return false;
 
+        var secretKey = await _settings.GetEffectiveAsync(
+            IntegrationSettingKeys.TurnstileSecretKey, "Captcha:Turnstile:SecretKey");
+        if (string.IsNullOrWhiteSpace(secretKey))
+        {
+            _logger.LogWarning("Turnstile secret is not configured");
+            return false;
+        }
+
         using var response = await _http.PostAsJsonAsync(
             "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-            new { secret = _secretKey, response = token, remoteip = remoteIp },
+            new { secret = secretKey, response = token, remoteip = remoteIp },
             cancellationToken);
 
         response.EnsureSuccessStatusCode();

@@ -47,11 +47,19 @@ public class ApiTokenServiceTests
                     .Where(t => t.UserId == userId && !t.IsRevoked).ToList());
         }
 
-        public ApiTokenService Build() => new(
-            Repo.Object, Otp.Object, Users.Object, SignIn.Object, Factory.Object, Uow.Object,
-            new ConfigurationBuilder().Build(),
-            NullLogger<ApiTokenService>.Instance,
-            new FixedTimeProvider());
+        public ApiTokenService Build()
+        {
+            var settings = new Mock<ISettingService>();
+            settings.Setup(s => s.GetEffectiveAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync("180");
+
+            return new ApiTokenService(
+                Repo.Object, Otp.Object, Users.Object, SignIn.Object, Factory.Object, Uow.Object,
+                settings.Object,
+                new ConfigurationBuilder().Build(),
+                NullLogger<ApiTokenService>.Instance,
+                new FixedTimeProvider());
+        }
 
         private static Mock<UserManager<ApplicationUser>> CreateUserManager()
         {

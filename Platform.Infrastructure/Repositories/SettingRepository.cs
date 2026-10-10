@@ -30,4 +30,11 @@ public class SettingRepository : ISettingRepository
             existing.UpdatedAtUtc = setting.UpdatedAtUtc;
         }
     }
+
+    public async Task DeleteAsync(string key)
+    {
+        var existing = await _context.Settings.FirstOrDefaultAsync(s => s.Key == key);
+        if (existing is not null)
+            _context.Settings.Remove(existing);
+    }
 }

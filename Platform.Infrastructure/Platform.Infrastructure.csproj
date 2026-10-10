@@ -22,6 +22,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Platform.Domain\Platform.Domain.csproj" />
+    <!-- پیاده‌سازی سرویس‌های Application (فرستنده‌ها تنظیمات را از ISettingService می‌خوانند).
+         جهت وابستگی درست است: Infrastructure به Application وابسته است، نه برعکس. -->
+    <ProjectReference Include="..\Platform.Application\Platform.Application.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,41 +1,50 @@
 ﻿// Platform.Infrastructure/Services/SmtpEmailSender.cs
 using System.Net;
 using System.Net.Mail;
+using Microsoft.Extensions.Configuration;
+using Platform.Application.Services;
+using Platform.Domain.Identity;
 using Platform.Domain.Interfaces;
 
 namespace Platform.Infrastructure.Services;
 
 /// <summary>
 /// ارسال ایمیل با SMTP (بدون وابستگی به پکیج بیرونی).
-/// تنظیمات: «Email:Smtp:Host/Port/Username/Password/FromAddress/FromName» — Host خالی یعنی پیکربندی نشده.
+/// مقادیر مؤثر هر بار ارسال خوانده می‌شوند: ردیف دیتابیس ← appsettings
+/// («Email:Smtp:Host/Port/Username/Password/FromAddress/FromName»).
+/// Host خالی یعنی پیکربندی نشده.
 /// </summary>
 public class SmtpEmailSender : IEmailSender
 {
-    private readonly string _host;
-    private readonly int _port;
-    private readonly string? _username;
-    private readonly string? _password;
-    private readonly string _fromAddress;
-    private readonly string _fromName;
+    private readonly ISettingService _settings;
+    private readonly IConfiguration _configuration;
 
-    public SmtpEmailSender(string host, int port, string? username, string? password, string fromAddress, string fromName)
+    public SmtpEmailSender(ISettingService settings, IConfiguration configuration)
     {
-        _host = host;
-        _port = port;
-        _username = username;
-        _password = password;
-        _fromAddress = fromAddress;
-        _fromName = fromName;
+        _settings = settings;
+        _configuration = configuration;
     }
 
     public async Task SendAsync(string to, string subject, string body)
     {
-        if (string.IsNullOrWhiteSpace(_host))
+        var host = await _settings.GetEffectiveAsync(IntegrationSettingKeys.SmtpHost, "Email:Smtp:Host");
+        if (string.IsNullOrWhiteSpace(host))
             throw new InvalidOperationException("پیکربندی ایمیل ناقص است (Email:Smtp:Host).");
+
+        var portText = await _settings.GetEffectiveAsync(
+            IntegrationSettingKeys.SmtpPort, "Email:Smtp:Port", "587");
+        var username = await _settings.GetEffectiveAsync(
+            IntegrationSettingKeys.SmtpUsername, "Email:Smtp:Username");
+        var password = await _settings.GetEffectiveAsync(
+            IntegrationSettingKeys.SmtpPassword, "Email:Smtp:Password");
+        var fromAddress = await _settings.GetEffectiveAsync(
+            IntegrationSettingKeys.SmtpFromAddress, "Email:Smtp:FromAddress", "no-reply@localhost");
+        var fromName = await _settings.GetEffectiveAsync(
+            IntegrationSettingKeys.SmtpFromName, "Email:Smtp:FromName", "سامانه");
 
         var message = new MailMessage
         {
-            From = new MailAddress(_fromAddress, _fromName),
+            From = new MailAddress(fromAddress, fromName),
             Subject = subject,
             Body = body,
             IsBodyHtml = false,
@@ -44,12 +53,12 @@ public class SmtpEmailSender : IEmailSender
         };
         message.To.Add(to);
 
-        using var client = new SmtpClient(_host, _port)
+        using var client = new SmtpClient(host, int.TryParse(portText, out var port) ? port : 587)
         {
             EnableSsl = true,
-            Credentials = string.IsNullOrWhiteSpace(_username)
+            Credentials = string.IsNullOrWhiteSpace(username)
                 ? CredentialCache.DefaultNetworkCredentials
-                : new NetworkCredential(_username, _password)
+                : new NetworkCredential(username, password)
         };
 
         // await الزامی است: با بازگرداندن Task، «using var client» پیش از اتمام

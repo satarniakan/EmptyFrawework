@@ -1,7 +1,7 @@
 @* دکمهٔ فعال‌سازی اعلان‌های مرورگر (وب‌پوش). اگر VAPID تنظیم نشده باشد، خودش را پنهان می‌کند. *@
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
-@inject IConfiguration Configuration
+@inject Platform.Application.Services.ISettingService Settings
 
 @if (!string.IsNullOrWhiteSpace(publicKey))
 {
@@ -22,9 +22,13 @@
     private bool subscribed;
     private string? statusMessage;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        publicKey = Configuration["Push:Vapid:PublicKey"];
+        publicKey = await Settings.GetEffectiveAsync(
+            Platform.Domain.Identity.IntegrationSettingKeys.VapidPublicKey,
+            "Push:Vapid:PublicKey");
+        if (string.IsNullOrWhiteSpace(publicKey))
+            publicKey = null;
     }
 
     private async Task SubscribeAsync()

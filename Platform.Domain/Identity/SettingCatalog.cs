@@ -1,10 +1,19 @@
 namespace Platform.Domain.Identity;
 
 /// <summary>
-/// توصیف یک تنظیم شناخته‌شده: کلید، عنوان فارسی، مقدار پیش‌فرض و گروه نمایشی.
+/// توصیف یک تنظیم شناخته‌شده: کلید، عنوان فارسی، مقدار پیش‌فرض، گروه نمایشی و محرمانگی.
 /// مثل IPermissionCatalog، پیاده‌سازی‌اش در میزبان است تا پایه هیچ مقدار دامنه‌ای نداشته باشد.
 /// </summary>
-public record SettingDescriptor(string Key, string Title, string DefaultValue, string Group = "عمومی");
+/// <param name="IsSecret">
+/// مقدار محرمانه (کلید API، رمز): رمزنگاری‌شده ذخیره می‌شود و در صفحهٔ ادمین هرگز
+/// پیش‌پر نمی‌شود — فقط با نوشتن مقدار جدید عوض می‌شود.
+/// </param>
+public record SettingDescriptor(
+    string Key,
+    string Title,
+    string DefaultValue,
+    string Group = "عمومی",
+    bool IsSecret = false);
 
 public interface ISettingCatalog
 {

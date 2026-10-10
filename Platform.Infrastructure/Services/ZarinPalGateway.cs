@@ -1,50 +1,65 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Platform.Application.Services;
+using Platform.Domain.Identity;
 using Platform.Domain.Interfaces;
 
 namespace Platform.Infrastructure.Services;
 
 /// <summary>
-/// درگاه زرین‌پال (نسخهٔ ۴، مبالغ به تومان). تنظیمات از «Payment:ZarinPal:*»:
-/// MerchantId (اجباری)، Sandbox (پیش‌فرض false).
+/// درگاه زرین‌پال (نسخهٔ ۴، مبالغ به تومان).
+/// مقدار مؤثر هر بار فراخوانی خوانده می‌شود: ردیف دیتابیس ← appsettings
+/// («Payment:ZarinPal:MerchantId» و «Payment:ZarinPal:Sandbox»).
 /// </summary>
 public class ZarinPalGateway : IPaymentGateway
 {
     public string Name => "zarinpal";
 
     private readonly HttpClient _http;
-    private readonly string _merchantId;
-    private readonly bool _sandbox;
+    private readonly ISettingService _settings;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<ZarinPalGateway> _logger;
 
-    public ZarinPalGateway(HttpClient http, string merchantId, bool sandbox,
-        ILogger<ZarinPalGateway> logger)
+    public ZarinPalGateway(HttpClient http, ISettingService settings,
+        IConfiguration configuration, ILogger<ZarinPalGateway> logger)
     {
         _http = http;
-        _merchantId = merchantId;
-        _sandbox = sandbox;
+        _settings = settings;
+        _configuration = configuration;
         _logger = logger;
     }
 
-    private string BaseUrl => _sandbox
+    private string BaseUrl(bool sandbox) => sandbox
         ? "https://sandbox.zarinpal.com/pg/v4/payment"
         : "https://api.zarinpal.com/pg/v4/payment";
 
-    private string StartPayUrl(string authority) =>
-        (_sandbox ? "https://sandbox.zarinpal.com/pg/StartPay/" : "https://www.zarinpal.com/pg/StartPay/")
+    private static string StartPayUrl(bool sandbox, string authority) =>
+        (sandbox ? "https://sandbox.zarinpal.com/pg/StartPay/" : "https://www.zarinpal.com/pg/StartPay/")
         + authority;
+
+    private async Task<(string MerchantId, bool Sandbox)> ConfigAsync()
+    {
+        var merchantId = await _settings.GetEffectiveAsync(
+            IntegrationSettingKeys.ZarinPalMerchantId, "Payment:ZarinPal:MerchantId");
+        var sandboxText = await _settings.GetEffectiveAsync(
+            IntegrationSettingKeys.ZarinPalSandbox, "Payment:ZarinPal:Sandbox", "false");
+        return (merchantId, string.Equals(sandboxText.Trim(), "true", StringComparison.OrdinalIgnoreCase));
+    }
 
     public async Task<PaymentStartResult> StartPaymentAsync(PaymentRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_merchantId))
-            throw new InvalidOperationException("کلید پذیرندهٔ زرین‌پال (Payment:ZarinPal:MerchantId) تنظیم نشده است.");
+        var (merchantId, sandbox) = await ConfigAsync();
+        if (string.IsNullOrWhiteSpace(merchantId))
+            throw new InvalidOperationException(
+                "کلید پذیرندهٔ زرین‌پال تنظیم نشده است (تنظیمات یا Payment:ZarinPal:MerchantId).");
 
-        using var response = await _http.PostAsJsonAsync($"{BaseUrl}/request.json",
+        using var response = await _http.PostAsJsonAsync($"{BaseUrl(sandbox)}/request.json",
             new
             {
-                merchant_id = _merchantId,
+                merchant_id = merchantId,
                 amount = request.AmountTomans,
                 callback_url = request.CallbackUrl,
                 description = request.Description,
@@ -63,14 +78,16 @@ public class ZarinPalGateway : IPaymentGateway
         }
 
         var authority = data.GetProperty("authority").GetString()!;
-        return new PaymentStartResult(authority, StartPayUrl(authority));
+        return new PaymentStartResult(authority, StartPayUrl(sandbox, authority));
     }
 
     public async Task<PaymentVerifyResult> VerifyPaymentAsync(string authority, long amountTomans,
         CancellationToken cancellationToken = default)
     {
-        using var response = await _http.PostAsJsonAsync($"{BaseUrl}/verify.json",
-            new { merchant_id = _merchantId, authority, amount = amountTomans },
+        var (merchantId, sandbox) = await ConfigAsync();
+
+        using var response = await _http.PostAsJsonAsync($"{BaseUrl(sandbox)}/verify.json",
+            new { merchant_id = merchantId, authority, amount = amountTomans },
             cancellationToken);
 
         var doc = await ReadJsonAsync(response, cancellationToken);

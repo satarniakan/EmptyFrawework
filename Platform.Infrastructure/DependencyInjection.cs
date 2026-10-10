@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Platform.Application.Services;
 using Platform.Domain.Identity;
 using Platform.Domain.Interfaces;
 using Platform.Infrastructure.Data;
@@ -114,8 +115,8 @@ public static class DependencyInjection
                 var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("zarinpal");
                 return new ZarinPalGateway(
                     http,
-                    configuration["Payment:ZarinPal:MerchantId"] ?? string.Empty,
-                    configuration.GetValue("Payment:ZarinPal:Sandbox", false),
+                    sp.GetRequiredService<ISettingService>(),
+                    sp.GetRequiredService<IConfiguration>(),
                     sp.GetRequiredService<ILogger<ZarinPalGateway>>());
             }
 
@@ -132,7 +133,8 @@ public static class DependencyInjection
                 var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("turnstile");
                 return new TurnstileCaptchaValidator(
                     http,
-                    configuration["Captcha:Turnstile:SecretKey"] ?? string.Empty,
+                    sp.GetRequiredService<ISettingService>(),
+                    sp.GetRequiredService<IConfiguration>(),
                     sp.GetRequiredService<ILogger<TurnstileCaptchaValidator>>());
             }
 
@@ -148,8 +150,8 @@ public static class DependencyInjection
                 var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("kavenegar");
                 return new KavenegarSmsSender(
                     http,
-                    configuration["Sms:Kavenegar:ApiKey"] ?? string.Empty,
-                    configuration["Sms:Kavenegar:Sender"],
+                    sp.GetRequiredService<ISettingService>(),
+                    sp.GetRequiredService<IConfiguration>(),
                     sp.GetRequiredService<ILogger<KavenegarSmsSender>>());
             }
 
@@ -157,18 +159,11 @@ public static class DependencyInjection
                 sp.GetRequiredService<ILogger<FakeSmsSender>>(), logMessageBody: isDevelopment);
         });
 
-        // ایمیل تراکنشی — SMTP از «Email:Smtp:*»؛ Host خالی یعنی ارسال با خطای روشن در Outbox ثبت می‌شود
-        services.AddScoped<IEmailSender>(sp =>
-        {
-            var config = sp.GetRequiredService<IConfiguration>();
-            return new SmtpEmailSender(
-                config["Email:Smtp:Host"] ?? string.Empty,
-                config.GetValue("Email:Smtp:Port", 587),
-                config["Email:Smtp:Username"],
-                config["Email:Smtp:Password"],
-                config["Email:Smtp:FromAddress"] ?? "no-reply@localhost",
-                config["Email:Smtp:FromName"] ?? "سامانه");
-        });
+        // ایمیل تراکنشی — مقادیر از تنظیمات (ردیف دیتابیس، وگرنه «Email:Smtp:*»)؛
+        // Host خالی یعنی ارسال با خطای روشن در Outbox ثبت می‌شود
+        services.AddScoped<IEmailSender>(sp => new SmtpEmailSender(
+            sp.GetRequiredService<ISettingService>(),
+            sp.GetRequiredService<IConfiguration>()));
 
         return services;
     }

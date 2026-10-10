@@ -53,10 +53,21 @@
 
     [Inject] private IConfiguration Configuration { get; set; } = default!;
     [Inject] private IWebHostEnvironment Environment { get; set; } = default!;
+    [Inject] private Platform.Application.Services.ISettingService Settings { get; set; } = default!;
 
     private bool showDevLogin =>
         Environment.IsDevelopment() &&
         !string.IsNullOrWhiteSpace(Configuration["Dev:AutoLoginPhone"]);
 
-    private string? turnstileSiteKey => Configuration["Captcha:Turnstile:SiteKey"];
+    private string? turnstileSiteKey;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // کلید عمومی از تنظیمات (ردیف دیتابیس، وگرنه appsettings) — خالی یعنی کپچا غیرفعال
+        turnstileSiteKey = await Settings.GetEffectiveAsync(
+            Platform.Domain.Identity.IntegrationSettingKeys.TurnstileSiteKey,
+            "Captcha:Turnstile:SiteKey");
+        if (string.IsNullOrWhiteSpace(turnstileSiteKey))
+            turnstileSiteKey = null;
+    }
 }

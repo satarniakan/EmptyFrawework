@@ -16,8 +16,10 @@ public sealed class AppPermissionCatalog : IPermissionCatalog
 }
 
 /// <summary>
-/// کاتالوگ تنظیمات میزبان: فعلاً فقط کلیدهای پایه. ماژول دامنه کلیدهای خودش را
-/// همین‌جا اضافه می‌کند تا در صفحهٔ «تنظیمات» ادمین قابل‌ویرایش باشند.
+/// کاتالوگ تنظیمات میزبان: کلیدهای پایه + همهٔ تنظیمات اتصال‌ها (پیامک، ایمیل،
+/// پرداخت، کپچا، وب‌پوش، توکن). مقادیر محرمانه رمزنگاری‌شده ذخیره می‌شوند.
+/// ترتیب مقدار مؤثر هر کلید: ردیف دیتابیس ← appsettings ← پیش‌فرض؛ پس خالی
+/// گذاشتن یعنی «از appsettings بخوان».
 /// </summary>
 public sealed class AppSettingCatalog : ISettingCatalog
 {
@@ -25,7 +27,34 @@ public sealed class AppSettingCatalog : ISettingCatalog
     [
         new(FrameworkSettingKeys.SiteName, "نام سامانه", SettingDefaults.Get(FrameworkSettingKeys.SiteName), "عمومی"),
         new(FrameworkSettingKeys.OtpSmsTemplate, "قالب پیامک کد ورود ({Code})",
-            SettingDefaults.Get(FrameworkSettingKeys.OtpSmsTemplate), "پیامک")
+            SettingDefaults.Get(FrameworkSettingKeys.OtpSmsTemplate), "پیامک"),
+
+        new(IntegrationSettingKeys.SmsKavenegarApiKey, "کلید API کاوه‌نگار (Sms:Kavenegar:ApiKey)",
+            "", "پیامک", IsSecret: true),
+        new(IntegrationSettingKeys.SmsKavenegarSender, "شماره خط ارسال‌کننده (Sms:Kavenegar:Sender)",
+            "", "پیامک"),
+
+        new(IntegrationSettingKeys.SmtpHost, "هاست SMTP (Email:Smtp:Host)", "", "ایمیل"),
+        new(IntegrationSettingKeys.SmtpPort, "پورت SMTP (پیش‌فرض 587)", "", "ایمیل"),
+        new(IntegrationSettingKeys.SmtpUsername, "نام کاربری SMTP", "", "ایمیل"),
+        new(IntegrationSettingKeys.SmtpPassword, "رمز SMTP", "", "ایمیل", IsSecret: true),
+        new(IntegrationSettingKeys.SmtpFromAddress, "فرستنده (FromAddress)", "", "ایمیل"),
+        new(IntegrationSettingKeys.SmtpFromName, "نام فرستنده (FromName)", "", "ایمیل"),
+
+        new(IntegrationSettingKeys.ZarinPalMerchantId, "مرچنت زرین‌پال (Payment:ZarinPal:MerchantId)",
+            "", "پرداخت", IsSecret: true),
+        new(IntegrationSettingKeys.ZarinPalSandbox, "حالت sandbox زرین‌پال (true/false)", "", "پرداخت"),
+
+        new(IntegrationSettingKeys.TurnstileSecretKey, "کلید محرمانه Turnstile (سرور)",
+            "", "کپچا", IsSecret: true),
+        new(IntegrationSettingKeys.TurnstileSiteKey, "کلید عمومی Turnstile (ویجت لاگین)",
+            "", "کپچا"),
+
+        new(IntegrationSettingKeys.VapidSubject, "آدرس تماس VAPID (مثل mailto:admin@example.com)", "", "وب‌پوش"),
+        new(IntegrationSettingKeys.VapidPublicKey, "کلید عمومی VAPID", "", "وب‌پوش"),
+        new(IntegrationSettingKeys.VapidPrivateKey, "کلید خصوصی VAPID", "", "وب‌پوش", IsSecret: true),
+
+        new(IntegrationSettingKeys.ApiTokenLifetimeDays, "عمر توکن موبایل به روز (پیش‌فرض ۱۸۰)", "", "توکن")
     ];
 }
 

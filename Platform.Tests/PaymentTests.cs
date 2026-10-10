@@ -1,10 +1,12 @@
 using System.Net;
 using System.Text;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Platform.Application.Services;
 using Platform.Domain.Entities;
 using Platform.Domain.Exceptions;
+using Platform.Domain.Identity;
 using Platform.Domain.Interfaces;
 using Platform.Infrastructure.Services;
 
@@ -146,13 +148,27 @@ public class PaymentTests
             });
     }
 
+    private static ZarinPalGateway GatewayWithSettings(HttpClient http, bool sandbox)
+    {
+        var settings = new Mock<ISettingService>();
+        settings.Setup(s => s.GetEffectiveAsync(
+                IntegrationSettingKeys.ZarinPalMerchantId, It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync("merchant");
+        settings.Setup(s => s.GetEffectiveAsync(
+                IntegrationSettingKeys.ZarinPalSandbox, It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(sandbox ? "true" : "false");
+
+        return new ZarinPalGateway(
+            http, settings.Object,
+            new ConfigurationBuilder().Build(),
+            NullLogger<ZarinPalGateway>.Instance);
+    }
+
     [Fact]
     public async Task ZarinPalGateway_Start_ReturnsAuthorityAndUrl()
     {
         var json = """{"data":{"code":100,"message":"Success","authority":"A0001"},"errors":[]}""";
-        var gateway = new ZarinPalGateway(
-            new HttpClient(new CannedHandler(json)), "merchant", sandbox: true,
-            NullLogger<ZarinPalGateway>.Instance);
+        var gateway = GatewayWithSettings(new HttpClient(new CannedHandler(json)), sandbox: true);
 
         var result = await gateway.StartPaymentAsync(new PaymentRequest(10000, "تست", "https://x/cb"));
 
@@ -164,9 +180,7 @@ public class PaymentTests
     public async Task ZarinPalGateway_Verify_Code100_ReturnsRefId()
     {
         var json = """{"data":{"code":100,"ref_id":98765,"card_pan":"603799******0000"},"errors":[]}""";
-        var gateway = new ZarinPalGateway(
-            new HttpClient(new CannedHandler(json)), "merchant", sandbox: false,
-            NullLogger<ZarinPalGateway>.Instance);
+        var gateway = GatewayWithSettings(new HttpClient(new CannedHandler(json)), sandbox: false);
 
         var result = await gateway.VerifyPaymentAsync("A0001", 10000);
 
@@ -178,9 +192,7 @@ public class PaymentTests
     public async Task ZarinPalGateway_Start_Non100_Throws()
     {
         var json = """{"data":{"code":-9,"message":"Validation error"},"errors":[]}""";
-        var gateway = new ZarinPalGateway(
-            new HttpClient(new CannedHandler(json)), "merchant", sandbox: false,
-            NullLogger<ZarinPalGateway>.Instance);
+        var gateway = GatewayWithSettings(new HttpClient(new CannedHandler(json)), sandbox: false);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             gateway.StartPaymentAsync(new PaymentRequest(10000, "تست", "https://x/cb")));
