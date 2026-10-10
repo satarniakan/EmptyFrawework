@@ -42,20 +42,20 @@ cd MyProject
 dotnet new empty-platform -n MyProject
 ```
 
-اگر اسم پروژهٔ میزبان نمونه را می‌خواهید عوض کنید:
-
-```bash
-dotnet new empty-platform -n MyProject --SampleName Orders
-```
-
-> میزبان نمونه (`samples/Sample.Web`) بخشی از خروجی قالب است. اگر میزبان خودتان را دارید،
-> پوشهٔ `samples/` را پاک کنید و خط `<Project Path="samples/..."/>` را از
-> `MyProject.slnx` بردارید؛ بقیهٔ پایه کاملاً مستقل بالا می‌آید.
+> میزبان (`Platform.App`) بخشی از خروجی قالب است. اگر میزبان خودتان را دارید،
+> پوشهٔ `Platform.App/` را پاک کنید و خطش را از `MyProject.slnx` بردارید؛
+> بقیهٔ پایه کاملاً مستقل بالا می‌آید.
 
 ## گام ۳ — تنظیم اتصال دیتابیس
 
-میزبان اجراشونده، پروژهٔ `samples/Sample.Web` است. فایل
-`samples/Sample.Web/appsettings.json.example` را به `appsettings.json` (کنار خودش)
+میزبان اجراشونده، پروژهٔ `Platform.App` است — تنها پروژهٔ اجرایی؛ همین را اجرا کنید:
+
+```bash
+dotnet run --project Platform.App
+```
+
+فایل
+`Platform.App/appsettings.json.example` را به `appsettings.json` (کنار خودش)
 کپی کنید و مقادیر واقعی (نام دیتابیس و رمز `sa`) را بگذارید. خودِ `appsettings.json`
 عمداً در `.gitignore` است و هیچ‌وقت در گیت ثبت نمی‌شود.
 
@@ -63,7 +63,7 @@ dotnet new empty-platform -n MyProject --SampleName Orders
 
 ```bash
 dotnet build MyProject.slnx
-dotnet test tests/MyProject.Tests/MyProject.Tests.csproj
+dotnet test MyProject/MyProject.Tests/MyProject.Tests.csproj
 ```
 
 هر دو باید سبز شوند. اگر قرمز شدند، همان خطا را بخوانید — معمولاً یا رشتهٔ اتصال
@@ -71,9 +71,8 @@ dotnet test tests/MyProject.Tests/MyProject.Tests.csproj
 
 ## گام ۵ — اولین اجرا
 
-```bash
-dotnet run --project samples/Sample.Web
-```
+مرورگر را روی همان آدرسی که در ترمینال چاپ شد باز کنید
+(با `dotnet run --project Platform.App` که در گام ۳ اجرا کردید).
 
 جدول‌های پایه (کاربران، نقش‌ها، OTP، اعلان‌ها، لاگ‌ها، Outbox) با `MigrateAsync`
 هنگام startup خودکار ساخته می‌شوند. مرورگر را روی همان آدرسی که در ترمینال چاپ شد
@@ -107,11 +106,11 @@ git push -u origin master
 | ۳ | مدل EF دامنه + ریپازیتوری‌ها | `IPlatformModule` و `IDomainUnitOfWork : IPlatformUnitOfWork` |
 
 الگوی هر سه — یک `IPermissionCatalog` با چند کلید، یک `INavProvider` با چند گروه،
-و یک کلاس `IPlatformModule` با `ConfigureModel` — در `samples/Sample.Web/SampleSetup.cs`
+و یک کلاس `IPlatformModule` با `ConfigureModel` — در `Platform.App/AppSetup.cs`
 به‌صورت خالی آماده است. وقتی مدل دامنه را اضافه کردید، مایگریشن تازه بسازید:
 
 ```bash
-dotnet ef migrations add <Name> --project samples/Sample.Web --startup-project samples/Sample.Web
+dotnet ef migrations add <Name> --project Platform.App --startup-project Platform.App
 ```
 
 ## مسیرهای اصلی میزبان نمونه
@@ -129,12 +128,12 @@ dotnet ef migrations add <Name> --project samples/Sample.Web --startup-project s
 ارسال پیام: هر رویداد دامنه می‌تواند هم‌زمان به کارتابل اعلان‌ها + صف ایمیل/پیامک/پوش
 (Outbox؛ ارسال واقعی با `OutboxProcessor` بر اساس `Email:Smtp:*` و `Sms:Provider`) برود.
 
-همهٔ مایگریشن‌ها در پوشهٔ `samples/Sample.Web/Migrations` خودِ میزبان‌اند، نه در پایه؛
+همهٔ مایگریشن‌ها در پوشهٔ `Platform.App/Migrations` خودِ میزبان‌اند، نه در پایه؛
 پس اسکیمای دامنهٔ شما هرگز وارد فریم‌ورک مشترک نمی‌شود. برای مایگریشن‌های بعدیِ ماژول‌ها
 حتماً با پروژهٔ میزبان بزنید تا ماژول‌ها وارد مدل شوند:
 
 ```bash
-dotnet ef migrations add <Name> --project samples/Sample.Web --startup-project samples/Sample.Web
+dotnet ef migrations add <Name> --project Platform.App --startup-project Platform.App
 ```
 
 ## به‌روزرسانی قالب در آینده
@@ -154,12 +153,11 @@ dotnet new install .
 
 | مسیر | نقش |
 |---|---|
-| `src/Platform.Domain` | هویت (`ApplicationUser`)، مجوز (`Permissions` فقط `ClaimType` دارد)، نقش‌های پایه + `IPermissionCatalog`، قراردادهای زیرساخت (`IFileStorage`، `ISmsSender`، `IEmailSender`، `IPaymentGateway`، `ICaptchaValidator`)، انتیتی‌های پایه (AuditLog، OtpCode، OtpThrottle، OutboxMessage، Notification، Setting، Payment، ApiToken، LoginHistory، PushSubscription)، `IPlatformUnitOfWork`، جست‌وجوی فارسی (`PersianSearch`) |
-| `src/Platform.Application` | سرویس‌های پایه (Auth، Otp، Audit، Permission، UserAdmin، Notification، Outbox، ApiToken، LoginHistory، Setting، NumberSeries، Payment، Push، Impersonation) + Helpers فارسی + Exports اکسل/PDF + ایمپورت اکسل + ترجمهٔ یکتای خطا (`ExceptionTranslator`) + کارهای تکرارشونده (`IRecurringJob`) |
-| `src/Platform.Infrastructure` | `PlatformDbContext` (ماژولار با `IPlatformModule`) + `PlatformUnitOfWork` (تراکنش واقعی)، `RoleSeeder`، فرستنده‌های پیامک/ایمیل، درگاه زرین‌پال، Turnstile، وب‌پوش VAPID — بدون هیچ مایگریشن (مال میزبان است) |
-| `src/Platform.Web` | کتابخانهٔ Razor: صفحات ورود/OTP/پروفایل/نشست‌ها/ادمین/تنظیمات/نتیجهٔ پرداخت، `MainLayout` (بنر جانشینی)، `NavMenu` داده‌محور (`INavProvider`)، `Routes`، کامپوننت‌های `Shared/App*` + دکمهٔ وب‌پوش |
-| `src/Platform.Web.Hosting` | زیرساخت اجرای پایه: `PlatformSetup` (ثبت سرویس‌ها، endpointها، policyهای خودکار از کاتالوگ، احراز هویت توکن API، سرویس‌های پس‌زمینه) + دارایی‌های سطح اپ (PWA، آیکون) |
-| `samples/Sample.Web` | میزبان نمونهٔ خالی که پایه را بالا می‌آورد؛ مایگریشن‌ها (`Migrations/`) و فکتوری design-time اینجاست |
+| `Platform.Domain` | هویت (`ApplicationUser`)، مجوز (`Permissions` فقط `ClaimType` دارد)، نقش‌های پایه + `IPermissionCatalog`، قراردادهای زیرساخت (`IFileStorage`، `ISmsSender`، `IEmailSender`، `IPaymentGateway`، `ICaptchaValidator`)، انتیتی‌های پایه (AuditLog، OtpCode، OtpThrottle، OutboxMessage، Notification، Setting، Payment، ApiToken، LoginHistory، PushSubscription)، `IPlatformUnitOfWork`، جست‌وجوی فارسی (`PersianSearch`) |
+| `Platform.Application` | سرویس‌های پایه (Auth، Otp، Audit، Permission، UserAdmin، Notification، Outbox، ApiToken، LoginHistory، Setting، NumberSeries، Payment، Push، Impersonation) + Helpers فارسی + Exports اکسل/PDF + ایمپورت اکسل + ترجمهٔ یکتای خطا (`ExceptionTranslator`) + کارهای تکرارشونده (`IRecurringJob`) |
+| `Platform.Infrastructure` | `PlatformDbContext` (ماژولار با `IPlatformModule`) + `PlatformUnitOfWork` (تراکنش واقعی)، `RoleSeeder`، فرستنده‌های پیامک/ایمیل، درگاه زرین‌پال، Turnstile، وب‌پوش VAPID — بدون هیچ مایگریشن (مال میزبان است) |
+| `Platform.Web` | کتابخانهٔ وب پایه (کامپوننت + زیرساخت اجرا): صفحات ورود/OTP/پروفایل/نشست‌ها/ادمین/تنظیمات/نتیجهٔ پرداخت، صفحات ورود/OTP/پروفایل/نشست‌ها/ادمین/تنظیمات/نتیجهٔ پرداخت، `MainLayout` (بنر جانشینی)، `NavMenu` داده‌محور (`INavProvider`)، `Routes`، کامپوننت‌های `Shared/App*` + دکمهٔ وب‌پوش |
+| `Platform.App` | **تنها پروژهٔ اجرایی (startup)** — میزبان خالی که پایه را بالا می‌آورد؛ مایگریشن‌ها (`Migrations/`) و فکتوری design-time اینجاست |
 
 ## خطاهای پرتکرار
 
@@ -169,8 +167,8 @@ dotnet new install .
 | خروجی قالب پوشهٔ تودرتو ساخت (`MyProject/MyProject`) | طبیعی است (`preferNameDirectory`)؛ داخل پوشهٔ داخلی کار کنید |
 | خطای اتصال SQL هنگام `run` | رشتهٔ اتصال در `appsettings.json` را چک کنید و مطمئن شوید SQL Server بالاست |
 | `dotnet-ef` شناخته نمی‌شود | گام پیش‌نیازها (نصب global) را انجام دهید |
-| خطای «رکورد ساختار پیکربندی» یا رشتهٔ اتصالِ خالی هنگام `run` | `samples/<Name>.Web/appsettings.json` ساخته نشده؛ از `appsettings.json.example` کپی کنید |
-| میزبان نمونه را نمی‌خواهم | پوشهٔ `samples/` را پاک کنید و `<Project Path="samples/..."/>` را از `*.slnx` بردارید |
+| خطای «رکورد ساختار پیکربندی» یا رشتهٔ اتصالِ خالی هنگام `run` | `Platform.App/appsettings.json` ساخته نشده؛ از `appsettings.json.example` کپی کنید |
+| میزبان نمونه را نمی‌خواهم | پوشهٔ `Platform.App/` را پاک کنید و خطش را از `*.slnx` بردارید و میزبان خودتان را با همان سه نقطهٔ اتصال وصل کنید |
 | وابستگی‌های NuGet گزارش `NU1510`/`NU1605` می‌دهند | نسخه‌ها را فقط از `Directory.Packages.props` عوض کنید و یک‌بار `dotnet restore` بگیرید |
 
 ## نگه‌داری نسخه‌ها (به‌روزرسانی وابستگی‌ها)
@@ -186,7 +184,7 @@ dotnet new install .
 dotnet list Platform.slnx package --outdated
 
 # به‌روزرسانی یک بسته در همهٔ پروژه‌ها
-dotnet add src/Platform.Infrastructure/Platform.Infrastructure.csproj \
+dotnet add Platform.Infrastructure/Platform.Infrastructure.csproj \
     package Microsoft.EntityFrameworkCore.SqlServer
 
 # به‌روزرسانی همه‌چیز به آخرین نسخهٔ پایدار (با احتیاط، یکی‌یکی تست کنید)
@@ -197,7 +195,7 @@ dotnet outdated --upgrade  # نیاز به ابزار: dotnet tool install -g do
 
 ```bash
 dotnet build Platform.slnx
-dotnet test tests/Platform.Tests/Platform.Tests.csproj
+dotnet test Platform.Tests/Platform.Tests.csproj
 ```
 
 نکتهٔ مهم: نسخهٔ همهٔ بسته‌های NuGet از یک جا، یعنی `Directory.Packages.props`
@@ -249,7 +247,7 @@ Get-ChildItem -Recurse -Filter *.csproj |
 ### ۳. Bootstrap و فایل‌های `wwwroot/lib` (حساس‌ترین)
 
 نسخهٔ فعلی Bootstrap: **۵.۳.۳** (داخل `wwwroot/lib/bootstrap` به‌صورت vendored کپی
-شده). فایل `src/Platform.Web/libman.json` دقیقاً مشخص می‌کند هر کتابخانه از کجا آمده
+شده). فایل `Platform.Web/libman.json` دقیقاً مشخص می‌کند هر کتابخانه از کجا آمده
 و کدام فایل‌ها کپی شده‌اند — قبل از هر به‌روزرسانی اول آن را بخوانید.
 
 دو راه برای به‌روزرسانی هست — راه اول (LibMan) تمیزتر است:
@@ -260,7 +258,7 @@ Get-ChildItem -Recurse -Filter *.csproj |
 ۲. restore کنید تا فایل‌ها دوباره دانلود شوند:
 
 ```bash
-cd src/Platform.Web
+cd Platform.Web
 dotnet tool install -g Microsoft.Web.LibraryManager.Cli
 libman restore
 ```
@@ -288,8 +286,8 @@ libman restore
 | .NET / TargetFramework | `net10.0` | `Directory.Build.props` |
 | همهٔ نسخه‌های NuGet | — | `Directory.Packages.props` (مدیریت متمرکز نسخه) |
 | EF Core / Identity / Extensions | ۱۰.۰.۱۲ | `Directory.Packages.props` + `dotnet-ef` |
-| Bootstrap | ۵.۳.۳ | `src/Platform.Web/wwwroot/lib/bootstrap` |
-| bootstrap-icons | ۱.۱۱.۳ | `src/Platform.Web/wwwroot/lib/bootstrap-icons` |
+| Bootstrap | ۵.۳.۳ | `Platform.Web/wwwroot/lib/bootstrap` |
+| bootstrap-icons | ۱.۱۱.۳ | `Platform.Web/wwwroot/lib/bootstrap-icons` |
 | QuestPDF | ۲۰۲۶.۹.۱ | `Directory.Packages.props` |
 | ClosedXML | ۰.۱۰۴.۲ | `Directory.Packages.props` |
 | WebPush | ۱.۰.۱۳ | `Directory.Packages.props` |

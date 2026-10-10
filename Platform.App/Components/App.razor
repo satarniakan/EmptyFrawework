@@ -1,0 +1,35 @@
+@using Microsoft.AspNetCore.Components.Endpoints
+@using Platform.Web.Components
+@using Platform.App.Components
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+
+    <script src="_content/Platform.Web/theme.js"></script>
+
+    <link rel="stylesheet" href="_content/Platform.Web/fonts/vazirmatn.css">
+    <link rel="stylesheet" href="_content/Platform.Web/lib/bootstrap/dist/css/bootstrap.rtl.min.css" />
+    <link rel="stylesheet" href="_content/Platform.Web/lib/bootstrap-icons/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="_content/Platform.Web/app.css" />
+
+    <link rel="stylesheet" href="_content/Platform.Web/lib/datepicker/datepicker.min.css">
+    <script src="_content/Platform.Web/lib/datepicker/datepicker.min.js"></script>
+    <script src="_content/Platform.Web/persian-datepicker-interop.js"></script>
+    <script src="_content/Platform.Web/priceInput.js"></script>
+
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#2563eb" />
+    <HeadOutlet />
+</head>
+<body>
+    @* خودِ Routes استاتیک رندر می‌شود؛ حالت تعاملی هر صفحه با @rendermode خودش تعیین می‌شود
+       (الگوی پیش‌فرض Blazor Web App). رندر تعاملی روی Routes، پارامتر AdditionalAssemblies
+       (آرایهٔ Assembly) را قابل serialize نمی‌کند و prerender ریشه را با NotSupportedException می‌شکند. *@
+    <Routes AdditionalAssemblies="AppRoutes.AdditionalAssemblies" />
+    <script src="_framework/blazor.web.js"></script>
+</body>
+</html>

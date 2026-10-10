@@ -49,4 +49,4 @@ jobs:
         run: dotnet build Smoke/Smoke/Smoke.slnx -c Release
 
       - name: Test generated project
-        run: dotnet test Smoke/Smoke/tests/Smoke.Tests/Smoke.Tests.csproj -c Release
+        run: dotnet test Smoke/Smoke/Smoke.Tests/Smoke.Tests.csproj -c Release

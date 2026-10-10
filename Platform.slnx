@@ -1,9 +1,9 @@
 <Solution>
-  <Project Path="src/Platform.Domain/Platform.Domain.csproj" />
-  <Project Path="src/Platform.Application/Platform.Application.csproj" />
-  <Project Path="src/Platform.Infrastructure/Platform.Infrastructure.csproj" />
-  <Project Path="src/Platform.Web/Platform.Web.csproj" />
-  <Project Path="src/Platform.Web.Hosting/Platform.Web.Hosting.csproj" />
-  <Project Path="samples/Sample.Web/Sample.Web.csproj" />
-  <Project Path="tests/Platform.Tests/Platform.Tests.csproj" />
+  <Project Path="Platform.Domain/Platform.Domain.csproj" />
+  <Project Path="Platform.Application/Platform.Application.csproj" />
+  <Project Path="Platform.Infrastructure/Platform.Infrastructure.csproj" />
+  <Project Path="Platform.Web/Platform.Web.csproj" />
+  <!-- پروژهٔ اجرایی: فقط همین یکی را اجرا کنید (در Visual Studio: Set as Startup Project) -->
+  <Project Path="Platform.App/Platform.App.csproj" />
+  <Project Path="Platform.Tests/Platform.Tests.csproj" />
 </Solution>

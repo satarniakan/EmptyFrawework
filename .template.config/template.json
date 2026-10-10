@@ -17,16 +17,6 @@
   "guids": [
     "3f6d1c2a-0000-4000-8000-000000000001"
   ],
-  "symbols": {
-    "SampleName": {
-      "type": "parameter",
-      "description": "Name of the sample host web project (rename it to your own host name).",
-      "datatype": "string",
-      "defaultValue": "Sample",
-      "replaces": "Sample",
-      "fileRename": "Sample"
-    }
-  },
   "sources": [
     {
       "exclude": [
@@ -40,8 +30,8 @@
         "TestResults/**",
         "content/**",
         "DataProtection-Keys/**",
-        "samples/*/appsettings.json",
-        "samples/*/appsettings.Development.json",
+        "Platform.App/appsettings.json",
+        "Platform.App/appsettings.Development.json",
         "push.out.log",
         "push.err.log"
       ]

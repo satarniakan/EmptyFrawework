@@ -28,8 +28,8 @@ secrets.json
 .DS_Store
 Thumbs.db
 # Real connection strings stay on the machine, never in git
-/samples/Sample.Web/appsettings.json
-/samples/Sample.Web/appsettings.Development.json
+/Platform.App/appsettings.json
+/Platform.App/appsettings.Development.json
 
 # Data Protection keys (created at runtime by the sample host)
 DataProtection-Keys/
