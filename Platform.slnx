@@ -4,7 +4,6 @@
   <Project Path="src/Platform.Infrastructure/Platform.Infrastructure.csproj" />
   <Project Path="src/Platform.Web/Platform.Web.csproj" />
   <Project Path="src/Platform.Web.Hosting/Platform.Web.Hosting.csproj" />
-  <Project Path="samples/Meetings/Meetings.csproj" />
   <Project Path="samples/Sample.Web/Sample.Web.csproj" />
   <Project Path="tests/Platform.Tests/Platform.Tests.csproj" />
 </Solution>

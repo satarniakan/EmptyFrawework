@@ -3,7 +3,7 @@
   "author": "satarniakan",
   "classifications": ["Web", "Blazor", "Blazor Server"],
   "name": "Empty Platform (Persian RTL Blazor)",
-  "description": "Reusable Persian RTL Blazor Server platform: Identity + OTP login, users and roles, permission-gated data-driven menu, audit log, notifications, outbox, Persian helpers and Excel/PDF exports. Domain ships only as a Sample module.",
+  "description": "Reusable Persian RTL Blazor Server platform: Identity + OTP login, users and roles, permission-gated data-driven menu, audit log, notifications, outbox, API tokens, payments, Persian helpers and Excel/PDF import/export. Ships with an empty host; add your domain module without editing the base.",
   "groupIdentity": "EmptyFrawework.Platform",
   "precedence": "100",
   "identity": "EmptyFrawework.Platform.Blazor",
@@ -20,7 +20,7 @@
   "symbols": {
     "SampleName": {
       "type": "parameter",
-      "description": "Name of the sample domain module shipped as the wiring example (rename or delete it in your project).",
+      "description": "Name of the sample host web project (rename it to your own host name).",
       "datatype": "string",
       "defaultValue": "Sample",
       "replaces": "Sample",

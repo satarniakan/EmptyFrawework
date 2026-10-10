@@ -110,7 +110,7 @@ public class PlatformDbContextDesignTimeFactory : IDesignTimeDbContextFactory<Pl
             }
         }
 
-        // پوشهٔ خروجی میزبان: همهٔ dllهای کنار هم (Meetings.dll و ماژول‌های دامنهٔ دیگر).
+        // پوشهٔ خروجی میزبان: همهٔ dllهای کنار هم (مونتاژهای ماژول‌های دامنه).
         // وقتی dotnet ef با --startup-project اجرا شود، BaseDirectory همان پوشهٔ bin میزبان است.
         try
         {

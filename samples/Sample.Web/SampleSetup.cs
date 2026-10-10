@@ -2,24 +2,22 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Platform.Domain.Identity;
-using Platform.Domain.Interfaces;
 using Platform.Web.Components.Layout;
 
 namespace Sample.Web;
 
 /// <summary>
-/// کاتالوگ مجوزهای سامانهٔ جلسات.
+/// کاتالوگ مجوزهای میزبان نمونه. عمداً خالی است: مجوزها مال دامنه‌اند و هر پروژه
+/// مال خودش را اینجا ثبت می‌کند. الگو: <c>new("orders.manage", "مدیریت سفارش‌ها", "سفارش‌ها")</c>.
 /// </summary>
 public sealed class SamplePermissionCatalog : IPermissionCatalog
 {
-    public IReadOnlyList<PermissionDescriptor> All { get; } =
-    [
-        new(Meetings.MeetingPermissions.Manage, "مدیریت جلسات", "جلسات")
-    ];
+    public IReadOnlyList<PermissionDescriptor> All { get; } = [];
 }
 
 /// <summary>
-/// کاتالوگ تنظیمات سامانه: کلیدهای پایه + قالب‌های پیام ماژول جلسات.
+/// کاتالوگ تنظیمات میزبان: فعلاً فقط کلیدهای پایه. ماژول دامنه کلیدهای خودش را
+/// همین‌جا اضافه می‌کند تا در صفحهٔ «تنظیمات» ادمین قابل‌ویرایش باشند.
 /// </summary>
 public sealed class SampleSettingCatalog : ISettingCatalog
 {
@@ -27,31 +25,17 @@ public sealed class SampleSettingCatalog : ISettingCatalog
     [
         new(FrameworkSettingKeys.SiteName, "نام سامانه", SettingDefaults.Get(FrameworkSettingKeys.SiteName), "عمومی"),
         new(FrameworkSettingKeys.OtpSmsTemplate, "قالب پیامک کد ورود ({Code})",
-            SettingDefaults.Get(FrameworkSettingKeys.OtpSmsTemplate), "پیامک"),
-        new(Meetings.MeetingSettingKeys.InvitationSmsTemplate, "قالب پیامک دعوت به جلسه ({Title}، {When}، {Where})",
-            Meetings.MeetingSettingKeys.DefaultInvitationSmsTemplate, "جلسات"),
-        new(Meetings.MeetingSettingKeys.InvitationEmailSubject, "موضوع ایمیل دعوت به جلسه ({Title})",
-            Meetings.MeetingSettingKeys.DefaultInvitationEmailSubject, "جلسات")
+            SettingDefaults.Get(FrameworkSettingKeys.OtpSmsTemplate), "پیامک")
     ];
 }
 
 /// <summary>
-/// منوی سامانه — ترتیب گروه‌ها: عملیات روزمره، گزارش‌ها، مدیریت، سیستم.
+/// منوی میزبان نمونه: فقط بخش‌های پایه. آیتم‌های دامنه را پروژه به همین فهرست اضافه می‌کند.
 /// </summary>
 public sealed class SampleNavProvider : INavProvider
 {
     public IReadOnlyList<NavItem> GetRootItems() =>
     [
-        // عملیات روزمره — پرتکرارترین بخش در اول
-        NavItem.Group("جلسات", "bi-calendar3",
-            NavItem.Link("جلسات من", "my-meetings", "bi-calendar2-check"),
-            NavItem.Link("مدیریت جلسات", "meetings", "bi-calendar2-week", Meetings.MeetingPermissions.Manage)),
-
-        // گزارش‌ها — فقط برای دارندگان مجوز مدیریت جلسات
-        NavItem.Group("گزارش‌ها", "bi-bar-chart",
-            NavItem.Link("گزارش جلسات", "meetings/report", "bi-file-earmark-text", Meetings.MeetingPermissions.Manage),
-            NavItem.Link("گزارش حضور", "meetings/attendance-report", "bi-people", Meetings.MeetingPermissions.Manage)),
-
         // مدیریت کاربران، مجوزها و پیام‌رسانی
         NavItem.Group("مدیریت", "bi-shield-lock",
             NavItem.Link("کاربران", "admin/users", "bi-people", Roles.Admin),
@@ -74,7 +58,7 @@ public sealed class SampleNavProvider : INavProvider
 public static class SampleSetup
 {
     /// <summary>
-    /// کاتالوگ مجوزها و منو: همین دو نقطه‌اند که پایه به دامنه وصل می‌شوند.
+    /// کاتالوگ مجوزها، کاتالوگ تنظیمات و منو: همین سه نقطه‌اند که پایه به دامنه وصل می‌شوند.
     /// </summary>
     public static IServiceCollection AddSampleWeb(this IServiceCollection services)
     {

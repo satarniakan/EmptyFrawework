@@ -12,6 +12,26 @@ namespace Sample.Web.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "ApiTokens",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: false),
+                    TokenHash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    DeviceName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    LastUsedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ExpiresAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    IsRevoked = table.Column<bool>(type: "bit", nullable: false),
+                    RevokedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ApiTokens", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AspNetRoles",
                 columns: table => new
                 {
@@ -30,7 +50,7 @@ namespace Sample.Web.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    FullName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    FullName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -68,6 +88,26 @@ namespace Sample.Web.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "LoginHistories",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: true),
+                    UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    Succeeded = table.Column<bool>(type: "bit", nullable: false),
+                    Method = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
+                    IpAddress = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    UserAgent = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: true),
+                    FailureReason = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    OccurredAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_LoginHistories", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Notifications",
                 columns: table => new
                 {
@@ -88,6 +128,20 @@ namespace Sample.Web.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "NumberSequences",
+                columns: table => new
+                {
+                    Name = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    LastValue = table.Column<long>(type: "bigint", nullable: false),
+                    UpdatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_NumberSequences", x => x.Name);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "OtpCodes",
                 columns: table => new
                 {
@@ -105,6 +159,21 @@ namespace Sample.Web.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "OtpThrottles",
+                columns: table => new
+                {
+                    PhoneNumber = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
+                    FailedCount = table.Column<int>(type: "int", nullable: false),
+                    FailedWindowStartUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    GenerationCount = table.Column<int>(type: "int", nullable: false),
+                    GenerationWindowStartUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OtpThrottles", x => x.PhoneNumber);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "OutboxMessages",
                 columns: table => new
                 {
@@ -114,6 +183,7 @@ namespace Sample.Web.Migrations
                     Recipient = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Subject = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Body = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    LinkUrl = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     Status = table.Column<int>(type: "int", nullable: false),
                     Attempts = table.Column<int>(type: "int", nullable: false),
                     LastError = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -124,6 +194,59 @@ namespace Sample.Web.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_OutboxMessages", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Payments",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: false),
+                    AmountTomans = table.Column<long>(type: "bigint", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    Gateway = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
+                    Authority = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    RefId = table.Column<long>(type: "bigint", nullable: true),
+                    CardPanMasked = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: true),
+                    FailureReason = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    PaidAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Payments", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PushSubscriptions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: false),
+                    Endpoint = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    P256dh = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Auth = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PushSubscriptions", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Settings",
+                columns: table => new
+                {
+                    Key = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    Value = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    UpdatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Settings", x => x.Key);
                 });
 
             migrationBuilder.CreateTable(
@@ -233,6 +356,17 @@ namespace Sample.Web.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_ApiTokens_TokenHash",
+                table: "ApiTokens",
+                column: "TokenHash",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ApiTokens_UserId_IsRevoked",
+                table: "ApiTokens",
+                columns: new[] { "UserId", "IsRevoked" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
                 table: "AspNetRoleClaims",
                 column: "RoleId");
@@ -277,6 +411,11 @@ namespace Sample.Web.Migrations
                 column: "OccurredAt");
 
             migrationBuilder.CreateIndex(
+                name: "IX_LoginHistories_UserId_OccurredAtUtc",
+                table: "LoginHistories",
+                columns: new[] { "UserId", "OccurredAtUtc" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Notifications_UserId_IsRead",
                 table: "Notifications",
                 columns: new[] { "UserId", "IsRead" });
@@ -300,11 +439,36 @@ namespace Sample.Web.Migrations
                 name: "IX_OutboxMessages_Status_Attempts",
                 table: "OutboxMessages",
                 columns: new[] { "Status", "Attempts" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Payments_Authority",
+                table: "Payments",
+                column: "Authority",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Payments_UserId_Status",
+                table: "Payments",
+                columns: new[] { "UserId", "Status" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PushSubscriptions_Endpoint",
+                table: "PushSubscriptions",
+                column: "Endpoint",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PushSubscriptions_UserId",
+                table: "PushSubscriptions",
+                column: "UserId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "ApiTokens");
+
             migrationBuilder.DropTable(
                 name: "AspNetRoleClaims");
 
@@ -324,13 +488,31 @@ namespace Sample.Web.Migrations
                 name: "AuditLogs");
 
             migrationBuilder.DropTable(
+                name: "LoginHistories");
+
+            migrationBuilder.DropTable(
                 name: "Notifications");
+
+            migrationBuilder.DropTable(
+                name: "NumberSequences");
 
             migrationBuilder.DropTable(
                 name: "OtpCodes");
 
             migrationBuilder.DropTable(
+                name: "OtpThrottles");
+
+            migrationBuilder.DropTable(
                 name: "OutboxMessages");
+
+            migrationBuilder.DropTable(
+                name: "Payments");
+
+            migrationBuilder.DropTable(
+                name: "PushSubscriptions");
+
+            migrationBuilder.DropTable(
+                name: "Settings");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");

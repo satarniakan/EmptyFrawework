@@ -1,11 +1,10 @@
 // samples/Sample.Web/Program.cs
-// میزبان نمونه: ثابت می‌کند پایه بدون هیچ مفهوم حسابداری/انباری کار می‌کند.
+// میزبان نمونه: پایهٔ خالی را بالا می‌آورد تا ثابت شود بدون هیچ ماژول دامنه‌ای کار می‌کند.
+// ماژول نمونهٔ قدیمی (جلسات) حذف شده؛ الگوی افزودن ماژول در README بخش «گام‌های بعدی» است.
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.DataProtection;
-using System.Security.Claims;
-using Meetings;
 using Platform.Domain.Identity;
 using Platform.Infrastructure;
 using Platform.Infrastructure.Data;
@@ -41,16 +40,14 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys")));
 
-// هر لایه تنظیمات سرویس‌های خودش را رجیستر می‌کند؛ ماژول جلسات بعد از پایه می‌آید.
+// هر لایه تنظیمات سرویس‌های خودش را رجیستر می‌کند.
 // مایگریشن‌ها در همین مونتاژ میزبان‌اند (پوشهٔ Migrations) تا اسکیمای دامنه وارد پایه نشود.
 builder.Services.AddPlatform(builder.Configuration, builder.Environment.IsDevelopment(),
     migrationsAssembly: typeof(Program).Assembly.GetName().Name);
-builder.Services.AddMeetingsModule();
 builder.Services.AddSampleWeb();
 
-// سیاست دسترسی صفحات جلسات خودکار است: PermissionPolicyProvider پایه هر کلید
-// IPermissionCatalog را به policy تبدیل می‌کند، پس ثبت دستی لازم نیست.
-// نام سیاست عمداً همان کلید مجوز است تا صفحات با [Authorize(Policy = MeetingPermissions.Manage)] بسته شوند.
+// سیاست‌های دسترسی خودکارند: PermissionPolicyProvider پایه هر کلید IPermissionCatalog
+// را به policy تبدیل می‌کند، پس ثبت دستی لازم نیست.
 
 builder.Services.AddHealthChecks().AddDbContextCheck<PlatformDbContext>();
 
@@ -129,56 +126,14 @@ app.MapGet("/dev-login", async (
     if (user is null) return Results.NotFound();
 
     await signIn.SignInAsync(user, isPersistent: true);
-    return Results.Redirect("/my-meetings");
+    return Results.Redirect("/");
 });
-
-// پخش/دانلود فایل جلسه (صوت و عکس) — فقط سازنده و مدعوین، یا ادمین/دارندهٔ مجوز مدیریت جلسات.
-// فایل‌ها از طریق IFileStorage خوانده می‌شوند؛ همان شناسه‌ای که هنگام آپلود در دیتابیس ماند.
-MapMeetingFile(app, "/meetings/{id:int}/audio", MeetingFileTypes.Audio,
-    m => m.AudioFileName, m => m.AudioContentType);
-MapMeetingFile(app, "/meetings/{id:int}/photo", MeetingFileTypes.Photo,
-    m => m.PhotoFileName, m => m.PhotoContentType);
 
 app.MapRazorComponents<Sample.Web.Components.App>()
     // صفحات پایه (login، profile، admin و…) در مونتاژ Platform.Web هستند؛
     // بدون این، فقط صفحات میزبان به‌عنوان endpoint نگاشت می‌شوند.
     .AddAdditionalAssemblies(typeof(Platform.Web.Components.Routes).Assembly)
     .AddInteractiveServerRenderMode();
-
-// فایل جلسه (صوت/عکس): یک نگاشت برای هر دو، با همان کنترل دسترسی.
-// stream مستقیم از IFileStorage می‌آید و پس از ارسال dispose می‌شود (مالکیت با Results.File است).
-static void MapMeetingFile(
-    WebApplication application,
-    string route,
-    string fileType,
-    Func<Meeting, string?> getStoredId,
-    Func<Meeting, string?> getContentType)
-{
-    application.MapGet(route, async (
-        int id,
-        ClaimsPrincipal user,
-        IMeetingService meetings,
-        Platform.Domain.Interfaces.IFileStorage storage) =>
-    {
-        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userId is null) return Results.Unauthorized();
-
-        var canManage = user.IsInRole(Roles.Admin) ||
-                        user.HasClaim(Permissions.ClaimType, Meetings.MeetingPermissions.Manage);
-        if (!canManage && !await meetings.CanViewAsync(id, userId))
-            return Results.Forbid();
-
-        var meeting = await meetings.GetMeetingAsync(id);
-        var storedId = meeting is null ? null : getStoredId(meeting);
-        if (string.IsNullOrWhiteSpace(storedId)) return Results.NotFound();
-
-        var stream = await storage.OpenReadAsync(id.ToString(), fileType, storedId);
-        if (stream is null) return Results.NotFound();
-
-        return Results.File(stream, getContentType(meeting!) ?? "application/octet-stream",
-            fileDownloadName: $"{fileType}-{id}{Path.GetExtension(storedId)}");
-    }).RequireAuthorization();
-}
 
 try
 {
