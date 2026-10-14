@@ -32,6 +32,11 @@
         "DataProtection-Keys/**",
         "Platform.App/appsettings.json",
         "Platform.App/appsettings.Development.json",
+        "node_modules/**",
+        "package.json",
+        "package-lock.json",
+        "*.xlsx",
+        ".zcodeignore",
         "push.out.log",
         "push.err.log"
       ]

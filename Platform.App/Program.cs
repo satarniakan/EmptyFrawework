@@ -1,11 +1,9 @@
 // Platform.App/Program.cs
-// میزبان نمونه: پایهٔ خالی را بالا می‌آورد تا ثابت شود بدون هیچ ماژول دامنه‌ای کار می‌کند.
-// ماژول نمونهٔ قدیمی (جلسات) حذف شده؛ الگوی افزودن ماژول در README بخش «گام‌های بعدی» است.
+// میزبان خالی: پایه را بدون هیچ دامنه‌ای بالا می‌آورد. دامنهٔ خودتان را با
+// IPlatformModule / IPermissionCatalog / INavProvider وصل کنید.
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.DataProtection;
-using Platform.Domain.Identity;
 using Platform.Infrastructure;
 using Platform.Infrastructure.Data;
 using Platform.Web;
@@ -80,14 +78,8 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
 }
 
-// مجوزها و نقش‌های پایه + مجوزهای نمونه
+// مجوزها و نقش‌های پایه
 await app.Services.InitializePlatformAsync();
-
-// حالت توسعه: ساخت کاربر «ورود مستقیم» ادمین (Dev:AutoLoginPhone) برای /dev-login
-if (app.Environment.IsDevelopment())
-{
-    await app.Services.EnsureDevAdminAsync();
-}
 app.UseSerilogRequestLogging();
 
 app.UseRequestLocalization(PlatformSetup.PersianLocalization());
@@ -119,25 +111,6 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
-
-// ورود مستقیم بدون OTP — فقط در Development و فقط برای شمارهٔ Dev:AutoLoginPhone.
-// در Production همین مسیر ۴۰۴ می‌دهد و سیدینگ EnsureDevAdminAsync هم اجرا نمی‌شود.
-app.MapGet("/dev-login", async (
-    UserManager<ApplicationUser> users,
-    SignInManager<ApplicationUser> signIn,
-    IConfiguration configuration) =>
-{
-    if (!app.Environment.IsDevelopment()) return Results.NotFound();
-
-    var phone = configuration["Dev:AutoLoginPhone"];
-    if (string.IsNullOrWhiteSpace(phone)) return Results.NotFound();
-
-    var user = await users.FindByNameAsync(phone);
-    if (user is null) return Results.NotFound();
-
-    await signIn.SignInAsync(user, isPersistent: true);
-    return Results.Redirect("/");
-});
 
 app.MapRazorComponents<Platform.App.Components.App>()
     // صفحات پایه (login، profile، admin و…) در مونتاژ Platform.Web هستند؛

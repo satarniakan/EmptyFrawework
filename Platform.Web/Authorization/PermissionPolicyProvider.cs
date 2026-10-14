@@ -8,7 +8,7 @@ namespace Platform.Web.Authorization;
 /// <summary>
 /// سیاست‌ساز خودکار از <see cref="IPermissionCatalog"/>: هر کلید مجوز، خودش نام یک policy است.
 /// <para>
-/// با این، <c>[Authorize(Policy = "meetings.manage")]</c> بدون هیچ ثبت دستی در
+/// با این، <c>[Authorize(Policy = "reports.view")]</c> بدون هیچ ثبت دستی در
 /// <c>Program.cs</c> میزبان کار می‌کند — کاتالوگ تنها منبع حقیقت است. نام‌هایی که در
 /// کاتالوگ نیستند (و policy پیش‌فرض/سفارشی میزبان‌اند) به provider پیش‌فرض واگذار می‌شوند.
 /// </para>

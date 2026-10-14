@@ -16,4 +16,3 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Default: "Server=sqlserver;Database=PlatformProd;User Id=sa;Password=${MSSQL_SA_PASSWORD:?MSSQL_SA_PASSWORD در .env لازم است};TrustServerCertificate=True"
       Identity__FirstAdminPhoneNumber: ${APP_ADMIN_PHONE:?APP_ADMIN_PHONE در .env لازم است}
-      # Dev__AutoLoginPhone عمداً اینجا نیست — ورود مستقیم فقط مال Development است

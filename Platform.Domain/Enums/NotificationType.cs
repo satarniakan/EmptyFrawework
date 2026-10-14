@@ -7,6 +7,5 @@
 public enum NotificationType
 {
     General = 1,
-    Meeting = 2,
     System = 3
 }

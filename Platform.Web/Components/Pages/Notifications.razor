@@ -49,11 +49,7 @@ else
                    style="@(n.IsRead ? "" : "background-color: var(--brand-bg);")" @onclick="() => ItemClicked(n)">
                     <div class="ms-2 me-auto">
                         <div class="fw-semibold @(n.IsRead ? "text-body-secondary" : "")">
-                            @if (n.Type == NotificationType.Meeting)
-                            {
-                                <i class="bi bi-calendar-check me-1" style="color: var(--brand-primary);"></i>
-                            }
-                            else if (n.Type == NotificationType.General)
+                            @if (n.Type == NotificationType.General)
                             {
                                 <i class="bi bi-megaphone me-1" style="color: var(--brand-primary);"></i>
                             }

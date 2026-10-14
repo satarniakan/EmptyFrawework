@@ -30,7 +30,6 @@ services:
       ConnectionStrings__Default: "Server=sqlserver;Database=PlatformDev;User Id=sa;Password=Dev_Pass123!;TrustServerCertificate=True"
       # شمارهٔ شما برای ادمین اول (همان Identity:FirstAdminPhoneNumber):
       Identity__FirstAdminPhoneNumber: ""
-      Dev__AutoLoginPhone: ""
     ports:
       - "8080:8080"
     depends_on:

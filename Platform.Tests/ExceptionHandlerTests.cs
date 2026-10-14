@@ -25,10 +25,10 @@ public class ExceptionHandlerTests
     [Fact]
     public void NotFoundException_MapsTo404()
     {
-        var result = PlatformExceptionHandler.Translate(new NotFoundException("جلسه", 7));
+        var result = PlatformExceptionHandler.Translate(new NotFoundException("سند", 7));
 
         Assert.Equal(404, result.StatusCode);
-        Assert.Contains("جلسه", result.Message);
+        Assert.Contains("سند", result.Message);
         Assert.True(result.IsExpected);
     }
 

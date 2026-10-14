@@ -14,7 +14,7 @@ public class PermissionPolicyProviderTests
     private sealed class TestCatalog : IPermissionCatalog
     {
         public IReadOnlyList<PermissionDescriptor> All { get; } =
-            [new("meetings.manage", "مدیریت جلسات", "جلسات")];
+            [new("reports.view", "مشاهده گزارش‌ها", "گزارش‌ها")];
     }
 
     private static PermissionPolicyProvider CreateProvider() =>
@@ -38,17 +38,17 @@ public class PermissionPolicyProviderTests
     [Fact]
     public async Task KnownPermission_AllowsUserWithClaim()
     {
-        var policy = await CreateProvider().GetPolicyAsync("meetings.manage");
+        var policy = await CreateProvider().GetPolicyAsync("reports.view");
 
         Assert.NotNull(policy);
-        var user = UserWith(new Claim(Permissions.ClaimType, "meetings.manage"));
+        var user = UserWith(new Claim(Permissions.ClaimType, "reports.view"));
         Assert.True(await AuthorizeAsync(policy, user));
     }
 
     [Fact]
     public async Task KnownPermission_AllowsAdminWithoutClaim()
     {
-        var policy = await CreateProvider().GetPolicyAsync("meetings.manage");
+        var policy = await CreateProvider().GetPolicyAsync("reports.view");
 
         Assert.NotNull(policy);
         var admin = UserWith(new Claim(ClaimTypes.Role, Roles.Admin));
@@ -58,7 +58,7 @@ public class PermissionPolicyProviderTests
     [Fact]
     public async Task KnownPermission_DeniesOrdinaryUser()
     {
-        var policy = await CreateProvider().GetPolicyAsync("meetings.manage");
+        var policy = await CreateProvider().GetPolicyAsync("reports.view");
 
         Assert.NotNull(policy);
         var user = UserWith(new Claim(ClaimTypes.Role, Roles.User));

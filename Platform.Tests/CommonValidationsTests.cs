@@ -13,8 +13,8 @@ public class CommonValidationsTests
     public void ValidateItemsNotEmpty_EmptyList_ThrowsBusinessRule()
     {
         var ex = Assert.Throws<BusinessRuleException>(() =>
-            CommonValidations.ValidateItemsNotEmpty(new List<int>(), "حداقل یک مدعو انتخاب کنید."));
-        Assert.Equal("حداقل یک مدعو انتخاب کنید.", ex.Message);
+            CommonValidations.ValidateItemsNotEmpty(new List<int>(), "حداقل یک مورد انتخاب کنید."));
+        Assert.Equal("حداقل یک مورد انتخاب کنید.", ex.Message);
     }
 
     [Fact]

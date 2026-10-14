@@ -335,7 +335,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
 ```
 
 تفاوت‌ها با حالت توسعه: محیط `Production`، رمز `sa` از `.env` (نه داخل فایل)،
-پورت SQL به بیرون بسته، ری‌استارت خودکار، و بدون `Dev__AutoLoginPhone`.
+پورت SQL به بیرون بسته و ری‌استارت خودکار.
 بکاپ دیتابیس را با Agent/تسک زمان‌بندی سرور بگیرید؛ برای ریستور، `docs/database.sql`
 و دستورهای اول همان فایل را ببینید.
 

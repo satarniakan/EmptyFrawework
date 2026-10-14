@@ -75,7 +75,7 @@ public class ApiTokenServiceTests
                 users.Object,
                 Mock.Of<IHttpContextAccessor>(),
                 Mock.Of<IUserClaimsPrincipalFactory<ApplicationUser>>(),
-                null, null, null, null);
+                null!, null!, null!, null!);
         }
     }
 

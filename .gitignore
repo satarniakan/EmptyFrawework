@@ -21,8 +21,19 @@ TestResults/
 Logs/
 appsettings.Local.json
 appsettings.*.Local.json
-src/**/appsettings.Development.local.json
+Platform.App/**/appsettings.Development.local.json
 secrets.json
+
+## Node / npm scratch (never part of the .NET framework)
+node_modules/
+npm-debug.log*
+package-lock.json
+
+## Scratch data files kept locally, never in git
+/mrniakan.xlsx
+
+## Local tooling mirror of .gitignore
+.zcodeignore
 
 ## OS noise
 .DS_Store
