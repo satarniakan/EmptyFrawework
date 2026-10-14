@@ -1,6 +1,6 @@
 using Platform.Domain.Exceptions;
-using Platform.Web.Components.Shared;
-using Platform.Web.Middleware;
+using Platform.App.Components.Shared;
+using Platform.App.Middleware;
 using Xunit;
 
 namespace Platform.Tests;

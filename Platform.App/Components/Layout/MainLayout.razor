@@ -1,0 +1,111 @@
+@inherits LayoutComponentBase
+@using Platform.App.Components.Shared
+@using Platform.App.Components.Layout
+
+<div class="page">
+    <div class="sidebar">
+        @* منو بیرون باندیِ body است؛ بدون این گیت، خطای منو کل مدار را می‌اندازد *@
+        <AppErrorBoundary>
+            <NavMenu @rendermode="InteractiveServer" />
+        </AppErrorBoundary>
+    </div>
+
+    <main>
+        <AuthorizeView>
+            <Authorized>
+                @{
+                    var impersonatedName = context.User.FindFirst(Platform.Domain.Identity.ImpersonationClaims.ImpersonatedName)?.Value;
+                }
+                @if (!string.IsNullOrWhiteSpace(impersonatedName))
+                {
+                    <div class="alert alert-warning d-flex align-items-center justify-content-between mb-0 rounded-0 border-start-0 border-end-0" role="alert">
+                        <span>
+                            <i class="bi bi-person-exclamation me-1"></i>
+                            حالت جانشینی: شما به‌جای «@impersonatedName» وارد شده‌اید. تغییرات شما ثبت می‌شود.
+                        </span>
+                        <form action="/admin/impersonate/stop" method="post" data-enhance="false" class="mb-0">
+                            <AntiforgeryToken />
+                            <button type="submit" class="btn btn-sm btn-outline-dark">بازگشت به حساب خودم</button>
+                        </form>
+                    </div>
+                }
+            </Authorized>
+        </AuthorizeView>
+        <div class="top-row px-4">
+            <AuthorizeView>
+                <Authorized>
+                    <span class="text-body-secondary small">
+                        @(context.User.FindFirst("FullName")?.Value ?? context.User.Identity?.Name)
+                        @{
+                            var roleNames = context.User.FindAll(System.Security.Claims.ClaimTypes.Role)
+                                                        .Select(c => Platform.Domain.Identity.Roles.ToPersian(c.Value));
+                            var roleText = string.Join("، ", roleNames);
+                        }
+                        @if (!string.IsNullOrWhiteSpace(roleText))
+                        {
+                            <span class="badge bg-body-tertiary text-body border ms-1">@roleText</span>
+                        }
+                    </span>
+                </Authorized>
+            </AuthorizeView>
+            <AuthorizeView>
+                <NotificationBell />
+            </AuthorizeView>
+            <button class="theme-toggle" @onclick="ToggleTheme" title="تغییر تم روشن/تاریک" aria-label="تغییر تم">
+                <i class="bi @(isDark ? "bi-sun-fill" : "bi-moon-stars-fill")"></i>
+            </button>
+        </div>
+        <article class="content px-4 py-4">
+            <AppErrorBoundary @ref="errorBoundary">
+                <ChildContent>
+                    @Body
+                </ChildContent>
+                <ErrorContent Context="ex">
+                    <div class="alert alert-danger m-3">
+                        مشکلی در نمایش این صفحه پیش اومد.
+                        <button class="btn btn-sm btn-outline-danger ms-2" @onclick="Recover">تلاش دوباره</button>
+                    </div>
+                </ErrorContent>
+            </AppErrorBoundary>
+        </article>
+        <ToastContainer />
+    </main>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    خطایی رخ داد.
+    <a href="" class="reload">بارگذاری مجدد</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+@code {
+    private AppErrorBoundary? errorBoundary;
+    private bool isDark;
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; } = default!;
+
+    private void Recover() => errorBoundary?.Recover();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                isDark = await JSRuntime.InvokeAsync<string>("themeInterop.get") == "dark";
+                StateHasChanged();
+            }
+            catch (JSDisconnectedException) { }
+        }
+    }
+
+    private async Task ToggleTheme()
+    {
+        try
+        {
+            isDark = await JSRuntime.InvokeAsync<string>("themeInterop.toggle") == "dark";
+        }
+        catch (JSDisconnectedException) { }
+    }
+}

@@ -26,7 +26,7 @@
     <ProjectReference Include="..\Platform.Application\Platform.Application.csproj" />
     <ProjectReference Include="..\Platform.Domain\Platform.Domain.csproj" />
     <ProjectReference Include="..\Platform.Infrastructure\Platform.Infrastructure.csproj" />
-    <ProjectReference Include="..\Platform.Web\Platform.Web.csproj" />
+    <ProjectReference Include="..\Platform.App\Platform.App.csproj" />
   </ItemGroup>
 
 </Project>

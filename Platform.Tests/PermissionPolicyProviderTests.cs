@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 using Platform.Domain.Identity;
-using Platform.Web.Authorization;
+using Platform.App.Authorization;
 
 namespace Platform.Tests;
 

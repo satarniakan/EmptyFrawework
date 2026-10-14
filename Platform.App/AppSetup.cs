@@ -1,6 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Platform.Domain.Identity;
-using Platform.Web.Components.Layout;
+using Platform.App.Components.Layout;
 
 namespace Platform.App;
 

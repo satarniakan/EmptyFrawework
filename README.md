@@ -160,8 +160,7 @@ dotnet new install .
 | `Platform.Domain` | هویت (`ApplicationUser`)، مجوز (`Permissions` فقط `ClaimType` دارد)، نقش‌های پایه + `IPermissionCatalog`، قراردادهای زیرساخت (`IFileStorage`، `ISmsSender`، `IEmailSender`، `IPaymentGateway`، `ICaptchaValidator`)، انتیتی‌های پایه (AuditLog، OtpCode، OtpThrottle، OutboxMessage، Notification، Setting، Payment، ApiToken، LoginHistory، PushSubscription)، `IPlatformUnitOfWork`، جست‌وجوی فارسی (`PersianSearch`) |
 | `Platform.Application` | سرویس‌های پایه (Auth، Otp، Audit، Permission، UserAdmin، Notification، Outbox، ApiToken، LoginHistory، Setting، NumberSeries، Payment، Push، Impersonation) + Helpers فارسی + Exports اکسل/PDF + ایمپورت اکسل + ترجمهٔ یکتای خطا (`ExceptionTranslator`) + کارهای تکرارشونده (`IRecurringJob`) |
 | `Platform.Infrastructure` | `PlatformDbContext` (ماژولار با `IPlatformModule`) + `PlatformUnitOfWork` (تراکنش واقعی)، `RoleSeeder`، فرستنده‌های پیامک/ایمیل، درگاه زرین‌پال، Turnstile، وب‌پوش VAPID — بدون هیچ مایگریشن (مال میزبان است) |
-| `Platform.Web` | کتابخانهٔ وب پایه (کامپوننت + زیرساخت اجرا): صفحات ورود/OTP/پروفایل/خانه/نشست‌ها/ادمین/تنظیمات/نتیجهٔ پرداخت، `MainLayout` (بنر جانشینی)، `NavMenu` داده‌محور (`INavProvider`)، `Routes`، کامپوننت‌های `Shared/App*` + دکمهٔ وب‌پوش |
-| `Platform.App` | **تنها پروژهٔ اجرایی (startup)** — میزبان خالی که پایه را بالا می‌آورد؛ مایگریشن‌ها (`Migrations/`) و فکتوری design-time اینجاست |
+| `Platform.App` | **تنها پروژهٔ اجرایی و تنها پروژهٔ وب (startup)** — همهٔ لایهٔ وب اینجاست: صفحات ورود/OTP/پروفایل/خانه/نشست‌ها/ادمین/تنظیمات/نتیجهٔ پرداخت، `MainLayout` (بنر جانشینی)، `NavMenu` داده‌محور (`INavProvider`)، `Routes`، کامپوننت‌های `Shared/App*` + دکمهٔ وب‌پوش + زیرساخت اجرا (`PlatformSetup`، endpointها، سرویس‌های پس‌زمینه)؛ مایگریشن‌ها (`Migrations/`) و فکتوری design-time هم اینجاست |
 
 ## خطاهای پرتکرار
 
@@ -251,7 +250,7 @@ Get-ChildItem -Recurse -Filter *.csproj |
 ### ۳. Bootstrap و فایل‌های `wwwroot/lib` (حساس‌ترین)
 
 نسخهٔ فعلی Bootstrap: **۵.۳.۳** (داخل `wwwroot/lib/bootstrap` به‌صورت vendored کپی
-شده). فایل `Platform.Web/libman.json` دقیقاً مشخص می‌کند هر کتابخانه از کجا آمده
+شده). فایل `Platform.App/libman.json` دقیقاً مشخص می‌کند هر کتابخانه از کجا آمده
 و کدام فایل‌ها کپی شده‌اند — قبل از هر به‌روزرسانی اول آن را بخوانید.
 
 دو راه برای به‌روزرسانی هست — راه اول (LibMan) تمیزتر است:
@@ -262,7 +261,7 @@ Get-ChildItem -Recurse -Filter *.csproj |
 ۲. restore کنید تا فایل‌ها دوباره دانلود شوند:
 
 ```bash
-cd Platform.Web
+cd Platform.App
 dotnet tool install -g Microsoft.Web.LibraryManager.Cli
 libman restore
 ```
@@ -290,8 +289,8 @@ libman restore
 | .NET / TargetFramework | `net10.0` | `Directory.Build.props` |
 | همهٔ نسخه‌های NuGet | — | `Directory.Packages.props` (مدیریت متمرکز نسخه) |
 | EF Core / Identity / Extensions | ۱۰.۰.۱۲ | `Directory.Packages.props` + `dotnet-ef` |
-| Bootstrap | ۵.۳.۳ | `Platform.Web/wwwroot/lib/bootstrap` |
-| bootstrap-icons | ۱.۱۱.۳ | `Platform.Web/wwwroot/lib/bootstrap-icons` |
+| Bootstrap | ۵.۳.۳ | `Platform.App/wwwroot/lib/bootstrap` |
+| bootstrap-icons | ۱.۱۱.۳ | `Platform.App/wwwroot/lib/bootstrap-icons` |
 | QuestPDF | ۲۰۲۶.۹.۱ | `Directory.Packages.props` |
 | ClosedXML | ۰.۱۰۴.۲ | `Directory.Packages.props` |
 | WebPush | ۱.۰.۱۳ | `Directory.Packages.props` |

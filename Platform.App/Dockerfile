@@ -6,7 +6,6 @@ COPY Directory.Build.props Directory.Packages.props global.json ./
 COPY Platform.Domain/ ./Platform.Domain/
 COPY Platform.Application/ ./Platform.Application/
 COPY Platform.Infrastructure/ ./Platform.Infrastructure/
-COPY Platform.Web/ ./Platform.Web/
 COPY Platform.App/ ./Platform.App/
 RUN dotnet publish Platform.App/Platform.App.csproj -c Release -o /app/publish --nologo
 

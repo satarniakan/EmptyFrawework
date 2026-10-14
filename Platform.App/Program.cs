@@ -6,9 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.DataProtection;
 using Platform.Infrastructure;
 using Platform.Infrastructure.Data;
-using Platform.Web;
-using Platform.Web.Middleware;
 using Platform.App;
+using Platform.App.Middleware;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -113,9 +112,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapRazorComponents<Platform.App.Components.App>()
-    // صفحات پایه (login، profile، admin و…) در مونتاژ Platform.Web هستند؛
-    // بدون این، فقط صفحات میزبان به‌عنوان endpoint نگاشت می‌شوند.
-    .AddAdditionalAssemblies(typeof(Platform.Web.Components.Routes).Assembly)
     .AddInteractiveServerRenderMode();
 
 try

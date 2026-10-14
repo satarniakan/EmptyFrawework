@@ -10,8 +10,8 @@ using Microsoft.Extensions.Hosting;
 using Platform.Application.Services;
 using Platform.Domain.Identity;
 using Platform.Domain.Interfaces;
-using Platform.Web;
-using Platform.Web.Middleware;
+using Platform.App;
+using Platform.App.Middleware;
 using Xunit;
 
 namespace Platform.Tests;
