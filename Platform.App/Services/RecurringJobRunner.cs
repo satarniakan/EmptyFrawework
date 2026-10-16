@@ -8,7 +8,8 @@ namespace Platform.App.Services;
 /// چرا یکی برای همه: هر BackgroundService جدا یک حلقه، یک try/catch و یک Delay
 /// تکراری می‌خواست و خطای یکی، الگوی خطای دیگری را کپی می‌کرد. اینجا خطای یک job
 /// فقط لاگ می‌شود و بقیه سرِ وقت اجرا می‌شوند (error isolation). اولین اجرای هر
-/// job به‌اندازهٔ Interval خودش پس از استارتاپ عقب می‌افتد تا استارتاپ سبک بماند.
+/// job بلافاصله پس از استارتاپ انجام می‌شود (تا کارهای عقب‌افتاده معطل نمانند)،
+/// و اجراهای بعدی به‌اندازهٔ Interval خودش فاصله می‌گیرند.
 /// </para>
 /// </summary>
 public class RecurringJobRunner : BackgroundService
@@ -17,13 +18,15 @@ public class RecurringJobRunner : BackgroundService
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<RecurringJobRunner> _logger;
+    private readonly RecurringJobStatusTracker _status;
     private readonly TimeProvider _clock;
 
     public RecurringJobRunner(IServiceScopeFactory scopeFactory, ILogger<RecurringJobRunner> logger,
-        TimeProvider? clock = null)
+        RecurringJobStatusTracker status, TimeProvider? clock = null)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _status = status;
         _clock = clock ?? TimeProvider.System;
     }
 
@@ -50,6 +53,8 @@ public class RecurringJobRunner : BackgroundService
                 {
                     if (stoppingToken.IsCancellationRequested)
                         break;
+
+                    _status.EnsureRegistered(job);
 
                     if (states.TryGetValue(job.Name, out var lastRun) && now - lastRun < job.Interval)
                         continue;
@@ -81,9 +86,11 @@ public class RecurringJobRunner : BackgroundService
                 return;
 
             await scoped.ExecuteAsync(stoppingToken);
+            _status.RecordSuccess(job, _clock.GetUtcNow().UtcDateTime);
         }
         catch (Exception ex)
         {
+            _status.RecordFailure(job, _clock.GetUtcNow().UtcDateTime, ex.Message);
             _logger.LogError(ex, "خطا در اجرای کار تکرارشوندهٔ {Job}", job.Name);
         }
     }

@@ -10,6 +10,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- ایمیل (جایگزین SmtpClient قدیمی) -->
+    <PackageVersion Include="MailKit" Version="4.14.0" />
+
     <!-- خروجی اکسل/PDF -->
     <PackageVersion Include="ClosedXML" Version="0.104.2" />
     <PackageVersion Include="QuestPDF" Version="2026.9.1" />

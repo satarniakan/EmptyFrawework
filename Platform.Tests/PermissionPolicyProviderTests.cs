@@ -72,4 +72,15 @@ public class PermissionPolicyProviderTests
 
         Assert.Null(policy);
     }
+
+    [Fact]
+    public async Task UnknownPolicy_CalledTwice_DoesNotThrow()
+    {
+        // رگرسیون: ConcurrentDictionary مقدار null قبول نمی‌کند؛ درخواست دومِ
+        // همان نام ناشناخته نباید ArgumentNullException بدهد.
+        var provider = CreateProvider();
+
+        Assert.Null(await provider.GetPolicyAsync("no-such-policy"));
+        Assert.Null(await provider.GetPolicyAsync("no-such-policy"));
+    }
 }

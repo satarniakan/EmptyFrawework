@@ -63,6 +63,9 @@ if (builder.Configuration.GetValue<bool>("ForwardedHeaders:TrustAllProxies"))
 }
 app.UseForwardedHeaders(forwardedHeadersOptions);
 
+// شناسهٔ همبستگی (X-Correlation-ID): اولِ پایپ‌لاین تا همهٔ لاگ‌ها و پاسخ‌ها آن را داشته باشند
+app.UsePlatformCorrelationId();
+
 // هدرهای امنیتی (nosniff، SAMEORIGIN، Referrer-Policy) — روی همهٔ پاسخ‌ها، از جمله خطاها.
 app.UsePlatformSecurityHeaders();
 

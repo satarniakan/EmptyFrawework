@@ -22,9 +22,17 @@ public static class PaymentEndpoints
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId is null) return Results.Unauthorized();
 
-            var callbackUrl = string.IsNullOrWhiteSpace(dto.CallbackUrl)
-                ? $"{http.Request.Scheme}://{http.Request.Host}/payments/callback"
-                : dto.CallbackUrl;
+            // CallbackUrl فقط خالی (callback همین میزبان) یا relative/same-host است؛
+            // وگرنه مهاجم می‌توانست برگشت درگاه را به سایت خودش بفرستد.
+            string callbackUrl;
+            if (string.IsNullOrWhiteSpace(dto.CallbackUrl))
+            {
+                callbackUrl = $"{http.Request.Scheme}://{http.Request.Host}/payments/callback";
+            }
+            else if (!TryResolveCallbackUrl(http, dto.CallbackUrl, out callbackUrl!))
+            {
+                return ApiProblem.BadRequest("آدرس بازگشت معتبر نیست.");
+            }
 
             try
             {
@@ -34,7 +42,7 @@ public static class PaymentEndpoints
             }
             catch (Platform.Domain.Exceptions.BusinessRuleException ex)
             {
-                return Results.BadRequest(new { message = ex.Message });
+                return ApiProblem.BadRequest(ex.Message);
             }
         }).RequireAuthorization("App").RequireRateLimiting("payment-start");
 
@@ -51,5 +59,38 @@ public static class PaymentEndpoints
         });
 
         return app;
+    }
+
+    /// <summary>
+    /// اعتبارسنجی CallbackUrl: فقط relative (مثل <c>/x/callback</c>) یا absoluteِ
+    /// same-hostِ همین درخواست. خروجی همیشه absolute است چون درگاه URL کامل می‌خواهد.
+    /// </summary>
+    private static bool TryResolveCallbackUrl(HttpContext http, string raw, out string resolved)
+    {
+        resolved = string.Empty;
+        var candidate = raw.Trim();
+        if (candidate.Length == 0 || candidate.Length > 500)
+            return false;
+
+        // relative مثل /pay/cb → با scheme/host همین درخواست کامل می‌شود
+        if (candidate.StartsWith('/') && !candidate.StartsWith("//", StringComparison.Ordinal))
+        {
+            resolved = $"{http.Request.Scheme}://{http.Request.Host}{candidate}";
+            return true;
+        }
+
+        // absolute فقط اگر هاستش دقیقاً همین میزبان باشد (هم‌خانواده/زیردامنه نه)
+        if (Uri.TryCreate(candidate, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        {
+            var requestHost = http.Request.Host.Host;
+            if (string.Equals(uri.Host, requestHost, StringComparison.OrdinalIgnoreCase))
+            {
+                resolved = candidate;
+                return true;
+            }
+        }
+
+        return false;
     }
 }

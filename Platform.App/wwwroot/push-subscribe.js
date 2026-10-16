@@ -31,11 +31,29 @@ export async function subscribePush(swUrl, publicKey, subscribeUrl) {
         });
     }
 
+    const xsrf = getXsrfToken();
     const response = await fetch(subscribeUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            // endpoint کوکیِ POST است و ضدجعل می‌خواهد؛ بدون این هدر 400 می‌گیرد
+            ...(xsrf ? { 'X-XSRF-TOKEN': xsrf } : {})
+        },
         body: JSON.stringify(subscription.toJSON())
     });
 
     return { ok: response.ok };
+}
+
+function getXsrfToken() {
+    const parts = document.cookie.split(';');
+    for (const part of parts) {
+        const trimmed = part.trim();
+        for (const name of ['__Host-XSRF-TOKEN', '__XSRF-TOKEN']) {
+            if (trimmed.startsWith(name + '=')) {
+                return decodeURIComponent(trimmed.substring(name.length + 1));
+            }
+        }
+    }
+    return null;
 }

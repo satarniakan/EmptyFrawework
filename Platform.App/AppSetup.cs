@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Platform.Domain.Identity;
+using Platform.Domain.Interfaces;
 using Platform.App.Components.Layout;
 
 namespace Platform.App;
@@ -43,6 +45,10 @@ public sealed class AppSettingCatalog : ISettingCatalog
             "", "پرداخت", IsSecret: true),
         new(IntegrationSettingKeys.ZarinPalSandbox, "حالت sandbox زرین‌پال (true/false)", "", "پرداخت"),
 
+        new(IntegrationSettingKeys.ZibalMerchantId, "مرچنت زیبال (Payment:Zibal:MerchantId)",
+            "", "پرداخت", IsSecret: true),
+        new(IntegrationSettingKeys.ZibalSandbox, "حالت sandbox زیبال (true/false)", "", "پرداخت"),
+
         new(IntegrationSettingKeys.TurnstileSecretKey, "کلید محرمانه Turnstile (سرور)",
             "", "کپچا", IsSecret: true),
         new(IntegrationSettingKeys.TurnstileSiteKey, "کلید عمومی Turnstile (ویجت لاگین)",
@@ -82,6 +88,16 @@ public sealed class AppNavProvider : INavProvider
 }
 
 /// <summary>
+/// سیاست پیش‌فرض دسترسی فایل: خودِ مالک یا ادمین. ماژول دامنه می‌تواند
+/// با ثبت <see cref="IFileAccessPolicy"/> خودش جایگزینش کند (TryAdd پایین).
+/// </summary>
+public sealed class OwnerOrAdminFileAccessPolicy : IFileAccessPolicy
+{
+    public Task<bool> CanReadAsync(string userId, bool isAdmin, string ownerId, string fileType)
+        => Task.FromResult(isAdmin || string.Equals(userId, ownerId, StringComparison.Ordinal));
+}
+
+/// <summary>
 /// راه‌اندازی میزبان.
 /// </summary>
 public static class AppSetup
@@ -94,6 +110,8 @@ public static class AppSetup
         services.AddSingleton<IPermissionCatalog, AppPermissionCatalog>();
         services.AddSingleton<ISettingCatalog, AppSettingCatalog>();
         services.AddSingleton<INavProvider, AppNavProvider>();
+        // سیاست فایل با TryAdd تا پروژهٔ مصرف‌کننده بتواند قبل از/بعد از این پیش‌فرض را ثبت کند
+        services.TryAddSingleton<IFileAccessPolicy, OwnerOrAdminFileAccessPolicy>();
         return services;
     }
 }

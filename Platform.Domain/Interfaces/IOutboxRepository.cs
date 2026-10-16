@@ -31,8 +31,9 @@ public interface IOutboxRepository
     /// برمی‌گرداند (کرش پروسه وسط ارسال). آستانهٔ زمانی شرط لازم است: در استقرار چندنمونه‌ای،
     /// رکورد Processingِ تازه یعنی «instance دیگری همین حالا در حال ارسال است» و بازپس‌گیریِ
     /// بی‌آستانه باعث ارسال دوبارهٔ همان پیامک/ایمیل می‌شود.
+    /// <paramref name="now"/> از TimeProvider فراخواننده می‌آید تا تست‌پذیر بماند.
     /// </summary>
-    Task<int> ReclaimAbandonedAsync(TimeSpan lease);
+    Task<int> ReclaimAbandonedAsync(TimeSpan lease, DateTime now);
 
     /// <summary>فهرست صفحه‌بندی‌شده برای صفحهٔ نظارت ادمین (جدیدترین اول).</summary>
     Task<(IEnumerable<OutboxMessage> Items, int TotalCount)> GetPagedAsync(

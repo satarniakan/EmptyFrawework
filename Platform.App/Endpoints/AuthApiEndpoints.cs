@@ -20,20 +20,20 @@ public static class AuthApiEndpoints
         group.MapPost("/otp/request", async (HttpContext http, IAuthService auth,
             ICaptchaValidator captcha, OtpRequestApiDto dto) =>
         {
+            if (!await captcha.ValidateAsync(dto.CaptchaToken,
+                    http.Connection.RemoteIpAddress?.ToString()))
+            {
+                return ApiProblem.BadRequest("اعتبارسنجی امنیتی ناموفق بود.");
+            }
+
             try
             {
-                if (!await captcha.ValidateAsync(dto.CaptchaToken,
-                        http.Connection.RemoteIpAddress?.ToString()))
-                {
-                    return Results.BadRequest(new { message = "اعتبارسنجی امنیتی ناموفق بود." });
-                }
-
                 await auth.RequestOtpAsync(dto.PhoneNumber);
                 return Results.Ok(new { message = "کد ورود ارسال شد." });
             }
             catch (BusinessRuleException ex)
             {
-                return Results.BadRequest(new { message = ex.Message });
+                return ApiProblem.BadRequest(ex.Message);
             }
         }).RequireRateLimiting("otp-request");
 
@@ -56,7 +56,7 @@ public static class AuthApiEndpoints
 
             return result.Succeeded
                 ? Results.Ok(new TokenResponseDto(result.Token!, result.ExpiresAtUtc!.Value))
-                : Results.Unauthorized();
+                : ApiProblem.Unauthorized("کد ورود نامعتبر است.");
         }).RequireRateLimiting("otp-verify");
 
         group.MapPost("/login", async (
@@ -79,7 +79,7 @@ public static class AuthApiEndpoints
 
             return result.Succeeded
                 ? Results.Ok(new TokenResponseDto(result.Token!, result.ExpiresAtUtc!.Value))
-                : Results.Unauthorized();
+                : ApiProblem.Unauthorized("نام کاربری یا رمز عبور نادرست است.");
         }).RequireRateLimiting("login");
 
         group.MapPost("/password/reset", async (
@@ -105,10 +105,10 @@ public static class AuthApiEndpoints
             return result.Status switch
             {
                 PasswordResetStatus.Success => Results.Ok(new { message = "رمز عبور تعیین شد." }),
-                PasswordResetStatus.InvalidOtp => Results.Unauthorized(),
-                PasswordResetStatus.UserNotFound => Results.NotFound(new { message = "کاربر یافت نشد." }),
-                PasswordResetStatus.PasswordMismatch => Results.BadRequest(new { message = "رمز و تکرار آن یکسان نیستند." }),
-                _ => Results.BadRequest(new { message = "تعیین رمز ناموفق بود." })
+                PasswordResetStatus.InvalidOtp => ApiProblem.Unauthorized("کد پیامکی نامعتبر است."),
+                PasswordResetStatus.UserNotFound => ApiProblem.NotFound("کاربری با این شماره یافت نشد."),
+                PasswordResetStatus.PasswordMismatch => ApiProblem.BadRequest("رمز و تکرار آن یکسان نیستند."),
+                _ => ApiProblem.BadRequest("تعیین رمز ناموفق بود.")
             };
         }).RequireRateLimiting("otp-verify");
 

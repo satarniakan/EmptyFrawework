@@ -50,8 +50,13 @@ public class ApiTokenServiceTests
         public ApiTokenService Build()
         {
             var settings = new Mock<ISettingService>();
-            settings.Setup(s => s.GetEffectiveAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            settings.Setup(s => s.GetEffectiveAsync(
+                    IntegrationSettingKeys.ApiTokenLifetimeDays, It.IsAny<string>(), It.IsAny<string>()))
                 .ReturnsAsync("180");
+            // pepper خالی → هش قدیمی (تست HashToken(raw) همان ذخیره‌شده است)
+            settings.Setup(s => s.GetEffectiveAsync(
+                    IntegrationSettingKeys.SecurityPepper, It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync("");
 
             return new ApiTokenService(
                 Repo.Object, Otp.Object, Users.Object, SignIn.Object, Factory.Object, Uow.Object,

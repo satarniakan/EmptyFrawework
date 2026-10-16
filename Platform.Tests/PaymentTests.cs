@@ -59,6 +59,68 @@ public class PaymentTests
     }
 
     [Fact]
+    public async Task CreateAsync_TooLargeAmount_ThrowsBusinessRule_WithoutGatewayCall()
+    {
+        var h = new Harness();
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            h.Build().CreateAsync("u1", PaymentService.MaxAmountTomans + 1, "تست", "https://x/cb"));
+
+        h.Gateway.Verify(g => g.StartPaymentAsync(It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        h.Repo.Verify(r => r.AddAsync(It.IsAny<Payment>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAsync_EmptyDescription_ThrowsBusinessRule_WithoutGatewayCall()
+    {
+        var h = new Harness();
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            h.Build().CreateAsync("u1", 5000, "  ", "https://x/cb"));
+
+        h.Gateway.Verify(g => g.StartPaymentAsync(It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAsync_StoresLocalRecord_BeforeCallingGateway()
+    {
+        var h = new Harness();
+        var callOrder = new List<string>();
+        h.Repo.Setup(r => r.AddAsync(It.IsAny<Payment>()))
+            .Callback(() => callOrder.Add("db"))
+            .Returns(Task.CompletedTask);
+        h.Gateway.Setup(g => g.StartPaymentAsync(It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>()))
+            .Callback(() => callOrder.Add("gateway"))
+            .ReturnsAsync(new PaymentStartResult("AUTH-9", "https://pay/x"));
+
+        await h.Build().CreateAsync("u1", 5000, "تست", "https://x/cb");
+
+        // اول رکورد محلی، بعد درگاه — تا «پول در درگاه، بی‌رکورد» پیش نیاید
+        Assert.Equal(["db", "gateway"], callOrder);
+    }
+
+    [Fact]
+    public async Task CreateAsync_GatewayFailure_MarksPaymentFailed_AndRethrows()
+    {
+        var h = new Harness();
+        Payment? stored = null;
+        h.Repo.Setup(r => r.AddAsync(It.IsAny<Payment>()))
+            .Callback<Payment>(p => { p.Id = 42; stored = p; })
+            .Returns(Task.CompletedTask);
+        h.Gateway.Setup(g => g.StartPaymentAsync(It.IsAny<PaymentRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("درگاه قطع است"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            h.Build().CreateAsync("u1", 5000, "تست", "https://x/cb"));
+
+        Assert.NotNull(stored);
+        Assert.Equal(PaymentStatus.Failed, stored!.Status);
+        Assert.NotNull(stored.FailureReason);
+    }
+
+    [Fact]
     public async Task CreateAsync_StartsGateway_AndStoresPending()
     {
         var h = new Harness();

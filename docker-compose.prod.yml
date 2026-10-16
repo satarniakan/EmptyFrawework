@@ -16,3 +16,14 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Default: "Server=sqlserver;Database=PlatformProd;User Id=sa;Password=${MSSQL_SA_PASSWORD:?MSSQL_SA_PASSWORD در .env لازم است};TrustServerCertificate=True"
       Identity__FirstAdminPhoneNumber: ${APP_ADMIN_PHONE:?APP_ADMIN_PHONE در .env لازم است}
+      # جانشینی ادمین در پروداکشن پیش‌فرض خاموش است؛ فقط برای پنجرهٔ پشتیبانی روشن کنید.
+      Support__ImpersonationEnabled: ${APP_IMPERSONATION_ENABLED:-false}
+      # کپچای واقعی در پروداکشن (خالی یعنی غیرفعال و مسیر OTP بدون محافظ می‌ماند).
+      Captcha__Provider: ${APP_CAPTCHA_PROVIDER:-Turnstile}
+    volumes:
+      # کلیدهای DataProtection بیرون از کانتینر می‌مانند تا با هر redeploy
+      # کوکی‌ها، توکن‌های ضدجعل و secretهای رمزنگاری‌شده نپرند.
+      - dataprotection:/app/DataProtection-Keys
+
+volumes:
+  dataprotection:

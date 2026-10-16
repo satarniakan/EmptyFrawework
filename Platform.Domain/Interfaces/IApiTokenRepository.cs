@@ -19,4 +19,7 @@ public interface ILoginHistoryRepository
     Task AddAsync(LoginHistory entry);
 
     Task<List<LoginHistory>> GetRecentForUserAsync(string userId, int take = 20);
+
+    /// <summary>حذف فیزیکی رکوردهای قدیمی‌تر از cutoff (خانه‌تکانی). بازگشت: تعداد حذف‌شده.</summary>
+    Task<int> DeleteOlderThanAsync(DateTime cutoffUtc);
 }

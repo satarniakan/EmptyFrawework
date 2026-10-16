@@ -48,7 +48,32 @@ if (saved !== 'dark' && saved !== 'light') {
 })();
 
 // فراخوانی ساده‌ی endpoint های JSON برای کامپوننت‌های تعاملی (مثل زنگ اعلان‌ها)
+// توکن ضدجعل (CSRF) از کوکی __Host-XSRF-TOKEN یا __XSRF-TOKEN خوانده و در هدر
+// X-XSRF-TOKEN فرستاده می‌شود؛ endpointهای کوکیِ POST بدون آن 400 می‌گیرند.
+// اگر کوکی هنوز ست نشده باشد، اول از /api/xsrf-token گرفته می‌شود (lazy).
 window.platformApi = {
     get: async (url) => (await fetch(url)).json(),
-    post: async (url) => { await fetch(url, { method: 'POST' }); }
+    post: async (url) => {
+        let token = window.platformApi.getXsrfToken();
+        if (!token) {
+            try { await fetch('/api/xsrf-token'); } catch { /* شبکه قطع است؛ همان بدون توکن تلاش می‌شود */ }
+            token = window.platformApi.getXsrfToken();
+        }
+        await fetch(url, {
+            method: 'POST',
+            headers: token ? { 'X-XSRF-TOKEN': token } : {}
+        });
+    },
+    getXsrfToken: () => {
+        const parts = document.cookie.split(';');
+        for (const part of parts) {
+            const trimmed = part.trim();
+            for (const name of ['__Host-XSRF-TOKEN', '__XSRF-TOKEN']) {
+                if (trimmed.startsWith(name + '=')) {
+                    return decodeURIComponent(trimmed.substring(name.length + 1));
+                }
+            }
+        }
+        return null;
+    }
 };

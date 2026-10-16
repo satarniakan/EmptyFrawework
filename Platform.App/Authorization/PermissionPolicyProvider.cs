@@ -38,10 +38,17 @@ public sealed class PermissionPolicyProvider : IAuthorizationPolicyProvider
 
     public Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
     {
-        var policy = _cache.GetOrAdd(policyName, BuildPolicy);
-        return policy is not null
-            ? Task.FromResult<AuthorizationPolicy?>(policy)
-            : _fallback.GetPolicyAsync(policyName);
+        // ConcurrentDictionary مقدار null قبول نمی‌کند (GetOrAdd با factoryِ nullدهنده
+        // ArgumentNullException می‌دهد)، پس nullها کش نمی‌شوند و هربار به fallback می‌روند.
+        if (_cache.TryGetValue(policyName, out var cached))
+            return Task.FromResult<AuthorizationPolicy?>(cached);
+
+        var built = BuildPolicy(policyName);
+        if (built is null)
+            return _fallback.GetPolicyAsync(policyName);
+
+        _cache.TryAdd(policyName, built);
+        return Task.FromResult<AuthorizationPolicy?>(built);
     }
 
     private AuthorizationPolicy? BuildPolicy(string policyName)

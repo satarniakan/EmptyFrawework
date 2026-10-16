@@ -3,6 +3,18 @@ using Stream = System.IO.Stream;
 namespace Platform.Domain.Interfaces;
 
 /// <summary>
+/// تصمیم «چه کسی حق خواندن فایلِ <c>ownerId</c>/<c>fileType</c> را دارد» — نقطهٔ
+/// توسعهٔ دامنه برای endpoint دانلود پایه. پیش‌فرض (در میزبان): خودِ مالک یا ادمین.
+/// پروژه‌هایی که فایل به موجودیت دامنه‌ای (سفارش، پرونده) تعلق دارد، پیاده‌سازی
+/// خودش را ثبت می‌کند: <c>services.AddSingleton&lt;IFileAccessPolicy, MyPolicy&gt;()</c>.
+/// </summary>
+public interface IFileAccessPolicy
+{
+    /// <summary>آیا کاربر جاری مجاز به خواندن فایلِ این مالک/نوع است؟</summary>
+    Task<bool> CanReadAsync(string userId, bool isAdmin, string ownerId, string fileType);
+}
+
+/// <summary>
 /// ذخیره‌سازی فایل‌های بالا‌آمده از کاربر. نسبت به <c>HttpContext</c> تمیزتر است،
 /// چون **هیچ‌وقت آدرس فایل را بر اساس نام فایل کاربر می‌سازد**.
 /// <para>

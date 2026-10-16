@@ -35,10 +35,18 @@ public static class PlatformSetup
 
         services.AddCascadingAuthenticationState();
 
+        // fetchهای JS توکن ضدجعل را در هدر X-XSRF-TOKEN می‌فرستند (platformApi.post)؛
+        // فرم‌ها همان فیلد مخفی پیش‌فرض. اینجا ثبت می‌شود (نه Program) تا هر میزبانی
+        // که MapPlatform را صدا می‌زند — از جمله هاست تست — سرویس را داشته باشد.
+        services.AddAntiforgery(options => options.HeaderName = "X-XSRF-TOKEN");
+
         // پایه خودش سرویس‌های مجوزدهی را ثبت می‌کند تا به «تصادفی» بودنِ
         // AddRazorComponents در میزبان وابسته نباشد (وگرنه هر میزبانی که
         // Razor Components اضافه نکند، هنگام UseAuthorization خطا می‌گیرد).
-        services.AddAuthentication()
+        services.AddAuthentication(options =>
+        {
+            options.DefaultForbidScheme = ApiTokenAuthenticationHandler.SchemeName;
+        })
             .AddScheme<AuthenticationSchemeOptions, ApiTokenAuthenticationHandler>(
                 ApiTokenAuthenticationHandler.SchemeName, displayName: "API Token", configureOptions: _ => { });
 
@@ -59,9 +67,11 @@ public static class PlatformSetup
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
         services.AddScoped<ToastService>();
+        services.AddSingleton<RecurringJobStatusTracker>();
         services.AddHostedService<OutboxProcessor>();
         services.AddHostedService<RecurringJobRunner>();
         services.AddSingleton<IRecurringJob, OtpCleanupJob>();
+        services.AddSingleton<IRecurringJob, DataRetentionJob>();
 
         services.AddRateLimiter(options =>
         {
@@ -141,6 +151,8 @@ public static class PlatformSetup
         app.MapPaymentEndpoints();
         app.MapPushEndpoints();
         app.MapImpersonationEndpoints();
+        app.MapFileEndpoints();
+        app.MapAdminJobsEndpoints();
         return app;
     }
 

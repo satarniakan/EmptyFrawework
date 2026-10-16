@@ -151,6 +151,28 @@ public static class AccountEndpoints
             return Results.Redirect("/login");
         }).WithMetadata(new RequireAntiforgeryTokenAttribute());
 
+        // توکن ضدجعل (CSRF) برای fetchهای JS: کوکی غیرHttpOnly می‌گذارد تا
+        // platformApi.post آن را در هدر X-XSRF-TOKEN بفرستد.
+        app.MapGet("/api/xsrf-token", (HttpContext http, IAntiforgery antiforgery) =>
+        {
+            var tokens = antiforgery.GetAndStoreTokens(http);
+            if (tokens.RequestToken is null) return Results.NoContent();
+
+            var secure = http.Request.IsHttps;
+            http.Response.Cookies.Append(
+                secure ? "__Host-XSRF-TOKEN" : "__XSRF-TOKEN",
+                tokens.RequestToken,
+                new CookieOptions
+                {
+                    HttpOnly = false,
+                    Secure = secure,
+                    SameSite = SameSiteMode.Strict,
+                    Path = "/",
+                    MaxAge = TimeSpan.FromHours(8)
+                });
+            return Results.NoContent();
+        });
+
         return app;
     }
 }

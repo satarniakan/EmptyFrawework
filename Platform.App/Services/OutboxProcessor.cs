@@ -18,6 +18,7 @@ public class OutboxProcessor : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<OutboxProcessor> _logger;
+    private readonly TimeProvider _clock;
     private readonly int _maxAttempts;
     private readonly int _batchSize;
 
@@ -28,10 +29,12 @@ public class OutboxProcessor : BackgroundService
     /// </summary>
     private static readonly TimeSpan SendLease = TimeSpan.FromMinutes(10);
 
-    public OutboxProcessor(IServiceScopeFactory scopeFactory, ILogger<OutboxProcessor> logger, IConfiguration configuration)
+    public OutboxProcessor(IServiceScopeFactory scopeFactory, ILogger<OutboxProcessor> logger, IConfiguration configuration,
+        TimeProvider? clock = null)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _clock = clock ?? TimeProvider.System;
         _maxAttempts = configuration.GetValue("Sms:MaxAttempts", 3);
         _batchSize = configuration.GetValue("Sms:BatchSize", 20);
     }
@@ -50,7 +53,8 @@ public class OutboxProcessor : BackgroundService
 
                 // فقط رکوردهایی که از مهلتِ ارسال هم گذشته‌اند یتیم‌اند؛ رکورد Processingِ تازه
                 // یعنی instance دیگری همین حالا آن را می‌فرستد و دست‌زدن به آن = ارسال تکراری
-                var reclaimed = await outboxRepo.ReclaimAbandonedAsync(SendLease);
+                var reclaimed = await outboxRepo.ReclaimAbandonedAsync(
+                    SendLease, _clock.GetUtcNow().UtcDateTime);
                 if (reclaimed > 0)
                     _logger.LogWarning("{Count} پیام مانده در Processing به صف برگشت", reclaimed);
 
@@ -60,7 +64,7 @@ public class OutboxProcessor : BackgroundService
                     foreach (var message in pending)
                     {
                         // یک زمان واحد برای claim و نتیجه: «شروع قفل» و «پایان ارسال»
-                        var claimedAt = DateTime.UtcNow;
+                        var claimedAt = _clock.GetUtcNow().UtcDateTime;
 
                         if (!await outboxRepo.TryClaimForSendingAsync(message.Id, _maxAttempts, claimedAt))
                             continue; // دور/instance دیگری زودتر آن را برداشته
@@ -70,7 +74,13 @@ public class OutboxProcessor : BackgroundService
                         try
                         {
                             if (message.Channel == OutboxChannel.Email)
-                                await emailSender.SendAsync(message.Recipient, message.Subject ?? "", message.Body);
+                            {
+                                // ایمیل‌های Outbox با قالب HTML کارتی می‌روند (خوانایی موبایل)؛
+                                // متن خام در جای امنِ کارت encode می‌شود.
+                                var html = Platform.Application.Helpers.EmailTemplate.Card(
+                                    message.Subject ?? "پیام سامانه", message.Body);
+                                await emailSender.SendHtmlAsync(message.Recipient, message.Subject ?? "", html);
+                            }
                             else if (message.Channel == OutboxChannel.Push)
                                 await pushService.NotifyUserAsync(message.Recipient,
                                     message.Subject ?? "اعلان", message.Body, message.LinkUrl);
@@ -83,7 +93,7 @@ public class OutboxProcessor : BackgroundService
                         }
 
                         await outboxRepo.FinishSendingAsync(message.Id, error is null, attempts, _maxAttempts,
-                            error, DateTime.UtcNow);
+                            error, _clock.GetUtcNow().UtcDateTime);
 
                         if (error is null)
                         {

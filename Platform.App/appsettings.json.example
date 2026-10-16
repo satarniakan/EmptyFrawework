@@ -43,9 +43,13 @@
     }
   },
   "Payment": {
-    "//": "Provider: Fake (نمایشی) یا ZarinPal (واقعی). مبالغ به تومان.",
+    "//": "Provider: Fake (نمایشی)، ZarinPal یا Zibal (واقعی). مبالغ به تومان.",
     "Provider": "Fake",
     "ZarinPal": {
+      "MerchantId": "",
+      "Sandbox": false
+    },
+    "Zibal": {
       "MerchantId": "",
       "Sandbox": false
     }
@@ -74,6 +78,17 @@
   "Support": {
     "//": "جانشینی ادمین (ورود به‌جای کاربر). پیش‌فرض خاموش؛ فقط برای پشتیبانی روشن کنید.",
     "ImpersonationEnabled": false
+  },
+  "Retention": {
+    "//": "سقف نگه‌داری جدول‌های رشدکننده (روز)؛ خانه‌تکانی هر ۲۴ ساعت اجرا می‌شود. صفر یعنی حذف نشود.",
+    "LoginHistoryDays": 180,
+    "NotificationDays": 90,
+    "ApiTokenDays": 90,
+    "AuditLogDays": 730
+  },
+  "Security": {
+    "//Pepper": "نمک سمت سرور برای هش OTP و توکن. مقدار واقعی را در Secret Manager یا env بگذارید (Security:Pepper)؛ خالی یعنی رفتار قدیمی.",
+    "Pepper": ""
   },
   "ForwardedHeaders": {
     "//": "پشت reverse proxy این را false نگه دارید، وگرنه همهٔ کاربران یک IP می‌گیرند و rate limit همه را قفل می‌کند.",

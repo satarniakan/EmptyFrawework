@@ -42,14 +42,19 @@ public class NotificationRepository : INotificationRepository
         return Task.CompletedTask;
     }
 
-    public async Task MarkAllReadAsync(string userId)
+    public async Task MarkAllReadAsync(string userId, DateTime now)
     {
         await _context.Notifications
             .Where(n => n.UserId == userId && !n.IsRead)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(n => n.IsRead, true)
-                .SetProperty(n => n.ReadAt, DateTime.UtcNow));
+                .SetProperty(n => n.ReadAt, now));
     }
+
+    public Task<int> DeleteReadOlderThanAsync(DateTime cutoffUtc) =>
+        _context.Notifications
+            .Where(n => n.IsRead && n.CreatedAt < cutoffUtc)
+            .ExecuteDeleteAsync();
 
     public async Task<List<string>> GetAllUserIdsAsync() =>
         await _context.Users.Select(u => u.Id).ToListAsync();

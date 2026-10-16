@@ -18,6 +18,10 @@ public class PushSubscriptionRepository : IPushSubscriptionRepository
         _context.PushSubscriptions
             .FirstOrDefaultAsync(s => s.UserId == userId && s.Endpoint == endpoint);
 
+    public Task<PushSubscription?> GetByEndpointGlobalAsync(string endpoint) =>
+        _context.PushSubscriptions
+            .FirstOrDefaultAsync(s => s.Endpoint == endpoint);
+
     public async Task AddAsync(PushSubscription subscription)
     {
         await _context.PushSubscriptions.AddAsync(subscription);

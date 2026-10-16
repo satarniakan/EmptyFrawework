@@ -8,4 +8,7 @@ public interface IAuditLogRepository
     Task AddAsync(AuditLog entry);
     Task<IEnumerable<AuditLog>> GetRecentAsync(int count = 100);
     Task<(IEnumerable<AuditLog> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? search = null);
+
+    /// <summary>حذف فیزیکی لاگ‌های قدیمی‌تر از cutoff (خانه‌تکانی). بازگشت: تعداد حذف‌شده.</summary>
+    Task<int> DeleteOlderThanAsync(DateTime cutoffUtc);
 }

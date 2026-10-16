@@ -132,7 +132,7 @@ public class ApiTokenService : IApiTokenService
         await _tokens.AddAsync(new UserApiToken
         {
             UserId = userId,
-            TokenHash = HashToken(raw),
+            TokenHash = await HashTokenAsync(raw),
             DeviceName = string.IsNullOrWhiteSpace(deviceName) ? null : deviceName.Trim(),
             CreatedAtUtc = now,
             ExpiresAtUtc = expiresAt
@@ -148,7 +148,13 @@ public class ApiTokenService : IApiTokenService
         if (string.IsNullOrWhiteSpace(token))
             return null;
 
-        var record = await _tokens.GetByHashAsync(HashToken(token.Trim()));
+        var trimmed = token.Trim();
+        // توکن‌های قدیمیِ «بدون pepper» هم پذیرفته می‌شوند تا چرخش pepper نشست جاری
+        // را نشکند — ولی فقط وقتی pepper واقعاً تنظیم است (وگرنه همان lookup اول کافی است).
+        var pepperedHash = await HashTokenAsync(trimmed);
+        var record = await _tokens.GetByHashAsync(pepperedHash);
+        if (record is null && !string.Equals(pepperedHash, HashToken(trimmed, pepper: null), StringComparison.Ordinal))
+            record = await _tokens.GetByHashAsync(HashToken(trimmed, pepper: null));
         if (record is null || record.IsRevoked)
             return null;
 
@@ -204,9 +210,22 @@ public class ApiTokenService : IApiTokenService
         return tokens.Count;
     }
 
-    /// <summary>هش توکن خام برای ذخیره‌سازی. عمومی تا تست بتواند ذخیرهٔ «فقط-هش» را اثبات کند.</summary>
-    public static string HashToken(string raw)
-        => Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(raw)));
+    /// <summary>
+    /// هش توکن خام برای ذخیره‌سازی. عمومی تا تست بتواند ذخیرهٔ «فقط-هش» را اثبات کند.
+    /// pepper سمت سرور (Security:Pepper) هم لحاظ می‌شود؛ خالی یعنی رفتار قدیمی (سازگاری).
+    /// </summary>
+    public static string HashToken(string raw, string? pepper = null)
+    {
+        var input = string.IsNullOrEmpty(pepper) ? raw : $"{raw}:{pepper}";
+        return Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(input)));
+    }
+
+    private async Task<string> HashTokenAsync(string raw)
+    {
+        var pepper = await _settings.GetEffectiveAsync(
+            IntegrationSettingKeys.SecurityPepper, "Security:Pepper");
+        return HashToken(raw, string.IsNullOrWhiteSpace(pepper) ? null : pepper);
+    }
 
     private static string ToUrlSafe(byte[] bytes) =>
         Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');

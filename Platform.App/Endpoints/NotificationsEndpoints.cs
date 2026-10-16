@@ -1,8 +1,8 @@
 // Platform.App/Endpoints/NotificationsEndpoints.cs
 using System.Security.Claims;
-using Platform.Application.Services;
-using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
+using Platform.Application.Services;
 
 namespace Platform.App.Endpoints;
 
@@ -14,7 +14,10 @@ public static class NotificationsEndpoints
 {
     public static IEndpointRouteBuilder MapNotificationsEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/notifications/recent", [Authorize] async (
+        // مسیرهای کوکیِ POST: ضدجعل الزامی است (توکن در هدر X-XSRF-TOKEN از platformApi.post).
+        var cookiePost = new RequireAntiforgeryTokenAttribute();
+
+        app.MapGet("/notifications/recent", async (
             HttpContext httpContext,
             [FromServices] INotificationService notifications) =>
         {
@@ -23,9 +26,9 @@ public static class NotificationsEndpoints
                 return Results.Unauthorized();
 
             return Results.Json(await notifications.GetFeedAsync(userId));
-        });
+        }).RequireAuthorization();
 
-        app.MapPost("/notifications/{id:int}/read", [Authorize] async (
+        app.MapPost("/notifications/{id:int}/read", async (
             HttpContext httpContext,
             [FromServices] INotificationService notifications,
             int id) =>
@@ -36,9 +39,9 @@ public static class NotificationsEndpoints
 
             await notifications.MarkReadAsync(id, userId);
             return Results.Ok();
-        });
+        }).RequireAuthorization().WithMetadata(cookiePost);
 
-        app.MapPost("/notifications/read-all", [Authorize] async (
+        app.MapPost("/notifications/read-all", async (
             HttpContext httpContext,
             [FromServices] INotificationService notifications) =>
         {
@@ -48,7 +51,7 @@ public static class NotificationsEndpoints
 
             await notifications.MarkAllReadAsync(userId);
             return Results.Ok();
-        });
+        }).RequireAuthorization().WithMetadata(cookiePost);
 
         return app;
     }

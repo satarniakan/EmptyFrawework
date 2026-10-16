@@ -63,6 +63,7 @@ public class WebHostingTests : IAsyncLifetime
         _app.UsePlatformSecurityHeaders();
         _app.UseAuthentication();
         _app.UseAuthorization();
+        _app.UseAntiforgery();
         _app.UseRateLimiter();
         _app.MapPlatform();
         _app.MapGet("/ping", () => Results.Text("pong"));

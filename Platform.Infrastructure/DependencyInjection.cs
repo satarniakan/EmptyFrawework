@@ -118,20 +118,36 @@ public static class DependencyInjection
 
         // پیامک: بر اساس «Sms:Provider» — Kavenegar واقعی یا Fake.
         // FakeSmsSender فقط در Development متن پیامک (شامل کد OTP) را لاگ می‌کند.
+        // سرویس‌های بیرونی (پیامک/درگاه/کپچا) timeout صریح ۱۵ ثانیه دارند تا یک
+        // سرویس کند، threadpool و OutboxProcessor را قفل نکند (پیش‌فرض ۱۰۰ ثانیه است).
+        services.AddHttpClient("kavenegar", client => client.Timeout = TimeSpan.FromSeconds(15));
+        services.AddHttpClient("zarinpal", client => client.Timeout = TimeSpan.FromSeconds(15));
+        services.AddHttpClient("turnstile", client => client.Timeout = TimeSpan.FromSeconds(15));
         services.AddHttpClient();
 
-        // درگاه پرداخت: بر اساس «Payment:Provider» — ZarinPal واقعی یا Fake نمایشی.
+        // درگاه پرداخت: بر اساس «Payment:Provider» — ZarinPal/Zibal واقعی یا Fake نمایشی.
         // Fake هیچ تماس شبکه‌ای ندارد و callback را به همین میزبان برمی‌گرداند.
+        services.AddHttpClient("zibal", client => client.Timeout = TimeSpan.FromSeconds(15));
         services.AddScoped<IPaymentGateway>(sp =>
         {
-            if (string.Equals(configuration["Payment:Provider"], "ZarinPal", StringComparison.OrdinalIgnoreCase))
+            var provider = configuration["Payment:Provider"];
+            var settings = sp.GetRequiredService<ISettingService>();
+
+            if (string.Equals(provider, "ZarinPal", StringComparison.OrdinalIgnoreCase))
             {
                 var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("zarinpal");
                 return new ZarinPalGateway(
-                    http,
-                    sp.GetRequiredService<ISettingService>(),
+                    http, settings,
                     sp.GetRequiredService<IConfiguration>(),
                     sp.GetRequiredService<ILogger<ZarinPalGateway>>());
+            }
+
+            if (string.Equals(provider, "Zibal", StringComparison.OrdinalIgnoreCase))
+            {
+                var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("zibal");
+                return new ZibalGateway(
+                    http, settings,
+                    sp.GetRequiredService<ILogger<ZibalGateway>>());
             }
 
             return new FakePaymentGateway(

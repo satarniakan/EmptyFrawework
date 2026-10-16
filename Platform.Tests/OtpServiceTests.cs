@@ -36,6 +36,9 @@ public class OtpServiceTests
         var settings = new Mock<ISettingService>();
         settings.Setup(s => s.GetAsync(It.IsAny<string>()))
             .ReturnsAsync("کد ورود شما: {Code}");
+        // pepper خالی → رفتار قدیمی (یک کوئری به‌ازای هر Verify)
+        settings.Setup(s => s.GetEffectiveAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync("");
 
         var service = new OtpService(
             repo.Object, throttleRepo.Object, sms.Object, settings.Object,
@@ -75,7 +78,7 @@ public class OtpServiceTests
     public async Task VerifyOtpAsync_InvalidCode_ReturnsFalse()
     {
         var (service, repo, _) = Build();
-        repo.Setup(r => r.GetLatestValidAsync(Phone, It.IsAny<string>()))
+        repo.Setup(r => r.GetLatestValidAsync(Phone, It.IsAny<string>(), It.IsAny<DateTime>()))
             .ReturnsAsync((OtpCode?)null);
 
         Assert.False(await service.VerifyOtpAsync(Phone, "123456"));
@@ -85,7 +88,7 @@ public class OtpServiceTests
     public async Task VerifyOtpAsync_ValidCode_MarksUsedAndReturnsTrue()
     {
         var (service, repo, _) = Build();
-        repo.Setup(r => r.GetLatestValidAsync(Phone, It.IsAny<string>()))
+        repo.Setup(r => r.GetLatestValidAsync(Phone, It.IsAny<string>(), It.IsAny<DateTime>()))
             .ReturnsAsync(new OtpCode { Id = 7, PhoneNumber = Phone, Code = "HASH" });
         repo.Setup(r => r.TryMarkAsUsedAsync(7)).ReturnsAsync(true);
 
@@ -97,7 +100,7 @@ public class OtpServiceTests
     public async Task VerifyOtpAsync_AfterMaxFailures_StopsTouchingRepository()
     {
         var (service, repo, _) = Build();
-        repo.Setup(r => r.GetLatestValidAsync(Phone, It.IsAny<string>()))
+        repo.Setup(r => r.GetLatestValidAsync(Phone, It.IsAny<string>(), It.IsAny<DateTime>()))
             .ReturnsAsync((OtpCode?)null);
 
         for (var i = 0; i < 5; i++)
@@ -105,14 +108,14 @@ public class OtpServiceTests
 
         // تلاش ششم باید پیش از هر کوئری، توسط قفل شماره متوقف شود
         Assert.False(await service.VerifyOtpAsync(Phone, "000000"));
-        repo.Verify(r => r.GetLatestValidAsync(Phone, It.IsAny<string>()), Times.Exactly(5));
+        repo.Verify(r => r.GetLatestValidAsync(Phone, It.IsAny<string>(), It.IsAny<DateTime>()), Times.Exactly(5));
     }
 
     [Fact]
     public async Task GenerateAndSendOtpAsync_WhenPhoneBlocked_ThrowsBusinessRuleException()
     {
         var (service, repo, _) = Build();
-        repo.Setup(r => r.GetLatestValidAsync(Phone, It.IsAny<string>()))
+        repo.Setup(r => r.GetLatestValidAsync(Phone, It.IsAny<string>(), It.IsAny<DateTime>()))
             .ReturnsAsync((OtpCode?)null);
 
         for (var i = 0; i < 5; i++)

@@ -60,11 +60,11 @@ public class OutboxRepository : IOutboxRepository
                 .SetProperty(m => m.LastError, success ? null : error));
     }
 
-    public async Task<int> ReclaimAbandonedAsync(TimeSpan lease)
+    public async Task<int> ReclaimAbandonedAsync(TimeSpan lease, DateTime now)
     {
         // آستانه در C# حساب می‌شود: `DateTime.UtcNow - lease` داخل کوئری در EF Core 10
         // ترجمه نمی‌شود و ExecuteUpdate کل عبارت را بی‌ترجمه می‌کند.
-        var cutoff = DateTime.UtcNow - lease;
+        var cutoff = now - lease;
 
         return await _context.OutboxMessages
             // رکورد Processingِ تازه = «جاری» (نه یتیم). بدون این آستانه، در استقرار

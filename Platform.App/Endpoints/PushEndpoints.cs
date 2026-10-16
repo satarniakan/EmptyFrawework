@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Antiforgery;
 using Platform.Application.Services;
 using Platform.Domain.Entities;
+using Platform.Domain.Exceptions;
 using Platform.Domain.Identity;
 using Platform.Domain.Interfaces;
 
@@ -37,6 +39,7 @@ public static class PushEndpoints
             ClaimsPrincipal user,
             IPushSubscriptionRepository subscriptions,
             IPlatformUnitOfWork unitOfWork,
+            TimeProvider clock,
             PushSubscriptionDto dto) =>
         {
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -45,25 +48,51 @@ public static class PushEndpoints
             if (string.IsNullOrWhiteSpace(dto.Endpoint) || dto.Endpoint.Length > 500
                 || string.IsNullOrWhiteSpace(dto.P256dh) || string.IsNullOrWhiteSpace(dto.Auth))
             {
-                return Results.BadRequest(new { message = "اشتراک نامعتبر است." });
+                return ApiProblem.BadRequest("اشتراک نامعتبر است.");
             }
 
-            var existing = await subscriptions.GetByEndpointAsync(userId, dto.Endpoint);
-            if (existing is null)
+            try
             {
-                await subscriptions.AddAsync(new PushSubscription
+                // Endpoint در کل جدول یکتاست: اگر همین مرورگر قبلاً با کاربر دیگری
+                // ثبت شده بود، مالکیت به کاربر جاری منتقل می‌شود (upsert) تا روی
+                // قید unique نترکد.
+                var existing = await subscriptions.GetByEndpointGlobalAsync(dto.Endpoint);
+                if (existing is null)
                 {
-                    UserId = userId,
-                    Endpoint = dto.Endpoint,
-                    P256dh = dto.P256dh,
-                    Auth = dto.Auth,
-                    CreatedAtUtc = DateTime.UtcNow
-                });
+                    await subscriptions.AddAsync(new PushSubscription
+                    {
+                        UserId = userId,
+                        Endpoint = dto.Endpoint,
+                        P256dh = dto.P256dh,
+                        Auth = dto.Auth,
+                        CreatedAtUtc = clock.GetUtcNow().UtcDateTime
+                    });
+                }
+                else
+                {
+                    existing.UserId = userId;
+                    existing.P256dh = dto.P256dh;
+                    existing.Auth = dto.Auth;
+                }
+
                 await unitOfWork.CompleteAsync();
+            }
+            catch (DataIntegrityException)
+            {
+                // مسابقهٔ دو درخواست هم‌زمان روی یک endpoint: یکی برده، این‌یکی
+                // رکورد موجود را برمی‌دارد و مالکیت را منتقل می‌کند.
+                var existing = await subscriptions.GetByEndpointGlobalAsync(dto.Endpoint);
+                if (existing is not null)
+                {
+                    existing.UserId = userId;
+                    existing.P256dh = dto.P256dh;
+                    existing.Auth = dto.Auth;
+                    await unitOfWork.CompleteAsync();
+                }
             }
 
             return Results.Ok();
-        }).RequireAuthorization();
+        }).RequireAuthorization().WithMetadata(new RequireAntiforgeryTokenAttribute());
 
         app.MapDelete("/api/v1/push/subscriptions", async (
             ClaimsPrincipal user,
@@ -82,7 +111,7 @@ public static class PushEndpoints
             }
 
             return Results.NoContent();
-        }).RequireAuthorization();
+        }).RequireAuthorization().WithMetadata(new RequireAntiforgeryTokenAttribute());
 
         return app;
     }

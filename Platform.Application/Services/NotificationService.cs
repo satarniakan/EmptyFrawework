@@ -37,8 +37,13 @@ public interface INotificationService
 public class NotificationService : INotificationService
 {
     private readonly IPlatformUnitOfWork _unitOfWork;
+    private readonly TimeProvider _clock;
 
-    public NotificationService(IPlatformUnitOfWork unitOfWork) => _unitOfWork = unitOfWork;
+    public NotificationService(IPlatformUnitOfWork unitOfWork, TimeProvider? clock = null)
+    {
+        _unitOfWork = unitOfWork;
+        _clock = clock ?? TimeProvider.System;
+    }
 
     public async Task NotifyAsync(string userId, string title, string? body = null,
         NotificationType type = NotificationType.System, string? linkUrl = null)
@@ -71,14 +76,14 @@ public class NotificationService : INotificationService
             return;
 
         notification.IsRead = true;
-        notification.ReadAt = DateTime.UtcNow;
+        notification.ReadAt = _clock.GetUtcNow().UtcDateTime;
         await _unitOfWork.Notifications.UpdateAsync(notification);
         await _unitOfWork.CompleteAsync();
     }
 
     public async Task MarkAllReadAsync(string userId)
     {
-        await _unitOfWork.Notifications.MarkAllReadAsync(userId);
+        await _unitOfWork.Notifications.MarkAllReadAsync(userId, _clock.GetUtcNow().UtcDateTime);
         await _unitOfWork.CompleteAsync();
     }
 

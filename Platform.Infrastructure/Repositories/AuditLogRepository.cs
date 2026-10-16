@@ -48,4 +48,9 @@ public class AuditLogRepository : IAuditLogRepository
 
         return (items, totalCount);
     }
+
+    public Task<int> DeleteOlderThanAsync(DateTime cutoffUtc) =>
+        _context.AuditLogs
+            .Where(a => a.OccurredAt < cutoffUtc)
+            .ExecuteDeleteAsync();
 }

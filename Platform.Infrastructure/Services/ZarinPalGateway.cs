@@ -116,6 +116,115 @@ public class ZarinPalGateway : IPaymentGateway
 }
 
 /// <summary>
+/// درگاه پرداخت زیبال (مبالغ به تومان؛ API v1).
+/// مقدار مؤثر هر بار فراخوانی خوانده می‌شود: ردیف دیتابیس ← appsettings
+/// («Payment:Zibal:MerchantId» و «Payment:Zibal:Sandbox»). با انتخاب
+/// <c>Payment:Provider = Zibal</c> جایگزین زرین‌پال می‌شود.
+/// <para>
+/// نکته: در زیبال «verify» همیشه باید قبل از نهایی‌کردن پرداخت صدا زده شود؛
+/// کدهای ۱۰۱ (پرداخت تکراری) و ۲۰۱ (پرداخت شده، verify نشده) هم موفق‌اند.
+/// </para>
+/// </summary>
+public class ZibalGateway : IPaymentGateway
+{
+    public string Name => "zibal";
+
+    private readonly HttpClient _http;
+    private readonly ISettingService _settings;
+    private readonly ILogger<ZibalGateway> _logger;
+
+    public ZibalGateway(HttpClient http, ISettingService settings, ILogger<ZibalGateway> logger)
+    {
+        _http = http;
+        _settings = settings;
+        _logger = logger;
+    }
+
+    private async Task<(string MerchantId, bool Sandbox)> ConfigAsync()
+    {
+        var merchantId = await _settings.GetEffectiveAsync(
+            IntegrationSettingKeys.ZibalMerchantId, "Payment:Zibal:MerchantId");
+        var sandboxText = await _settings.GetEffectiveAsync(
+            IntegrationSettingKeys.ZibalSandbox, "Payment:Zibal:Sandbox", "false");
+        return (merchantId, string.Equals(sandboxText.Trim(), "true", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string BaseUrl(bool sandbox) => sandbox
+        ? "https://sandbox.zibal.ir/api"
+        : "https://api.zibal.ir/v1";
+
+    public async Task<PaymentStartResult> StartPaymentAsync(PaymentRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var (merchantId, sandbox) = await ConfigAsync();
+        if (string.IsNullOrWhiteSpace(merchantId))
+            throw new InvalidOperationException(
+                "کلید پذیرندهٔ زیبال تنظیم نشده است (تنظیمات یا Payment:Zibal:MerchantId).");
+
+        using var response = await _http.PostAsJsonAsync($"{BaseUrl(sandbox)}/request",
+            new
+            {
+                merchant = merchantId,
+                amount = request.AmountTomans, // زیبال مثل زرین‌پال به تومان
+                callbackUrl = request.CallbackUrl,
+                description = request.Description,
+                mobile = request.Mobile
+            }, cancellationToken);
+
+        var doc = await ReadJsonAsync(response, cancellationToken);
+        var root = doc.RootElement;
+        var code = root.GetProperty("result").GetInt32();
+
+        // ۱۰۰ = موفق
+        if (code != 100)
+        {
+            var message = root.TryGetProperty("message", out var m) ? m.GetString() : "خطای درگاه";
+            _logger.LogWarning("Zibal request failed with code {Code}: {Message}", code, message);
+            throw new InvalidOperationException($"شروع پرداخت ناموفق بود (کد {code}).");
+        }
+
+        var trackId = root.GetProperty("trackId").GetInt64();
+        var authority = trackId.ToString();
+        var startUrl = sandbox
+            ? $"https://sandbox.zibal.ir/start/{trackId}"
+            : $"https://gateway.zibal.ir/start/{trackId}";
+        return new PaymentStartResult(authority, startUrl);
+    }
+
+    public async Task<PaymentVerifyResult> VerifyPaymentAsync(string authority, long amountTomans,
+        CancellationToken cancellationToken = default)
+    {
+        var (merchantId, sandbox) = await ConfigAsync();
+
+        using var response = await _http.PostAsJsonAsync($"{BaseUrl(sandbox)}/verify",
+            new { merchant = merchantId, trackId = long.Parse(authority) }, cancellationToken);
+
+        var doc = await ReadJsonAsync(response, cancellationToken);
+        var root = doc.RootElement;
+        var code = root.GetProperty("result").GetInt32();
+
+        // ۱۰۰ = موفق، ۱۰۱ = قبلاً وریفای شده، ۲۰۱ = پرداخت شده ولی وریفای‌نشده (قبلاً تأیید شده)
+        if (code is 100 or 101 or 201)
+        {
+            var refId = root.TryGetProperty("refNumber", out var r) ? r.GetInt64() : (long?)null;
+            var cardPan = root.TryGetProperty("cardNumber", out var p) ? p.GetString() : null;
+            return new PaymentVerifyResult(true, refId, cardPan);
+        }
+
+        var message = root.TryGetProperty("message", out var msg) ? msg.GetString() : "ناموفق";
+        return new PaymentVerifyResult(false, ErrorMessage: message);
+    }
+
+    private static async Task<JsonDocument> ReadJsonAsync(HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
+        response.EnsureSuccessStatusCode();
+        var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        return await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+    }
+}
+
+/// <summary>
 /// درگاه نمایشی برای Development/تست: شروع همیشه موفق با authority ساختگی،
 /// وریفای همیشه موفق با refId ثابت. هیچ تماس شبکه‌ای ندارد.
 /// </summary>

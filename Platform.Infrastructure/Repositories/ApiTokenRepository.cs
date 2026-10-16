@@ -48,4 +48,9 @@ public class LoginHistoryRepository : ILoginHistoryRepository
             .OrderByDescending(h => h.OccurredAtUtc)
             .Take(take)
             .ToListAsync();
+
+    public Task<int> DeleteOlderThanAsync(DateTime cutoffUtc) =>
+        _context.LoginHistories
+            .Where(h => h.OccurredAtUtc < cutoffUtc)
+            .ExecuteDeleteAsync();
 }

@@ -17,13 +17,13 @@ public class OtpCodeRepository : IOtpRepository
         //await _context.SaveChangesAsync();
     }
 
-    public async Task<OtpCode?> GetLatestValidAsync(string phoneNumber, string code)
+    public async Task<OtpCode?> GetLatestValidAsync(string phoneNumber, string code, DateTime nowUtc)
     {
         return await _context.OtpCodes
             .Where(o => o.PhoneNumber == phoneNumber
                         && o.Code == code
                         && !o.IsUsed
-                        && o.ExpiresAt > DateTime.UtcNow)
+                        && o.ExpiresAt > nowUtc)
             .OrderByDescending(o => o.CreatedAt)
             .FirstOrDefaultAsync();
     }
@@ -46,10 +46,10 @@ public class OtpCodeRepository : IOtpRepository
         return rows > 0;
     }
 
-    public async Task InvalidateOthersAsync(string phoneNumber, int keepId)
+    public async Task InvalidateOthersAsync(string phoneNumber, int keepId, DateTime nowUtc)
     {
         await _context.OtpCodes
-            .Where(o => o.PhoneNumber == phoneNumber && o.Id != keepId && !o.IsUsed && o.ExpiresAt > DateTime.UtcNow)
+            .Where(o => o.PhoneNumber == phoneNumber && o.Id != keepId && !o.IsUsed && o.ExpiresAt > nowUtc)
             .ExecuteUpdateAsync(s => s.SetProperty(o => o.IsUsed, true));
     }
 

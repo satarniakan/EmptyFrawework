@@ -8,6 +8,12 @@ public interface IPushSubscriptionRepository
 
     Task<PushSubscription?> GetByEndpointAsync(string userId, string endpoint);
 
+    /// <summary>
+    /// جست‌وجوی سراسری بر اساس Endpoint (بدون فیلتر کاربر): چون Endpoint در کل
+    /// جدول یکتاست، برای upsert و انتقال مالکیت لازم است.
+    /// </summary>
+    Task<PushSubscription?> GetByEndpointGlobalAsync(string endpoint);
+
     Task AddAsync(PushSubscription subscription);
 
     Task RemoveAsync(PushSubscription subscription);

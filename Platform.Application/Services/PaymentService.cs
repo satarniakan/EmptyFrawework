@@ -27,6 +27,12 @@ public interface IPaymentService
 
 public class PaymentService : IPaymentService
 {
+    /// <summary>سقف مبلغ یک پرداخت (به تومان) — جلوی اشتباه تایپی/سوءاستفاده که درگاه را بمباران کند.</summary>
+    public const long MaxAmountTomans = 1_000_000_000L;
+
+    /// <summary>سقف طول شرح — با ستون دیتابیس (۵۰۰) هم‌خوان است تا خطای DB نگیریم.</summary>
+    public const int MaxDescriptionLength = 500;
+
     private readonly IPaymentGateway _gateway;
     private readonly IPlatformUnitOfWork _unitOfWork;
     private readonly TimeProvider _clock;
@@ -44,10 +50,17 @@ public class PaymentService : IPaymentService
     {
         if (amountTomans <= 0)
             throw new BusinessRuleException("مبلغ پرداخت باید مثبت باشد.");
+        if (amountTomans > MaxAmountTomans)
+            throw new BusinessRuleException("مبلغ پرداخت از سقف مجاز بیشتر است.");
+        if (string.IsNullOrWhiteSpace(description))
+            throw new BusinessRuleException("شرح پرداخت الزامی است.");
+        if (description.Length > MaxDescriptionLength)
+            throw new BusinessRuleException("شرح پرداخت بیش از حد طولانی است.");
 
-        var started = await _gateway.StartPaymentAsync(
-            new PaymentRequest(amountTomans, description, callbackUrl, mobile, email));
-
+        // ترتیب ساخت عمداً «اول رکورد محلی، بعد درگاه» است: اگر شروعِ درگاه شکست
+        // بخورد، رکورد Pending با Authority موقت می‌ماند (برای پیگیری) و اگر ذخیرهٔ
+        // محلی شکست بخورد، اصلاً به درگاه نرفته‌ایم — پس هیچ‌وقت «پول در درگاه،
+        // بی‌رکورد در دیتابیس» نداریم. Authority موقت یکتاست تا با قید unique برخورد نکند.
         Payment payment = null!;
         await _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
@@ -57,13 +70,33 @@ public class PaymentService : IPaymentService
                 AmountTomans = amountTomans,
                 Description = description,
                 Gateway = _gateway.Name,
-                Authority = started.Authority,
+                Authority = $"PENDING-{Guid.NewGuid():N}",
                 Status = PaymentStatus.Pending,
                 CreatedAtUtc = _clock.GetUtcNow().UtcDateTime
             };
             await _unitOfWork.Payments.AddAsync(payment);
             await _unitOfWork.CompleteAsync();
         });
+
+        PaymentStartResult started;
+        try
+        {
+            started = await _gateway.StartPaymentAsync(
+                new PaymentRequest(amountTomans, description, callbackUrl, mobile, email));
+        }
+        catch
+        {
+            // درگاه جواب نداد: رکورد با دلیل روشن Failed می‌شود تا در لیست ادمین
+            // قابل پیگیری باشد، ولی خطا بالا می‌رود تا کاربر «در حال انتظار» نماند.
+            payment.FailureReason = "شروع پرداخت در درگاه ناموفق بود.";
+            payment.Status = PaymentStatus.Failed;
+            await _unitOfWork.CompleteAsync();
+            throw;
+        }
+
+        payment.Authority = started.Authority;
+        payment.FailureReason = null;
+        await _unitOfWork.CompleteAsync();
 
         return (payment.Id, started.PaymentUrl);
     }

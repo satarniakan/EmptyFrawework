@@ -17,7 +17,10 @@ public interface INotificationRepository
     Task UpdateAsync(Notification notification);
 
     /// <summary>علامت‌گذاری همه‌ی اعلان‌های نخوانده‌ی کاربر به‌عنوان خوانده‌شده</summary>
-    Task MarkAllReadAsync(string userId);
+    Task MarkAllReadAsync(string userId, DateTime now);
+
+    /// <summary>حذف فیزیکی اعلان‌های خوانده‌شدهٔ قدیمی‌تر از cutoff (خانه‌تکانی). بازگشت: تعداد حذف‌شده.</summary>
+    Task<int> DeleteReadOlderThanAsync(DateTime cutoffUtc);
 
     /// <summary>شناسه‌ی همه‌ی کاربران — برای اعلان سراسری</summary>
     Task<List<string>> GetAllUserIdsAsync();

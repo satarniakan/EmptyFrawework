@@ -98,15 +98,29 @@ public class SettingService : ISettingService
     public async Task<string> GetEffectiveAsync(string key, string? configurationKey = null,
         string defaultValue = "")
     {
-        var setting = await _repository.GetAsync(key);
-        if (!string.IsNullOrEmpty(setting?.Value))
-            return UnprotectIfNeeded(key, setting.Value);
+        // این مسیر داغ است (هر SMS/پرداخت/کپچا/توکن از اینجا می‌گذرد) پس ردیف دیتابیس
+        // کش می‌شود؛ SetAsync/ClearAsync همان کش را باطل می‌کنند. خواندن appsettings
+        // (IConfiguration درون‌حافظه‌ای) ارزان است و کش نمی‌خواهد — پس ترکیب نهایی
+        // همیشه تازه است و مشکل «باطل‌کردن همهٔ ترکیب‌ها» هم پیش نمی‌آید.
+        var dbValue = await GetDbValueAsync(key);
+        if (!string.IsNullOrEmpty(dbValue))
+            return UnprotectIfNeeded(key, dbValue);
 
         var configured = configurationKey is null ? null : _configuration[configurationKey];
-        if (!string.IsNullOrEmpty(configured))
-            return configured;
+        return !string.IsNullOrEmpty(configured) ? configured : defaultValue;
+    }
 
-        return defaultValue;
+    /// <summary>مقدار خام ردیف دیتابیس (هنوز رمزگشایی‌نشده) با کش ۵ دقیقه‌ای.</summary>
+    private async Task<string?> GetDbValueAsync(string key)
+    {
+        var cacheKey = $"db:{key}";
+        if (_cache.TryGetValue(cacheKey, out string? cached))
+            return cached;
+
+        var setting = await _repository.GetAsync(key);
+        var value = setting?.Value;
+        _cache.Set(cacheKey, value, CacheLifetime);
+        return value;
     }
 
     public async Task SetAsync(string key, string? value)
@@ -120,7 +134,7 @@ public class SettingService : ISettingService
             UpdatedAtUtc = _clock.GetUtcNow().UtcDateTime
         });
         await _unitOfWork.CompleteAsync();
-        _cache.Remove(CacheKey(key));
+        InvalidateCaches(key);
 
         // فقط کلید ثبت می‌شود، هرگز مقدار (محرمانه‌ها قابل‌بازگشت نیستند)
         await _audit.LogEventAsync("setting.changed", ActorName, $"تنظیم «{key}» تغییر کرد.");
@@ -136,10 +150,22 @@ public class SettingService : ISettingService
     {
         await _repository.DeleteAsync(key);
         await _unitOfWork.CompleteAsync();
-        _cache.Remove(CacheKey(key));
+        InvalidateCaches(key);
 
         await _audit.LogEventAsync("setting.cleared", ActorName,
             $"تنظیم «{key}» به مقدار appsettings/پیش‌فرض برگشت.");
+    }
+
+    /// <summary>
+    /// باطل‌کردن همهٔ کش‌های مرتبط با یک کلید: کش <see cref="GetAsync"/>، کش ردیف
+    /// خام (<c>db:</c>) و کش مقدار رمزگشایی‌شدهٔ <see cref="HasValueAsync"/> نیست
+    /// (آن کش ندارد). چون فقط ردیف DB کش می‌شود، یک Remove کافی است و ترکیب نهایی
+    /// همیشه تازه ساخته می‌شود.
+    /// </summary>
+    private void InvalidateCaches(string key)
+    {
+        _cache.Remove(CacheKey(key));
+        _cache.Remove($"db:{key}");
     }
 
     private string? ActorName => _httpContext.HttpContext?.User.Identity?.Name;

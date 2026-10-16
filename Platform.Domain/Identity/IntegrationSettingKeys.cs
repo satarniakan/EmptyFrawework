@@ -27,6 +27,10 @@ public static class IntegrationSettingKeys
     public const string ZarinPalMerchantId = "integration:zarinpal-merchant-id";
     public const string ZarinPalSandbox = "integration:zarinpal-sandbox";
 
+    // پرداخت (زیبال — درگاه دوم) — appsettings: Payment:Zibal:*
+    public const string ZibalMerchantId = "integration:zibal-merchant-id";
+    public const string ZibalSandbox = "integration:zibal-sandbox";
+
     // کپچا (Turnstile) — appsettings: Captcha:Turnstile:*
     public const string TurnstileSecretKey = "integration:turnstile-secret-key";
     public const string TurnstileSiteKey = "integration:turnstile-sitekey";
@@ -38,4 +42,8 @@ public static class IntegrationSettingKeys
 
     // توکن API — appsettings: ApiTokens:*
     public const string ApiTokenLifetimeDays = "integration:apitoken-lifetime-days";
+
+    // نمک سمت سرور (pepper) برای هش OTP و توکن — appsettings: Security:Pepper.
+    // از env/secret می‌آید، نه دیتابیس؛ خالی یعنی رفتار قدیمی (سازگاری با دادهٔ موجود).
+    public const string SecurityPepper = "integration:security-pepper";
 }
