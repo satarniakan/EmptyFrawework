@@ -3,6 +3,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+// using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Platform.Application;
 using Platform.Infrastructure;
 using Platform.Infrastructure.Data;
@@ -33,8 +34,30 @@ public static class PlatformSetup
         services.AddPlatformApplication();
         services.AddPlatformInfrastructure(configuration, isDevelopment, migrationsAssembly);
 
-        // cache توزیع‌شده (InMemory پیش‌فرض؛ برای scale می‌توان Redis جایگزین کرد).
+        // cache توزیع‌شده: اگر اتصال Redis تنظیم شده باشد از Redis استفاده می‌شود،
+        // در غیر این صورت InMemory (برای توسعه و محیط‌های تک‌نشانه‌ای).
+        // TODO: فعال‌سازی StackExchange.Redis پس از بیلد موفق پکیج
+        // var redisConfig = configuration.GetConnectionString("Redis");
+        // if (!string.IsNullOrWhiteSpace(redisConfig))
+        // {
+        //     services.AddStackExchangeRedisCache(options =>
+        //     {
+        //         options.Configuration = redisConfig;
+        //         options.InstanceName = "Platform:";
+        //     });
+        // }
+        // else
+        // {
         services.AddDistributedMemoryCache();
+        // }
+
+        // Output Cache برای صفحات/endpointهای خواندنی (کاهش بار پایگاه‌داده)
+        services.AddOutputCache(options =>
+        {
+            options.DefaultExpirationTimeSpan = TimeSpan.FromMinutes(5);
+            options.AddPolicy("public", builder => builder.Expire(TimeSpan.FromMinutes(10)));
+            options.AddPolicy("private-5m", builder => builder.Expire(TimeSpan.FromMinutes(5)));
+        });
 
         services.AddCascadingAuthenticationState();
 

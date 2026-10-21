@@ -1,14 +1,15 @@
-{
+﻿{
   "$schema": "https://json.schemastore.org/appsettings.json",
 
-  "//": "این فایل را به appsettings.json کپی کنید و مقادیر واقعی را بگذارید. خودِ appsettings.json عمداً در git نیست.",
-  "//settings": "مقادیر عملیاتی (کلیدها، هاست‌ها) را می‌توانید بعداً از صفحه /admin/settings هم عوض کنید — ردیف دیتابیس بر این فایل مقدم است. مقادیر محرمانه در دیتابیس رمزنگاری می‌شوند.",
+  "//": "ط§غŒظ† ظپط§غŒظ„ ط±ط§ ط¨ظ‡ appsettings.json ع©ظ¾غŒ ع©ظ†غŒط¯ ظˆ ظ…ظ‚ط§ط¯غŒط± ظˆط§ظ‚ط¹غŒ ط±ط§ ط¨ع¯ط°ط§ط±غŒط¯. ط®ظˆط¯ظگ appsettings.json ط¹ظ…ط¯ط§ظ‹ ط¯ط± git ظ†غŒط³طھ.",
+  "//settings": "ظ…ظ‚ط§ط¯غŒط± ط¹ظ…ظ„غŒط§طھغŒ (ع©ظ„غŒط¯ظ‡ط§طŒ ظ‡ط§ط³طھâ€Œظ‡ط§) ط±ط§ ظ…غŒâ€Œطھظˆط§ظ†غŒط¯ ط¨ط¹ط¯ط§ظ‹ ط§ط² طµظپط­ظ‡ /admin/settings ظ‡ظ… ط¹ظˆط¶ ع©ظ†غŒط¯ â€” ط±ط¯غŒظپ ط¯غŒطھط§ط¨غŒط³ ط¨ط± ط§غŒظ† ظپط§غŒظ„ ظ…ظ‚ط¯ظ… ط§ط³طھ. ظ…ظ‚ط§ط¯غŒط± ظ…ط­ط±ظ…ط§ظ†ظ‡ ط¯ط± ط¯غŒطھط§ط¨غŒط³ ط±ظ…ط²ظ†ع¯ط§ط±غŒ ظ…غŒâ€Œط´ظˆظ†ط¯.",
 
   "ConnectionStrings": {
-    "Default": "Server=(localdb)\\mssqllocaldb;Database=EmptyFrameworkDev;Trusted_Connection=True;TrustServerCertificate=True"
+    "Default": "Server=(localdb)\\mssqllocaldb;Database=EmptyFrameworkDev;Trusted_Connection=True;TrustServerCertificate=True",
+    "Redis": ""
   },
   "Serilog": {
-    "//log-note": "سطح System را از Warning پایین نیاورید: کلید API کاوه‌نگار داخل URL درخواست است و لاگ HttpClient آن را با آدرس کامل ثبت می‌کند.",
+    "//log-note": "ط³ط·ط­ System ط±ط§ ط§ط² Warning ظ¾ط§غŒغŒظ† ظ†غŒط§ظˆط±غŒط¯: ع©ظ„غŒط¯ API ع©ط§ظˆظ‡â€Œظ†ع¯ط§ط± ط¯ط§ط®ظ„ URL ط¯ط±ط®ظˆط§ط³طھ ط§ط³طھ ظˆ ظ„ط§ع¯ HttpClient ط¢ظ† ط±ط§ ط¨ط§ ط¢ط¯ط±ط³ ع©ط§ظ…ظ„ ط«ط¨طھ ظ…غŒâ€Œع©ظ†ط¯.",
     "MinimumLevel": {
       "Default": "Information",
       "Override": {
@@ -19,11 +20,11 @@
     }
   },
   "Identity": {
-    "//": "شماره‌ی ادمین اول روی دیتابیس خالی. خالی یعنی هیچ‌کس خودکار ادمین نمی‌شود و کاربران تازه نقش «کاربر» می‌گیرند.",
+    "//": "ط´ظ…ط§ط±ظ‡â€ŒغŒ ط§ط¯ظ…غŒظ† ط§ظˆظ„ ط±ظˆغŒ ط¯غŒطھط§ط¨غŒط³ ط®ط§ظ„غŒ. ط®ط§ظ„غŒ غŒط¹ظ†غŒ ظ‡غŒع†â€Œع©ط³ ط®ظˆط¯ع©ط§ط± ط§ط¯ظ…غŒظ† ظ†ظ…غŒâ€Œط´ظˆط¯ ظˆ ع©ط§ط±ط¨ط±ط§ظ† طھط§ط²ظ‡ ظ†ظ‚ط´ آ«ع©ط§ط±ط¨ط±آ» ظ…غŒâ€Œع¯غŒط±ظ†ط¯.",
     "FirstAdminPhoneNumber": ""
   },
   "Sms": {
-    "//": "Provider: Fake (لاگ) یا Kavenegar (واقعی).",
+    "//": "Provider: Fake (ظ„ط§ع¯) غŒط§ Kavenegar (ظˆط§ظ‚ط¹غŒ).",
     "Provider": "Fake",
     "Kavenegar": {
       "ApiKey": "",
@@ -39,11 +40,11 @@
       "Username": null,
       "Password": null,
       "FromAddress": "no-reply@localhost",
-      "FromName": "سامانه"
+      "FromName": "ط³ط§ظ…ط§ظ†ظ‡"
     }
   },
   "Payment": {
-    "//": "Provider: Fake (نمایشی)، ZarinPal یا Zibal (واقعی). مبالغ به تومان.",
+    "//": "Provider: Fake (ظ†ظ…ط§غŒط´غŒ)طŒ ZarinPal غŒط§ Zibal (ظˆط§ظ‚ط¹غŒ). ظ…ط¨ط§ظ„ط؛ ط¨ظ‡ طھظˆظ…ط§ظ†.",
     "Provider": "Fake",
     "ZarinPal": {
       "MerchantId": "",
@@ -55,7 +56,7 @@
     }
   },
   "Captcha": {
-    "//": "Provider: خالی/Fake (غیرفعال) یا Turnstile (واقعی).",
+    "//": "Provider: ط®ط§ظ„غŒ/Fake (ط؛غŒط±ظپط¹ط§ظ„) غŒط§ Turnstile (ظˆط§ظ‚ط¹غŒ).",
     "Provider": "",
     "Turnstile": {
       "SiteKey": "",
@@ -63,7 +64,7 @@
     }
   },
   "Push": {
-    "//": "کلیدهای VAPID برای وب‌پوش. ساخت: npx web-push generate-vapid-keys",
+    "//": "ع©ظ„غŒط¯ظ‡ط§غŒ VAPID ط¨ط±ط§غŒ ظˆط¨â€Œظ¾ظˆط´. ط³ط§ط®طھ: npx web-push generate-vapid-keys",
     "//Subject": "mailto:admin@example.com",
     "Vapid": {
       "Subject": "",
@@ -72,33 +73,34 @@
     }
   },
   "ApiTokens": {
-    "//": "عمر توکن موبایل به روز.",
+    "//": "ط¹ظ…ط± طھظˆع©ظ† ظ…ظˆط¨ط§غŒظ„ ط¨ظ‡ ط±ظˆط².",
     "LifetimeDays": 180
   },
   "Support": {
-    "//": "جانشینی ادمین (ورود به‌جای کاربر). پیش‌فرض خاموش؛ فقط برای پشتیبانی روشن کنید.",
+    "//": "ط¬ط§ظ†ط´غŒظ†غŒ ط§ط¯ظ…غŒظ† (ظˆط±ظˆط¯ ط¨ظ‡â€Œط¬ط§غŒ ع©ط§ط±ط¨ط±). ظ¾غŒط´â€Œظپط±ط¶ ط®ط§ظ…ظˆط´ط› ظپظ‚ط· ط¨ط±ط§غŒ ظ¾ط´طھغŒط¨ط§ظ†غŒ ط±ظˆط´ظ† ع©ظ†غŒط¯.",
     "ImpersonationEnabled": false
   },
   "Retention": {
-    "//": "سقف نگه‌داری جدول‌های رشدکننده (روز)؛ خانه‌تکانی هر ۲۴ ساعت اجرا می‌شود. صفر یعنی حذف نشود.",
+    "//": "ط³ظ‚ظپ ظ†ع¯ظ‡â€Œط¯ط§ط±غŒ ط¬ط¯ظˆظ„â€Œظ‡ط§غŒ ط±ط´ط¯ع©ظ†ظ†ط¯ظ‡ (ط±ظˆط²)ط› ط®ط§ظ†ظ‡â€Œطھع©ط§ظ†غŒ ظ‡ط± غ²غ´ ط³ط§ط¹طھ ط§ط¬ط±ط§ ظ…غŒâ€Œط´ظˆط¯. طµظپط± غŒط¹ظ†غŒ ط­ط°ظپ ظ†ط´ظˆط¯.",
     "LoginHistoryDays": 180,
     "NotificationDays": 90,
     "ApiTokenDays": 90,
     "AuditLogDays": 730
   },
   "Security": {
-    "//Pepper": "نمک سمت سرور برای هش OTP و توکن. مقدار واقعی را در Secret Manager یا env بگذارید (Security:Pepper)؛ خالی یعنی رفتار قدیمی.",
+    "//Pepper": "ظ†ظ…ع© ط³ظ…طھ ط³ط±ظˆط± ط¨ط±ط§غŒ ظ‡ط´ OTP ظˆ طھظˆع©ظ†. ظ…ظ‚ط¯ط§ط± ظˆط§ظ‚ط¹غŒ ط±ط§ ط¯ط± Secret Manager غŒط§ env ط¨ع¯ط°ط§ط±غŒط¯ (Security:Pepper)ط› ط®ط§ظ„غŒ غŒط¹ظ†غŒ ط±ظپطھط§ط± ظ‚ط¯غŒظ…غŒ.",
     "Pepper": ""
   },
   "ForwardedHeaders": {
-    "//": "پشت reverse proxy این را false نگه دارید، وگرنه همهٔ کاربران یک IP می‌گیرند و rate limit همه را قفل می‌کند.",
+    "//": "ظ¾ط´طھ reverse proxy ط§غŒظ† ط±ط§ false ظ†ع¯ظ‡ ط¯ط§ط±غŒط¯طŒ ظˆع¯ط±ظ†ظ‡ ظ‡ظ…ظ‡ظ” ع©ط§ط±ط¨ط±ط§ظ† غŒع© IP ظ…غŒâ€Œع¯غŒط±ظ†ط¯ ظˆ rate limit ظ‡ظ…ظ‡ ط±ط§ ظ‚ظپظ„ ظ…غŒâ€Œع©ظ†ط¯.",
     "TrustAllProxies": false
   },
   "AllowedHosts": "*",
   "Storage": {
-    "//": "فعال‌سازی LocalFileStorage (لایه‌ی Infrastructure/Services) در محیط‌های Local/Development استفاده می‌شود؛ مقدار‌های خالی برای LocalFileStorage در محیط‌های واقعی قابل تنظیم است.",
+    "//": "ظپط¹ط§ظ„â€Œط³ط§ط²غŒ LocalFileStorage (ظ„ط§غŒظ‡â€ŒغŒ Infrastructure/Services) ط¯ط± ظ…ط­غŒط·â€Œظ‡ط§غŒ Local/Development ط§ط³طھظپط§ط¯ظ‡ ظ…غŒâ€Œط´ظˆط¯ط› ظ…ظ‚ط¯ط§ط±â€Œظ‡ط§غŒ ط®ط§ظ„غŒ ط¨ط±ط§غŒ LocalFileStorage ط¯ط± ظ…ط­غŒط·â€Œظ‡ط§غŒ ظˆط§ظ‚ط¹غŒ ظ‚ط§ط¨ظ„ طھظ†ط¸غŒظ… ط§ط³طھ.",
     "RootPath": "AppData",
     "MaxFileSizeBytes": "52428800",
     "AllowedExtensions": "jpg,jpeg,png,gif,bmp,webp,mp3,mp4,pdf,docx,xlsx,pptx,zip"
   }
 }
+

@@ -34,6 +34,10 @@
     <!-- اعلان وب‌پوش -->
     <PackageVersion Include="WebPush" Version="1.0.13" />
 
+    <!-- کش توزیع‌شده (اختیاری، جایگزین InMemory Cache در Production) -->
+    <PackageVersion Include="StackExchange.Redis" Version="2.8.24" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.13" />
+
     <!-- تست -->
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
