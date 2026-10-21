@@ -1,6 +1,7 @@
 // تم روشن/تاریک — باید در <head> و قبل از رندر بدنه بارگذاری شود تا صفحه بدون پرش رنگ بالا بیاید
 (function () {
     const KEY = 'platform-theme';
+    const docEl = document.documentElement;
 
     // آیکون کلید تم همیشه تم «مقابل» را نشان می‌دهد (در تاریک: خورشید، در روشن: ماه)
     function syncToggleIcons(theme) {
@@ -10,35 +11,66 @@
     }
 
     function apply(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        document.documentElement.setAttribute('data-bs-theme', theme);
+        if (!theme) theme = 'light';
+        docEl.setAttribute('data-theme', theme);
+        docEl.setAttribute('data-bs-theme', theme);
         syncToggleIcons(theme);
     }
 
-    // اگر کاربر انتخابی ذخیره نکرده باشد، پیش‌فرض تم سیستم‌عامل است
-// و تا وقتی دستی انتخاب نکرده، تغییر تم سیستم به‌صورت زنده هم اعمال می‌شود
-const saved = localStorage.getItem(KEY);
-const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
-apply(saved === 'dark' || saved === 'light' ? saved : (systemDark.matches ? 'dark' : 'light'));
+    // تم ذخیره‌شده یا تم سیستم‌عامل
+    const saved = localStorage.getItem(KEY);
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+    const initialTheme = saved === 'dark' || saved === 'light' ? saved : (systemDark.matches ? 'dark' : 'light');
+    apply(initialTheme);
 
-// آیکون‌ها بعد از رندر بدنه هم همگام می‌شوند (apply اول در head است و بدنه هنوز نیست)
-document.addEventListener('DOMContentLoaded', () =>
-    syncToggleIcons(document.documentElement.getAttribute('data-theme') || 'light'));
+    // آیکون‌ها بعد از رندر بدنه هم همگام می‌شوند
+    document.addEventListener('DOMContentLoaded', () => {
+        syncToggleIcons(docEl.getAttribute('data-theme') || 'light');
+        // navigationsِ Blazor و ریدایرکت‌های خطا می‌توانند data-theme را از دست دهند؛ بعد از لود دوباره اعمال می‌کنیم
+        apply(docEl.getAttribute('data-theme') || initialTheme);
+    });
 
-if (saved !== 'dark' && saved !== 'light') {
-    systemDark.addEventListener('change', (e) => {
-        if (localStorage.getItem(KEY) !== 'dark' && localStorage.getItem(KEY) !== 'light') {
-            apply(e.matches ? 'dark' : 'light');
+    // اگر کاربر تم دستی انتخاب نکرده باشد، تغییر سیستم‌عامل زنده اعمال شود
+    if (saved !== 'dark' && saved !== 'light') {
+        systemDark.addEventListener('change', (e) => {
+            if (localStorage.getItem(KEY) !== 'dark' && localStorage.getItem(KEY) !== 'light') {
+                apply(e.matches ? 'dark' : 'light');
+            }
+        });
+    }
+
+    // ”zelf-healing”: اگر هر کد/js nào data-theme را بگیرد، بلافاصله به حالت قبل بازمی‌گردد
+    const observer = new MutationObserver((mutations) => {
+        for (const m of mutations) {
+            if (m.attributeName === 'data-theme' || m.attributeName === 'data-bs-theme') {
+                const current = docEl.getAttribute('data-theme');
+                if (current !== initialTheme && current !== saved) {
+                    // فقط وقتی keystroke‌های خارجی هستند، بازگردانی می‌کنیم
+                    apply(current || initialTheme);
+                }
+            }
         }
     });
-}
+    observer.observe(docEl, { attributes: true, attributeFilter: ['data-theme', 'data-bs-theme'] });
+
+    // Blazor navigate events (client-side navigation) را شنونده می‌گیرد تا تم حفظ شود
+    if (window.Blazor && window.Blazor.navigation) {
+        window.Blazor.navigation.addEventListener('navigate', () => {
+            apply(docEl.getAttribute('data-theme') || initialTheme);
+        });
+    }
 
     window.themeInterop = {
-        get: () => document.documentElement.getAttribute('data-theme') || 'light',
+        get: () => docEl.getAttribute('data-theme') || 'light',
         set: (theme) => {
             localStorage.setItem(KEY, theme);
             apply(theme);
             return theme;
+        },
+        reapply: () => {
+            const t = localStorage.getItem(KEY) || initialTheme;
+            apply(t);
+            return t;
         },
         toggle: () => {
             const next = window.themeInterop.get() === 'dark' ? 'light' : 'dark';

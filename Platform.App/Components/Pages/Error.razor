@@ -1,7 +1,8 @@
-@page "/Error"
+﻿@page "/Error"
 @using System.Diagnostics
 @using Platform.Domain.Exceptions
 @using Platform.App.Components.Shared
+@inject IJSRuntime JS
 
 <PageTitle>خطا</PageTitle>
 
@@ -57,6 +58,24 @@
     private string? RequestId { get; set; }
     private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
 
-    protected override void OnInitialized() =>
+    protected override void OnInitialized()
+    {
         RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+
+        // وقتی exception رخ داده و کاربر به /Error ریدایرکت شده است، تم ذخیره‌شده را دوباره اعمال می‌کنیم
+        // تا تم در ریدایرکت خطا از حالت تیره به روشن تغییر نمی‌یابد.
+        if (OperatingSystem.IsBrowser())
+        {
+            try
+            {
+                _ = JS.InvokeVoidAsync("themeInterop.reapply");
+            }
+            catch
+            {
+                // اگر JS interop در دسترس نباشد، نادیده گرفته شود
+
+// theme.js در بارگذاری صفحه تم را اعمال می‌کند.
+            }
+        }
+    }
 }

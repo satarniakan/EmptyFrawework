@@ -1,0 +1,80 @@
+﻿@page "/Error"
+@using System.Diagnostics
+@using Platform.Domain.Exceptions
+@using Platform.App.Components.Shared
+
+<PageTitle>ط®ط·ط§</PageTitle>
+
+<div class="card-panel" style="max-width: 640px; margin: 2rem auto;">
+    <div class="text-center py-4">
+        <i class="bi bi-exclamation-triangle-fill text-danger d-block mb-3" style="font-size: 3rem;"></i>
+
+        @if (!string.IsNullOrEmpty(Message))
+        {
+            <h3 class="mb-2">@Message</h3>
+        }
+        else
+        {
+            <h3 class="mb-2">ط®ط·ط§غŒ ط؛غŒط±ظ…ظ†طھط¸ط±ظ‡â€Œط§غŒ ط±ط® ط¯ط§ط¯</h3>
+            <p class="text-body-secondary mb-0">ظ„ط·ظپط§ظ‹ ط¯ظˆط¨ط§ط±ظ‡ طھظ„ط§ط´ ع©ظ†غŒط¯ غŒط§ ط¨ط§ ظ¾ط´طھغŒط¨ط§ظ†غŒ طھظ…ط§ط³ ط¨ع¯غŒط±غŒط¯.</p>
+        }
+
+        @if (StatusCode is not null)
+        {
+            <p class="text-body-secondary small mt-3 mb-0">ع©ط¯ ظˆط¶ط¹غŒطھ: @StatusCode</p>
+        }
+
+        @if (ShowRequestId)
+        {
+            <p class="text-body-secondary small mt-1 mb-0">
+                ط´ظ†ط§ط³ظ‡ظ” ط¯ط±ط®ظˆط§ط³طھ: <code>@RequestId</code>
+            </p>
+        }
+
+        <div class="d-flex gap-2 justify-content-center mt-4">
+            <button class="btn btn-primary" onclick="window.location.href='/'">
+                <i class="bi bi-house-door me-1"></i>ط¨ط§ط²ع¯ط´طھ ط¨ظ‡ ط®ط§ظ†ظ‡
+            </button>
+            <button class="btn btn-outline-secondary" onclick="window.history.back()">
+                <i class="bi bi-arrow-right me-1"></i>ط¨ط§ط²ع¯ط´طھ
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    /// <summary>ظ¾غŒط§ظ… ظپط§ط±ط³غŒظگ ط§ظ…ظ† ع©ظ‡ ظ…ط¯غŒط±غŒطھ ط®ط·ط§غŒ ط³ط±ط§ط³ط±غŒ ظپط±ط³طھط§ط¯ظ‡ ط§ط³طھ.</summary>
+    [SupplyParameterFromQuery(Name = "message")]
+    private string? Message { get; set; }
+
+    /// <summary>ع©ط¯ ظˆط¶ط¹غŒطھ HTTP ع©ظ‡ ط¨ظ‡ ط§غŒظ† طµظپط­ظ‡ ظ…ظ†ط¬ط± ط´ط¯ظ‡ ط§ط³طھ.</summary>
+    [SupplyParameterFromQuery(Name = "code")]
+    private int? StatusCode { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized()
+    {
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+
+        // quando exception ط±ط® ط¯ط§ط¯ظ‡ ظˆ ع©ط§ط±ط¨ط± ط¨ظ‡ /Error ط±غŒط¯ط§غŒط±ع©طھ ط´ط¯ظ‡ ط§ط³طھطŒ طھظ… ط°ط®غŒط±ظ‡â€Œط´ط¯ظ‡ ط±ط§ ط¯ظˆط¨ط§ط±ظ‡ ط§ط¹ظ…ط§ظ„ ظ…غŒâ€Œع©ظ†غŒظ…
+        // طھط§ ط¨ط¯ذ½ذ°ذ¼iddleware ط®ط·ط§ themes ط±ط§ ط§ط² ط¯ط³طھ ظ†ط¯ظ‡ط¯
+        if (OperatingSystem.IsBrowser())
+        {
+            try
+            {
+                JS.InvokeVoidAsync("themeInterop.reapply");
+            }
+            catch
+            {
+                // ط§ع¯ط± JS ط¯ط± ط§غŒظ†");
+
+// Ausnahme: ignoring if JS interop not available yet
+            }
+        }
+    }
+}
