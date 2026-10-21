@@ -17,6 +17,22 @@
   "guids": [
     "3f6d1c2a-0000-4000-8000-000000000001"
   ],
+  "postActions": [
+    {
+      "actionId": "restore",
+      "condition": "true",
+      "description": "Restore NuGet packages",
+      "manualInstructions": [
+        {
+          "text": "Run 'dotnet restore' to restore packages."
+        }
+      ],
+      "args": {
+        "files": "0"
+      },
+      "continueOnError": true
+    }
+  ],
   "sources": [
     {
       "exclude": [
