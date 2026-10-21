@@ -92,6 +92,12 @@ public static class PlatformSetup
         // باید بعد از AddAuthorization بیاید تا جایگزین provider پیش‌فرض شود.
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
+        // output cache برای صفحات عمومی و endpointهای خواندنی (بدون مجوز)
+        services.AddOutputCache(options =>
+        {
+            options.AddBasePolicy(builder => builder.Expire(TimeSpan.FromSeconds(60)));
+        });
+
         services.AddScoped<ToastService>();
         services.AddSingleton<RecurringJobStatusTracker>();
         services.AddHostedService<OutboxProcessor>();

@@ -15,8 +15,6 @@
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
     <PackageReference Include="StackExchange.Redis" />
     <PackageReference Include="Serilog.AspNetCore" />
-    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
-    <PackageReference Include="StackExchange.Redis" />
   </ItemGroup>
 
   <ItemGroup>

@@ -98,6 +98,9 @@ app.UseOutputCache();
 // درخواست‌هایی که با هیچ صفحه‌ای مطابقت ندارند به صفحهٔ طراحی‌شدهٔ not-found هدایت می‌شوند.
 app.UseStatusCodePagesWithReExecute("/not-found", "?from={0}");
 
+// output cache (Responses عمومی بدون Authorization cache می‌شوند؛ قبل از Authentication)
+app.UseOutputCache();
+
 // Antiforgery به هویت کاربر نیاز دارد، پس باید بعد از Authentication/Authorization بیاید
 app.UseAuthentication();
 app.UseAuthorization();
