@@ -33,6 +33,9 @@ public static class PlatformSetup
         services.AddPlatformApplication();
         services.AddPlatformInfrastructure(configuration, isDevelopment, migrationsAssembly);
 
+        // cache توزیع‌شده (InMemory پیش‌فرض؛ برای scale می‌توان Redis جایگزین کرد).
+        services.AddDistributedMemoryCache();
+
         services.AddCascadingAuthenticationState();
 
         // fetchهای JS توکن ضدجعل را در هدر X-XSRF-TOKEN می‌فرستند (platformApi.post)؛
