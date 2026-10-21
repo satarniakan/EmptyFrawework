@@ -38,7 +38,9 @@
     <PackageVersion Include="StackExchange.Redis" Version="2.8.24" />
     <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.13" />
 
-    <!-- تست -->
+    <!-- Health Checks UI (داشبورد بصری برای /health) -->
+    <PackageVersion Include="AspNetCore.HealthChecks.UI" Version="9.0.0" />
+    <PackageVersion Include="AspNetCore.HealthChecks.UI.InMemory.Storage" Version="9.0.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.13" />

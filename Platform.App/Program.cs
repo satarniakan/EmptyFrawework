@@ -110,6 +110,7 @@ app.UseRateLimiter();
 // endpointهای پایه (احراز هویت و اعلان‌ها). endpoint دامنه بعد از این می‌آید.
 app.MapPlatform();
 app.MapHealthChecks("/health");
+app.MapHealthChecksUI(options => options.UIPath = "/health-ui");
 
 // مستندات خودکار API موبایل — فقط در Development (شامل کلید عمومی پوش و مسیرهای auth).
 // مرور JSON در: /openapi/v1.json
