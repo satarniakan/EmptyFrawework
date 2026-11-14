@@ -3,6 +3,11 @@
     const KEY = 'platform-theme';
     const docEl = document.documentElement;
 
+    // تم ذخیره‌شده یا تم سیستم‌عامل
+    const saved = localStorage.getItem(KEY);
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+    let currentTheme = saved === 'dark' || saved === 'light' ? saved : (systemDark.matches ? 'dark' : 'light');
+
     // آیکون کلید تم همیشه تم «مقابل» را نشان می‌دهد (در تاریک: خورشید، در روشن: ماه)
     function syncToggleIcons(theme) {
         document.querySelectorAll('.theme-toggle i').forEach((icon) => {
@@ -12,70 +17,63 @@
 
     function apply(theme) {
         if (!theme) theme = 'light';
-        docEl.setAttribute('data-theme', theme);
-        docEl.setAttribute('data-bs-theme', theme);
+        currentTheme = theme;
+        // setAttribute با مقدار تکراری هم رکورد mutation می‌سازد؛ بدون این گارد،
+        // observer پایین با هر بار اعمال تم دوباره فعال می‌شود و حلقهٔ بی‌پایان صفحه را فریز می‌کند
+        if (docEl.getAttribute('data-theme') !== theme) docEl.setAttribute('data-theme', theme);
+        if (docEl.getAttribute('data-bs-theme') !== theme) docEl.setAttribute('data-bs-theme', theme);
         syncToggleIcons(theme);
     }
 
-    // تم ذخیره‌شده یا تم سیستم‌عامل
-    const saved = localStorage.getItem(KEY);
-    const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
-    const initialTheme = saved === 'dark' || saved === 'light' ? saved : (systemDark.matches ? 'dark' : 'light');
-    apply(initialTheme);
+    apply(currentTheme);
 
     // آیکون‌ها بعد از رندر بدنه هم همگام می‌شوند
     document.addEventListener('DOMContentLoaded', () => {
-        syncToggleIcons(docEl.getAttribute('data-theme') || 'light');
-        // navigationsِ Blazor و ریدایرکت‌های خطا می‌توانند data-theme را از دست دهند؛ بعد از لود دوباره اعمال می‌کنیم
-        apply(docEl.getAttribute('data-theme') || initialTheme);
+        apply(currentTheme);
+        // ناوبری enhanced (فرم‌های SSR) بدنه را عوض می‌کند؛ آیکون‌ها باید دوباره همگام شوند
+        if (window.Blazor && window.Blazor.addEventListener) {
+            window.Blazor.addEventListener('enhancedload', () => syncToggleIcons(currentTheme));
+        }
     });
 
     // اگر کاربر تم دستی انتخاب نکرده باشد، تغییر سیستم‌عامل زنده اعمال شود
-    if (saved !== 'dark' && saved !== 'light') {
-        systemDark.addEventListener('change', (e) => {
-            if (localStorage.getItem(KEY) !== 'dark' && localStorage.getItem(KEY) !== 'light') {
-                apply(e.matches ? 'dark' : 'light');
-            }
-        });
-    }
+    systemDark.addEventListener('change', (e) => {
+        const stored = localStorage.getItem(KEY);
+        if (stored !== 'dark' && stored !== 'light') {
+            apply(e.matches ? 'dark' : 'light');
+        }
+    });
 
-    // ”zelf-healing”: اگر هر کد/js nào data-theme را بگیرد، بلافاصله به حالت قبل بازمی‌گردد
-    const observer = new MutationObserver((mutations) => {
-        for (const m of mutations) {
-            if (m.attributeName === 'data-theme' || m.attributeName === 'data-bs-theme') {
-                const current = docEl.getAttribute('data-theme');
-                if (current !== initialTheme && current !== saved) {
-                    // فقط وقتی keystroke‌های خارجی هستند، بازگردانی می‌کنیم
-                    apply(current || initialTheme);
-                }
-            }
+    // اگر کد خارجی data-theme را حذف یا عوض کرد، به تم جاری کاربر برگردانده می‌شود.
+    // چون apply مقدار یکسان را دوباره ست نمی‌کند، این observer هرگز حلقه نمی‌شود.
+    const observer = new MutationObserver(() => {
+        if (docEl.getAttribute('data-theme') !== currentTheme ||
+            docEl.getAttribute('data-bs-theme') !== currentTheme) {
+            apply(currentTheme);
         }
     });
     observer.observe(docEl, { attributes: true, attributeFilter: ['data-theme', 'data-bs-theme'] });
 
-    // Blazor navigate events (client-side navigation) را شنونده می‌گیرد تا تم حفظ شود
-    if (window.Blazor && window.Blazor.navigation) {
-        window.Blazor.navigation.addEventListener('navigate', () => {
-            apply(docEl.getAttribute('data-theme') || initialTheme);
-        });
-    }
+    // کلیک کلید تم با JS مدیریت می‌شود تا در صفحات استاتیک (بدون مدار Blazor) هم کار کند
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.theme-toggle')) {
+            e.preventDefault();
+            window.themeInterop.toggle();
+        }
+    });
 
     window.themeInterop = {
-        get: () => docEl.getAttribute('data-theme') || 'light',
+        get: () => currentTheme,
         set: (theme) => {
             localStorage.setItem(KEY, theme);
             apply(theme);
             return theme;
         },
         reapply: () => {
-            const t = localStorage.getItem(KEY) || initialTheme;
-            apply(t);
-            return t;
+            apply(localStorage.getItem(KEY) || currentTheme);
+            return currentTheme;
         },
-        toggle: () => {
-            const next = window.themeInterop.get() === 'dark' ? 'light' : 'dark';
-            return window.themeInterop.set(next);
-        }
+        toggle: () => window.themeInterop.set(currentTheme === 'dark' ? 'light' : 'dark')
     };
 })();
 

@@ -51,8 +51,9 @@
             <AuthorizeView>
                 <NotificationBell />
             </AuthorizeView>
-            <button class="theme-toggle" @onclick="ToggleTheme" title="تغییر تم روشن/تاریک" aria-label="تغییر تم">
-                <i class="bi @(isDark ? "bi-sun-fill" : "bi-moon-stars-fill")"></i>
+            @* کلیک تم در theme.js مدیریت می‌شود تا صفحات استاتیک (بدون مدار Blazor) هم کار کنند *@
+            <button type="button" class="theme-toggle" title="تغییر تم روشن/تاریک" aria-label="تغییر تم">
+                <i class="bi bi-moon-stars-fill"></i>
             </button>
         </div>
         <article class="content px-4 py-4">
@@ -80,32 +81,6 @@
 
 @code {
     private AppErrorBoundary? errorBoundary;
-    private bool isDark;
-
-    [Inject]
-    private IJSRuntime JSRuntime { get; set; } = default!;
 
     private void Recover() => errorBoundary?.Recover();
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            try
-            {
-                isDark = await JSRuntime.InvokeAsync<string>("themeInterop.get") == "dark";
-                StateHasChanged();
-            }
-            catch (JSDisconnectedException) { }
-        }
-    }
-
-    private async Task ToggleTheme()
-    {
-        try
-        {
-            isDark = await JSRuntime.InvokeAsync<string>("themeInterop.toggle") == "dark";
-        }
-        catch (JSDisconnectedException) { }
-    }
 }
