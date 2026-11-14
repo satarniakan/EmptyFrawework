@@ -41,6 +41,13 @@
     <!-- Health Checks UI (داشبورد بصری برای /health) -->
     <PackageVersion Include="AspNetCore.HealthChecks.UI" Version="9.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.UI.InMemory.Storage" Version="9.0.0" />
+    <!-- Feature Flags -->
+    <PackageVersion Include="Microsoft.FeatureManagement.AspNetCore" Version="4.0.0" />
+    <!-- Background Jobs (Quartz.NET) -->
+    <PackageVersion Include="Quartz" Version="3.13.1" />
+    <PackageVersion Include="Quartz.Extensions.Hosting" Version="3.13.1" />
+    <!-- Telegram Bot -->
+    <PackageVersion Include="Telegram.Bot" Version="22.0.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.13" />

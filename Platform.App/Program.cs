@@ -66,6 +66,9 @@ app.UseForwardedHeaders(forwardedHeadersOptions);
 // شناسهٔ همبستگی (X-Correlation-ID): اولِ پایپ‌لاین تا همهٔ لاگ‌ها و پاسخ‌ها آن را داشته باشند
 app.UsePlatformCorrelationId();
 
+// چند租户ی: تشخیص tenant از هدر یا subdomain
+app.UsePlatformMultiTenancy();
+
 // هدرهای امنیتی (nosniff، SAMEORIGIN، Referrer-Policy) — روی همهٔ پاسخ‌ها، از جمله خطاها.
 app.UsePlatformSecurityHeaders();
 

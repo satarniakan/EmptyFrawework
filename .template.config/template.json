@@ -19,7 +19,7 @@
   ],
   "postActions": [
     {
-      "actionId": "restore",
+      "actionId": "210D431B-A78B-4D2F-B762-4ED3E3EA9025",
       "condition": "true",
       "description": "Restore NuGet packages",
       "manualInstructions": [

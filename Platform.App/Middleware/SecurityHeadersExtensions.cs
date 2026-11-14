@@ -29,9 +29,8 @@ public static class SecurityHeadersExtensions
             context.Response.Headers["X-Content-Type-Options"] = "nosniff";
             context.Response.Headers["X-Frame-Options"] = "SAMEORIGIN";
             context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-            // CSP در حالت Report-Only: خطاهای نقض را در کنسول مرورگر لاگ می‌کند
-            // ولی صفحه را مسدود نمی‌کند — برای تست ایمن.
-            context.Response.Headers["Content-Security-Policy-Report-Only"] = ContentSecurityPolicy;
+            // CSP Enforce: پس از تست‌های مرورگر، Report-Only به Enforce تبدیل شد.
+            context.Response.Headers["Content-Security-Policy"] = ContentSecurityPolicy;
             await next();
         });
 }

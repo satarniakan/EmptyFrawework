@@ -15,6 +15,9 @@ using Platform.Application.Jobs;
 using Platform.App.Authentication;
 using Platform.App.Authorization;
 using Platform.App.Endpoints;
+using Microsoft.FeatureManagement;
+using Quartz;
+using Platform.App.Middleware;
 using Platform.App.Services;
 
 namespace Platform.App;
@@ -68,6 +71,17 @@ public static class PlatformSetup
             options.AddHealthCheckEndpoint("Platform", "/health");
         })
         .AddInMemoryStorage();
+
+        // Feature Flags (Microsoft.FeatureManagement) — بخش‌های اختیاری را بدون تغییر کد روشن/خاموش کنید
+        services.AddFeatureManagement();
+
+        // Background Jobs (Quartz.NET) — کارهای دوره‌ای (پاک‌سازی، Outbox، گزارش‌گیری)
+        services.AddQuartz(q => { /* jobهای دامنه بعداً اضافه می‌شوند */ });
+        services.AddQuartzHostedService(options => options.WaitForJobsToComplete = true);
+
+        // چند租户ی: context scoped به هر درخواست
+        services.AddScoped<TenantContext>();
+        services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
 
         services.AddCascadingAuthenticationState();
 
