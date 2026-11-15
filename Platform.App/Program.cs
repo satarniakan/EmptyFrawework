@@ -66,9 +66,6 @@ app.UseForwardedHeaders(forwardedHeadersOptions);
 // شناسهٔ همبستگی (X-Correlation-ID): اولِ پایپ‌لاین تا همهٔ لاگ‌ها و پاسخ‌ها آن را داشته باشند
 app.UsePlatformCorrelationId();
 
-// چند租户ی: تشخیص tenant از هدر یا subdomain
-app.UsePlatformMultiTenancy();
-
 // هدرهای امنیتی (nosniff، SAMEORIGIN، Referrer-Policy) — روی همهٔ پاسخ‌ها، از جمله خطاها.
 app.UsePlatformSecurityHeaders();
 
@@ -96,13 +93,12 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+// کش خروجی برای پاسخ‌های عمومی؛ قبل از Authentication تا پاسخ‌های احراز هویت‌شده کش نشوند.
 app.UseOutputCache();
 
 // درخواست‌هایی که با هیچ صفحه‌ای مطابقت ندارند به صفحهٔ طراحی‌شدهٔ not-found هدایت می‌شوند.
 app.UseStatusCodePagesWithReExecute("/not-found", "?from={0}");
-
-// output cache (Responses عمومی بدون Authorization cache می‌شوند؛ قبل از Authentication)
-app.UseOutputCache();
 
 // Antiforgery به هویت کاربر نیاز دارد، پس باید بعد از Authentication/Authorization بیاید
 app.UseAuthentication();
@@ -113,7 +109,6 @@ app.UseRateLimiter();
 // endpointهای پایه (احراز هویت و اعلان‌ها). endpoint دامنه بعد از این می‌آید.
 app.MapPlatform();
 app.MapHealthChecks("/health");
-app.MapHealthChecksUI(options => options.UIPath = "/health-ui");
 
 // مستندات خودکار API موبایل — فقط در Development (شامل کلید عمومی پوش و مسیرهای auth).
 // مرور JSON در: /openapi/v1.json

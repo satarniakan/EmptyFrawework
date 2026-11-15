@@ -195,9 +195,6 @@ public static class DependencyInjection
             sp.GetRequiredService<ISettingService>(),
             sp.GetRequiredService<IConfiguration>()));
 
-        // اعلان تلگرام (اختیاری: فقط وقتی BotToken/ChatId تنظیم شده باشد فعال می‌شود)
-        services.AddSingleton<ITelegramNotifier, TelegramNotifier>();
-
         return services;
     }
 

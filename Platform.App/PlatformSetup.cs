@@ -3,7 +3,6 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-// using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Platform.Application;
 using Platform.Infrastructure;
@@ -15,9 +14,6 @@ using Platform.Application.Jobs;
 using Platform.App.Authentication;
 using Platform.App.Authorization;
 using Platform.App.Endpoints;
-using Microsoft.FeatureManagement;
-using Quartz;
-using Platform.App.Middleware;
 using Platform.App.Services;
 
 namespace Platform.App;
@@ -58,30 +54,10 @@ public static class PlatformSetup
         services.AddOutputCache(options =>
         {
             options.DefaultExpirationTimeSpan = TimeSpan.FromMinutes(5);
+            options.AddBasePolicy(builder => builder.Expire(TimeSpan.FromSeconds(60)));
             options.AddPolicy("public", builder => builder.Expire(TimeSpan.FromMinutes(10)));
             options.AddPolicy("private-5m", builder => builder.Expire(TimeSpan.FromMinutes(5)));
         });
-
-        // Health Checks UI — داشبورد بصری برای /health (تاریخچهٔ وضعیت + endpointها)
-        services.AddHealthChecksUI(options =>
-        {
-            options.SetEvaluationTimeInSeconds(30);
-            options.MaximumHistoryEntriesPerEndpoint(60);
-            options.SetApiMaxActiveRequests(1);
-            options.AddHealthCheckEndpoint("Platform", "/health");
-        })
-        .AddInMemoryStorage();
-
-        // Feature Flags (Microsoft.FeatureManagement) — بخش‌های اختیاری را بدون تغییر کد روشن/خاموش کنید
-        services.AddFeatureManagement();
-
-        // Background Jobs (Quartz.NET) — کارهای دوره‌ای (پاک‌سازی، Outbox، گزارش‌گیری)
-        services.AddQuartz(q => { /* jobهای دامنه بعداً اضافه می‌شوند */ });
-        services.AddQuartzHostedService(options => options.WaitForJobsToComplete = true);
-
-        // چند租户ی: context scoped به هر درخواست
-        services.AddScoped<TenantContext>();
-        services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
 
         services.AddCascadingAuthenticationState();
 
@@ -115,12 +91,6 @@ public static class PlatformSetup
         // سیاست‌ساز خودکار: هر کلید IPermissionCatalog خودش یک policy است.
         // باید بعد از AddAuthorization بیاید تا جایگزین provider پیش‌فرض شود.
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
-
-        // output cache برای صفحات عمومی و endpointهای خواندنی (بدون مجوز)
-        services.AddOutputCache(options =>
-        {
-            options.AddBasePolicy(builder => builder.Expire(TimeSpan.FromSeconds(60)));
-        });
 
         services.AddScoped<ToastService>();
         services.AddSingleton<RecurringJobStatusTracker>();
