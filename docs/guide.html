@@ -70,7 +70,7 @@ mkdir MyProject
 cd MyProject
 dotnet new empty-platform -n MyProject
 cd MyProject   # خروجی داخل پوشهٔ هم‌نام می‌نشیند</pre>
-    <div class="note">نام‌ها خودکار جایگزین می‌شوند: <code class="inline">Platform.X</code> می‌شود <code class="inline">MyProject.X</code>. ساختار تخت است؛ <b>تنها پروژهٔ اجرایی <code class="inline">MyProject.App</code> است</b> — همان را اجرا کنید.</div>
+    <div class="note">تنها <b>میزبان</b> و <b>تست‌ها</b> به‌صورت سورس ساخته می‌شوند؛ سه لایهٔ پایه به‌صورت بستهٔ NuGet می‌آیند (مرحله ۳). نام‌ها خودکار جایگزین می‌شوند: میزبان <code class="inline">MyProject</code> و تست‌ها <code class="inline">MyProject.Tests</code>. <b>تنها پروژهٔ اجرایی <code class="inline">MyProject</code> است</b> — همان را اجرا کنید.</div>
   </section>
 
   <section class="card" id="s2">
@@ -81,19 +81,24 @@ cd MyProject   # خروجی داخل پوشهٔ هم‌نام می‌نشیند<
       <tr><td><b>ب) اسکریپت آماده</b></td><td>فایل <code class="inline">docs/database.sql</code> را روی دیتابیس تازه اجرا کنید (دستورش اول فایل هست)</td><td>وقتی DBA جداگانه دیتابیس می‌سازد یا می‌خواهید ریستور کنید</td></tr>
       <tr><td><b>ج) خودکار</b></td><td>هیچ‌کار — اپ با <code class="inline">MigrateAsync</code> هنگام استارتاپ جدول‌ها را می‌سازد</td><td>توسعه روزمره</td></tr>
     </table>
-    <p>بعد فایل <code class="inline">Platform.Host/appsettings.json.example</code> را به <code class="inline">appsettings.json</code> (کنار خودش) کپی کنید و رشته اتصال + <code class="inline">Identity:FirstAdminPhoneNumber</code> (شماره خودتان) را بگذارید. این فایل در گیت نمی‌رود.</p>
+    <p>بعد فایل <code class="inline">MyProject/appsettings.json.example</code> را به <code class="inline">appsettings.json</code> (کنار خودش) کپی کنید و رشته اتصال + <code class="inline">Identity:FirstAdminPhoneNumber</code> (شماره خودتان) را بگذارید. این فایل در گیت نمی‌رود.</p>
   </section>
 
   <section class="card" id="s3">
     <h2><span class="step">۳</span>بیلد و تست</h2>
+    <div class="note">پایه از بستهٔ NuGet می‌آید؛ پس اول باید بسته‌ها در فید محلی پروژه باشند. در ریپوی فریم‌ورک pack بگیرید و سه بستهٔ <code class="inline">.nupkg</code> را به پوشهٔ <code class="inline">artifacts/packages</code> پروژهٔ خود کپی کنید (جزئیات در README، بخش «مدل بسته‌های نسخه‌دار»).</div>
+<pre># در ریپوی فریم‌ورک
+dotnet pack Platform.Domain/Platform.Domain.csproj -c Release -o artifacts/packages
+dotnet pack Platform.Application/Platform.Application.csproj -c Release -o artifacts/packages
+dotnet pack Platform.Infrastructure/Platform.Infrastructure.csproj -c Release -o artifacts/packages</pre>
 <pre>dotnet build MyProject.slnx
 dotnet test MyProject.Tests/MyProject.Tests.csproj</pre>
-    <p>هر دو باید سبز شوند (≈۱۵۰ تست). اگر قرمز شد همان خطا را بخوانید — معمولاً رشته اتصال است.</p>
+    <p>هر دو باید سبز شوند (۱۶۴ تست). اگر قرمز شد همان خطا را بخوانید — معمولاً رشته اتصال است یا بسته‌های پایه در فید نیستند.</p>
   </section>
 
   <section class="card" id="s4">
     <h2><span class="step">۴</span>اولین اجرا و ادمین‌شدن</h2>
-<pre>dotnet run --project MyProject.App</pre>
+<pre>dotnet run --project MyProject</pre>
     <ol>
       <li>با شماره‌ای که در <code class="inline">FirstAdminPhoneNumber</code> گذاشتید وارد شوید (کد پیامکی).</li>
       <li>اولین ورودِ آن شماره، نقش <b>ادمین</b> می‌گیرد؛ بقیه «کاربر» می‌شوند.</li>
@@ -106,12 +111,12 @@ dotnet test MyProject.Tests/MyProject.Tests.csproj</pre>
   <section class="card" id="s5">
     <h2><span class="step">۵</span>نقشه پروژه‌ها و قانون طلایی</h2>
     <table>
-      <tr><th>پروژه</th><th>نقش</th><th>دست می‌زنید؟</th></tr>
-      <tr><td><code class="inline">MyProject.App</code></td><td><b>تنها پروژه اجرایی و تنها پروژه وب</b> — صفحات، endpointها، سرویس‌های وب، مایگریشن‌ها و سه نقطه اتصال دامنه اینجاست</td><td>بله (فقط همین)</td></tr>
-      <tr><td><code class="inline">MyProject.Application</code> / <code class="inline">Infrastructure</code> / <code class="inline">Domain</code></td><td>سرویس‌ها، دیتابیس، قراردادها</td><td>نه</td></tr>
+      <tr><th>بخش</th><th>نقش</th><th>دست می‌زنید؟</th></tr>
+      <tr><td><code class="inline">MyProject</code> (میزبان)</td><td><b>تنها پروژه اجرایی و تنها پروژه وب</b> — صفحات، endpointها، سرویس‌های وب، مایگریشن‌ها و سه نقطه اتصال دامنه اینجاست</td><td>بله (فقط همین)</td></tr>
+      <tr><td>بسته‌های <code class="inline">Platform.Domain</code> / <code class="inline">Application</code> / <code class="inline">Infrastructure</code></td><td>پایه: سرویس‌ها، دیتابیس، قراردادها — به‌صورت بستهٔ NuGet، نه سورس</td><td>نه (فقط نسخه را بالا ببرید)</td></tr>
       <tr><td><code class="inline">MyProject.Tests</code></td><td>تست‌ها — تست بیزینس خودتان را اینجا اضافه کنید</td><td>بله</td></tr>
     </table>
-    <div class="rule">قانون طلایی: پایه را ویرایش نکنید. همه نیاز دامنه از سه نقطه اتصال می‌گذرد — اگر جایی مجبور به ویرایش پایه شدید، یعنی نقطه اتصال کم است؛ همان را به پایه اضافه کنید.</div>
+    <div class="rule">قانون طلایی: پایه را ویرایش نکنید. همه نیاز دامنه از سه نقطه اتصال می‌گذرد — اگر جایی مجبور به تغییر پایه شدید، یعنی نقطه اتصال کم است؛ همان را در ریپوی فریم‌ورک اضافه کنید و بستهٔ نسخهٔ تازه بدهید.</div>
   </section>
 
   <section class="card" id="s6">
@@ -122,7 +127,7 @@ dotnet test MyProject.Tests/MyProject.Tests.csproj</pre>
       <li><b>ریپازیتوری + سرویس:</b> اینترفیس و پیاده‌سازی؛ چندنوشته‌ها را در <code class="inline">ExecuteInTransactionAsync</code> بگذارید. واحد کار اختصاصی: اینترفیس از <code class="inline">IPlatformUnitOfWork</code> + کلاس مشتق از <code class="inline">PlatformUnitOfWork</code>.</li>
       <li><b>مجوز:</b> کلید (مثلاً <code class="inline">orders.manage</code>) را به <code class="inline">IPermissionCatalog</code> اضافه کنید — policy و آیتم نقش‌ها خودکار می‌آیند؛ صفحه با <code class="inline">[Authorize(Policy = "orders.manage")]</code> بسته می‌شود.</li>
       <li><b>منو:</b> یک <code class="inline">NavItem.Link</code> با همان کلید مجوز به <code class="inline">INavProvider</code> اضافه کنید.</li>
-      <li><b>مایگریشن:</b> <code class="inline">dotnet ef migrations add AddOrders --project MyProject.App --startup-project MyProject.App</code></li>
+      <li><b>مایگریشن:</b> <code class="inline">dotnet ef migrations add AddOrders --project MyProject --startup-project MyProject</code></li>
       <li><b>صفحه:</b> Razor در میزبان + ثبت در منو. برای آپلود فایل از <code class="inline">IFileStorage</code>، برای شماره سند از <code class="inline">INumberSeries</code>، برای ایمپورت اکسل از <code class="inline">ExcelImporter</code> استفاده کنید.</li>
     </ol>
     <div class="ok">اعلان/پیامک/ایمیل/پوش لازم داشتید؟ فقط <code class="inline">INotificationService</code> و <code class="inline">IOutboxService</code> را صدا بزنید — ارسال و retry با پردازنده صف است.</div>
@@ -156,6 +161,7 @@ dotnet test MyProject.Tests/MyProject.Tests.csproj</pre>
     <table>
       <tr><th>علامت</th><th>علت و راه‌حل</th></tr>
       <tr><td>خطای اتصال SQL هنگام run</td><td>رشته اتصال <code class="inline">appsettings.json</code> و بالابودن SQL Server (یا <code class="inline">docker compose up sqlserver</code>)</td></tr>
+      <tr><td>بستهٔ <code class="inline">Platform.*</code> پیدا نمی‌شود (NU1101)</td><td>بسته‌های پایه در <code class="inline">artifacts/packages</code> پروژه نیستند؛ مرحله ۳ (pack و کپی بسته‌ها) را انجام دهید</td></tr>
       <tr><td>منوی ادمین دیده نمی‌شود</td><td>با شماره ادمین اول وارد نشده‌اید؛ نقش را در <code class="inline">/admin/users</code> چک کنید</td></tr>
       <tr><td>policy ناشناخته در صفحه جدید</td><td>کلید مجوز در <code class="inline">IPermissionCatalog</code> نیست یا املایش با <code class="inline">Policy</code> فرق دارد</td></tr>
       <tr><td>مایگریشن جدول ماژول را نساخت</td><td>ماژول در DI ثبت نشده (<code class="inline">AddSingleton&lt;IPlatformModule,…&gt;</code>) یا پروژه اشتباه به <code class="inline">dotnet ef</code> داده‌اید</td></tr>
