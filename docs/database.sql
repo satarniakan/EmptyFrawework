@@ -1,6 +1,6 @@
 -- ============================================================
 -- اسکیمای دیتابیس فریم‌ورک (تولیدشده از مایگریشن‌ها — دستی ویرایش نکنید)
--- بازسازی با: dotnet ef migrations script --project Platform.App --startup-project Platform.App -o docs/database.sql
+-- بازسازی با: dotnet ef migrations script --project Platform.Host --startup-project Platform.Host -o docs/database.sql
 -- ------------------------------------------------------------
 -- ریستور روی دیتابیس تازه (SQL Server):
 --   sqlcmd -S <server> -U sa -P '<pass>' -Q "CREATE DATABASE [EmptyFramework]"

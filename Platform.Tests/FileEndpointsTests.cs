@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
-using Platform.App.Endpoints;
+using Platform.Host.Endpoints;
 using Platform.Domain.Identity;
 using Platform.Domain.Interfaces;
 using Xunit;

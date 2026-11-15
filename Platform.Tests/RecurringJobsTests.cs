@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Platform.Application.Services;
 using Platform.Domain.Interfaces;
-using Platform.App.Services;
+using Platform.Host.Services;
 
 namespace Platform.Tests;
 

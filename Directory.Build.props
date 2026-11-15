@@ -10,4 +10,20 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <!-- نسخه و متادیتای مشترک بسته‌های پایه. فقط لایه‌های پایه IsPackable=true دارند؛
+       میزبان و تست بسته نمی‌شوند. نسخهٔ همهٔ بسته‌های پایه از همین‌جا خوانده می‌شود. -->
+  <PropertyGroup>
+    <PlatformVersion>1.0.0</PlatformVersion>
+    <Version>$(PlatformVersion)</Version>
+    <Authors>satarniakan</Authors>
+    <Product>Empty Platform</Product>
+    <RepositoryUrl>https://github.com/satarniakan/EmptyFrawework</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>blazor;rtl;persian;platform;framework</PackageTags>
+    <IsPackable>false</IsPackable>
+    <!-- مخزن کاری با ارجاع پروژه‌ای می‌سازد؛ خروجی قالب این را true می‌کند تا
+         میزبان به‌جای سورس پایه، بسته‌های نسخه‌دار را مصرف کند. -->
+    <UsePlatformPackages>false</UsePlatformPackages>
+  </PropertyGroup>
+
 </Project>

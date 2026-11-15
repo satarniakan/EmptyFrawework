@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
-using Platform.App.Services;
+using Platform.Host.Services;
 using Platform.Domain.Interfaces;
 
 namespace Platform.Tests;

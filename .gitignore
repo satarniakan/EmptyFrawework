@@ -21,7 +21,7 @@ TestResults/
 Logs/
 appsettings.Local.json
 appsettings.*.Local.json
-Platform.App/**/appsettings.Development.local.json
+Platform.Host/**/appsettings.Development.local.json
 secrets.json
 
 ## Node / npm scratch (never part of the .NET framework)
@@ -39,8 +39,8 @@ package-lock.json
 .DS_Store
 Thumbs.db
 # Real connection strings stay on the machine, never in git
-/Platform.App/appsettings.json
-/Platform.App/appsettings.Development.json
+/Platform.Host/appsettings.json
+/Platform.Host/appsettings.Development.json
 .env
 
 # Data Protection keys (created at runtime by the sample host)

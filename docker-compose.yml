@@ -34,7 +34,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: Platform.App/Dockerfile
+      dockerfile: Platform.Host/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Default: "Server=sqlserver;Database=PlatformDev;User Id=sa;Password=Dev_Pass123!;TrustServerCertificate=True"

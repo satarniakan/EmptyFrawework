@@ -1,5 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <Description>لایهٔ کاربرد پایه: سرویس‌های احراز هویت، اعلان، Outbox، پرداخت، ابزارهای فارسی و خروجی اکسل/PDF.</Description>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="ClosedXML" />
     <!-- فقط برای عملیات ناهمگام روی IQueryable (ToPagedAsync). لایهٔ Domain همچنان بی‌خبر از EF است. -->

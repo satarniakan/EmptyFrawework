@@ -10,6 +10,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- بسته‌های پایهٔ خودمان (فید محلی/اختصاصی). نسخه از Directory.Build.props می‌آید. -->
+    <PackageVersion Include="Platform.Domain" Version="$(PlatformVersion)" />
+    <PackageVersion Include="Platform.Application" Version="$(PlatformVersion)" />
+    <PackageVersion Include="Platform.Infrastructure" Version="$(PlatformVersion)" />
+
     <!-- ایمیل (جایگزین SmtpClient قدیمی) -->
     <PackageVersion Include="MailKit" Version="4.18.1" />
 

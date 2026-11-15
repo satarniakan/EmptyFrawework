@@ -3,7 +3,7 @@
   "author": "satarniakan",
   "classifications": ["Web", "Blazor", "Blazor Server"],
   "name": "Empty Platform (Persian RTL Blazor)",
-  "description": "Reusable Persian RTL Blazor Server platform: Identity + OTP login, users and roles, permission-gated data-driven menu, audit log, notifications, outbox, API tokens, payments, Persian helpers and Excel/PDF import/export. Ships with an empty host; add your domain module without editing the base.",
+  "description": "Reusable Persian RTL Blazor Server platform: Identity + OTP login, users and roles, permission-gated data-driven menu, audit log, notifications, outbox, API tokens, payments, Persian helpers and Excel/PDF import/export. The base layers are consumed as versioned NuGet packages; only the host is generated as source.",
   "groupIdentity": "EmptyFrawework.Platform",
   "precedence": "100",
   "identity": "EmptyFrawework.Platform.Blazor",
@@ -12,11 +12,63 @@
     "language": "C#",
     "type": "project"
   },
-  "sourceName": "Platform",
+  "sourceName": "Platform.Host",
   "preferNameDirectory": true,
   "guids": [
     "3f6d1c2a-0000-4000-8000-000000000001"
   ],
+  "symbols": {
+    "testsRename": {
+      "type": "generated",
+      "generator": "join",
+      "parameters": {
+        "symbols": [
+          { "type": "ref", "value": "name" },
+          { "type": "const", "value": ".Tests" }
+        ]
+      },
+      "replaces": "Platform.Tests",
+      "fileRename": "Platform.Tests"
+    },
+    "slnxRename": {
+      "type": "generated",
+      "generator": "join",
+      "parameters": {
+        "symbols": [
+          { "type": "ref", "value": "name" },
+          { "type": "const", "value": ".slnx" }
+        ]
+      },
+      "replaces": "Platform.slnx",
+      "fileRename": "Platform.slnx"
+    },
+    "usePackages": {
+      "type": "generated",
+      "generator": "constant",
+      "parameters": {
+        "value": "<UsePlatformPackages>true</UsePlatformPackages>"
+      },
+      "replaces": "<UsePlatformPackages>false</UsePlatformPackages>"
+    },
+    "removeDomainProject": {
+      "type": "generated",
+      "generator": "constant",
+      "parameters": { "value": "" },
+      "replaces": "<Project Path=\"Platform.Domain/Platform.Domain.csproj\" />"
+    },
+    "removeApplicationProject": {
+      "type": "generated",
+      "generator": "constant",
+      "parameters": { "value": "" },
+      "replaces": "<Project Path=\"Platform.Application/Platform.Application.csproj\" />"
+    },
+    "removeInfrastructureProject": {
+      "type": "generated",
+      "generator": "constant",
+      "parameters": { "value": "" },
+      "replaces": "<Project Path=\"Platform.Infrastructure/Platform.Infrastructure.csproj\" />"
+    }
+  },
   "postActions": [
     {
       "actionId": "210D431B-A78B-4D2F-B762-4ED3E3EA9025",
@@ -46,8 +98,11 @@
         "TestResults/**",
         "content/**",
         "DataProtection-Keys/**",
-        "Platform.App/appsettings.json",
-        "Platform.App/appsettings.Development.json",
+        "Platform.Domain/**",
+        "Platform.Application/**",
+        "Platform.Infrastructure/**",
+        "Platform.Host/appsettings.json",
+        "Platform.Host/appsettings.Development.json",
         "node_modules/**",
         "package.json",
         "package-lock.json",

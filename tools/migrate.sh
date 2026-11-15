@@ -12,10 +12,10 @@ fi
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-dotnet ef migrations add "$1" --project Platform.App --startup-project Platform.App
+dotnet ef migrations add "$1" --project Platform.Host --startup-project Platform.Host
 
 TMP="$(mktemp)"
-dotnet ef migrations script --project Platform.App --startup-project Platform.App -o "$TMP" --no-build
+dotnet ef migrations script --project Platform.Host --startup-project Platform.Host -o "$TMP" --no-build
 
 {
   cat <<'HEADER'

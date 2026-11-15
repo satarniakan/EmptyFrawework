@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <!-- TargetFramework / Nullable / ImplicitUsings در Directory.Build.props مشترک‌اند. -->
+    <IsPackable>true</IsPackable>
+    <Description>لایهٔ زیرساخت پایه: DbContext ماژولار، UnitOfWork، فرستنده‌های پیامک/ایمیل، درگاه پرداخت و وب‌پوش.</Description>
   </PropertyGroup>
 
   <ItemGroup>

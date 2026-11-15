@@ -42,24 +42,28 @@ cd MyProject
 dotnet new empty-platform -n MyProject
 ```
 
-> میزبان (`Platform.App`) بخشی از خروجی قالب است. اگر میزبان خودتان را دارید،
-> پوشهٔ `Platform.App/` را پاک کنید و خطش را از `MyProject.slnx` بردارید؛
-> بقیهٔ پایه کاملاً مستقل بالا می‌آید.
+> میزبان (`Platform.Host`) تنها بخشِ سورسِ خروجی قالب است؛ سه لایهٔ پایه به‌صورت
+> بستهٔ NuGet نسخه‌دار مصرف می‌شوند (بخش «مدل بسته‌های نسخه‌دار» را ببینید). اگر
+> میزبان خودتان را دارید، پوشهٔ `Platform.Host/` را پاک کنید و خطش را از
+> `MyProject.slnx` بردارید و میزبان خود را با همان سه نقطهٔ اتصال وصل کنید.
 
 ## گام ۳ — تنظیم اتصال دیتابیس
 
-میزبان اجراشونده، پروژهٔ `Platform.App` است — تنها پروژهٔ اجرایی؛ همین را اجرا کنید:
+میزبان اجراشونده، پروژهٔ `Platform.Host` است — تنها پروژهٔ اجرایی؛ همین را اجرا کنید:
 
 ```bash
-dotnet run --project Platform.App
+dotnet run --project Platform.Host
 ```
 
 فایل
-`Platform.App/appsettings.json.example` را به `appsettings.json` (کنار خودش)
+`Platform.Host/appsettings.json.example` را به `appsettings.json` (کنار خودش)
 کپی کنید و مقادیر واقعی (نام دیتابیس و رمز `sa`) را بگذارید. خودِ `appsettings.json`
 عمداً در `.gitignore` است و هیچ‌وقت در گیت ثبت نمی‌شود.
 
 ## گام ۴ — ساخت و تست
+
+پیش از ساخت، بسته‌های پایه را در فید پروژهٔ خود گذاشته باشید (بخش «مدل بسته‌های
+نسخه‌دار» ← «رساندن بسته‌ها به پروژهٔ ساخته‌شده»). سپس:
 
 ```bash
 dotnet build MyProject.slnx
@@ -72,7 +76,7 @@ dotnet test MyProject/MyProject.Tests/MyProject.Tests.csproj
 ## گام ۵ — اولین اجرا
 
 مرورگر را روی همان آدرسی که در ترمینال چاپ شد باز کنید
-(با `dotnet run --project Platform.App` که در گام ۳ اجرا کردید).
+(با `dotnet run --project Platform.Host` که در گام ۳ اجرا کردید).
 
 جدول‌های پایه (کاربران، نقش‌ها، OTP، اعلان‌ها، لاگ‌ها، Outbox) با `MigrateAsync`
 هنگام startup خودکار ساخته می‌شوند. مرورگر را روی همان آدرسی که در ترمینال چاپ شد
@@ -110,11 +114,11 @@ git push -u origin master
 | ۳ | مدل EF دامنه + ریپازیتوری‌ها | `IPlatformModule` برای مدل + اینترفیس `IDomainUnitOfWork : IPlatformUnitOfWork` و کلاس مشتق از `PlatformUnitOfWork` (سازنده‌اش فقط context و provider می‌گیرد تا با به‌روزرسانی پایه نشکند) |
 
 الگوی هر سه — یک `IPermissionCatalog` با چند کلید، یک `INavProvider` با چند گروه،
-و یک کلاس `IPlatformModule` با `ConfigureModel` — در `Platform.App/AppSetup.cs`
+و یک کلاس `IPlatformModule` با `ConfigureModel` — در `Platform.Host/AppSetup.cs`
 به‌صورت خالی آماده است. وقتی مدل دامنه را اضافه کردید، مایگریشن تازه بسازید:
 
 ```bash
-dotnet ef migrations add <Name> --project Platform.App --startup-project Platform.App
+dotnet ef migrations add <Name> --project Platform.Host --startup-project Platform.Host
 ```
 
 ## مسیرهای اصلی میزبان نمونه
@@ -132,13 +136,57 @@ dotnet ef migrations add <Name> --project Platform.App --startup-project Platfor
 ارسال پیام: هر رویداد دامنه می‌تواند هم‌زمان به کارتابل اعلان‌ها + صف ایمیل/پیامک/پوش
 (Outbox؛ ارسال واقعی با `OutboxProcessor` بر اساس `Email:Smtp:*` و `Sms:Provider`) برود.
 
-همهٔ مایگریشن‌ها در پوشهٔ `Platform.App/Migrations` خودِ میزبان‌اند، نه در پایه؛
+همهٔ مایگریشن‌ها در پوشهٔ `Platform.Host/Migrations` خودِ میزبان‌اند، نه در پایه؛
 پس اسکیمای دامنهٔ شما هرگز وارد فریم‌ورک مشترک نمی‌شود. برای مایگریشن‌های بعدیِ ماژول‌ها
 حتماً با پروژهٔ میزبان بزنید تا ماژول‌ها وارد مدل شوند:
 
 ```bash
-dotnet ef migrations add <Name> --project Platform.App --startup-project Platform.App
+dotnet ef migrations add <Name> --project Platform.Host --startup-project Platform.Host
 ```
+
+## مدل بسته‌های نسخه‌دار (پایه = بسته، میزبان = سورس)
+
+سه لایهٔ پایه به‌صورت بستهٔ NuGet نسخه‌دار مصرف می‌شوند و فقط میزبان سورس است:
+
+| لایه | در خروجی قالب | چگونه می‌آید |
+|---|---|---|
+| `Platform.Domain` | سورس ندارد | بستهٔ NuGet |
+| `Platform.Application` | سورس ندارد | بستهٔ NuGet |
+| `Platform.Infrastructure` | سورس ندارد | بستهٔ NuGet |
+| میزبان شما | سورس کامل | تنها چیزی که ویرایش می‌کنید |
+
+نسخهٔ هر سه بسته یکسان است و از کلید `PlatformVersion` در `Directory.Build.props`
+می‌آید. خودِ ریپوی فریم‌ورک برای توسعه و تست، پایه را با `ProjectReference` می‌سازد
+(`UsePlatformPackages=false`)؛ اما خروجی قالب با `UsePlatformPackages=true` پایه را
+از بسته می‌گیرد. فید محلی بسته‌ها در `nuget.config` آدرس‌دهی شده است:
+`artifacts/packages/`.
+
+### ساخت یا به‌روزرسانی بسته‌های پایه (در ریپوی فریم‌ورک)
+
+هر وقت پایه را تغییر دادید:
+
+۱. در `Directory.Build.props` مقدار `PlatformVersion` را بالا ببرید (مثلاً `1.0.1`)
+۲. بسته‌ها را بسازید:
+
+```bash
+dotnet pack Platform.Domain/Platform.Domain.csproj -c Release -o artifacts/packages
+dotnet pack Platform.Application/Platform.Application.csproj -c Release -o artifacts/packages
+dotnet pack Platform.Infrastructure/Platform.Infrastructure.csproj -c Release -o artifacts/packages
+```
+
+۳. تست بگیرید تا مطمئن شوید پایه سالم است:
+
+```bash
+dotnet build Platform.slnx
+dotnet test Platform.Tests/Platform.Tests.csproj
+```
+
+### رساندن بسته‌ها به پروژهٔ ساخته‌شده
+
+خروجی قالب یک `nuget.config` دارد که فید محلی `artifacts/packages` را نشانه می‌گیرد.
+سه بستهٔ `.nupkg` را داخل همان پوشه در پروژهٔ خود کپی کنید و `dotnet restore` بگیرید.
+برای ارتقای پایه در پروژهٔ موجود، بستهٔ نسخهٔ جدید را در همان پوشه بگذارید و
+`PlatformVersion` را در `Directory.Build.props` پروژهٔ خود بالا ببرید.
 
 ## به‌روزرسانی قالب در آینده
 
@@ -151,7 +199,8 @@ dotnet new install .
 ```
 
 توجه: پروژه‌هایی که قبلاً ساخته‌اید خودکار به‌روز **نمی‌شوند** (خروجی قالب snapshot
-است)؛ اصلاحات بعدی پایه را دستی یا با انتشار بستهٔ جدا منتقل می‌کنید.
+است). برای انتقال اصلاحات پایه به پروژهٔ موجود، نسخهٔ `PlatformVersion` را بالا
+ببرید، بسته‌ها را دوباره pack بگیرید (بخش بالا) و بستهٔ جدید را به فید پروژه برسانید.
 
 ## ساختار
 
@@ -160,7 +209,7 @@ dotnet new install .
 | `Platform.Domain` | هویت (`ApplicationUser`)، مجوز (`Permissions` فقط `ClaimType` دارد)، نقش‌های پایه + `IPermissionCatalog`، قراردادهای زیرساخت (`IFileStorage`، `ISmsSender`، `IEmailSender`، `IPaymentGateway`، `ICaptchaValidator`)، انتیتی‌های پایه (AuditLog، OtpCode، OtpThrottle، OutboxMessage، Notification، Setting، Payment، ApiToken، LoginHistory، PushSubscription)، `IPlatformUnitOfWork`، جست‌وجوی فارسی (`PersianSearch`) |
 | `Platform.Application` | سرویس‌های پایه (Auth، Otp، Audit، Permission، UserAdmin، Notification، Outbox، ApiToken، LoginHistory، Setting، NumberSeries، Payment، Push، Impersonation) + Helpers فارسی + Exports اکسل/PDF + ایمپورت اکسل + ترجمهٔ یکتای خطا (`ExceptionTranslator`) + کارهای تکرارشونده (`IRecurringJob`) |
 | `Platform.Infrastructure` | `PlatformDbContext` (ماژولار با `IPlatformModule`) + `PlatformUnitOfWork` (تراکنش واقعی)، `RoleSeeder`، فرستنده‌های پیامک/ایمیل، درگاه زرین‌پال، Turnstile، وب‌پوش VAPID — بدون هیچ مایگریشن (مال میزبان است) |
-| `Platform.App` | **تنها پروژهٔ اجرایی و تنها پروژهٔ وب (startup)** — همهٔ لایهٔ وب اینجاست: صفحات ورود/OTP/پروفایل/خانه/نشست‌ها/ادمین/تنظیمات/نتیجهٔ پرداخت، `MainLayout` (بنر جانشینی)، `NavMenu` داده‌محور (`INavProvider`)، `Routes`، کامپوننت‌های `Shared/App*` + دکمهٔ وب‌پوش + زیرساخت اجرا (`PlatformSetup`، endpointها، سرویس‌های پس‌زمینه)؛ مایگریشن‌ها (`Migrations/`) و فکتوری design-time هم اینجاست |
+| `Platform.Host` | **تنها پروژهٔ اجرایی و تنها پروژهٔ وب (startup)** — همهٔ لایهٔ وب اینجاست: صفحات ورود/OTP/پروفایل/خانه/نشست‌ها/ادمین/تنظیمات/نتیجهٔ پرداخت، `MainLayout` (بنر جانشینی)، `NavMenu` داده‌محور (`INavProvider`)، `Routes`، کامپوننت‌های `Shared/App*` + دکمهٔ وب‌پوش + زیرساخت اجرا (`PlatformSetup`، endpointها، سرویس‌های پس‌زمینه)؛ مایگریشن‌ها (`Migrations/`) و فکتوری design-time هم اینجاست |
 
 ## خطاهای پرتکرار
 
@@ -170,8 +219,8 @@ dotnet new install .
 | خروجی قالب پوشهٔ تودرتو ساخت (`MyProject/MyProject`) | طبیعی است (`preferNameDirectory`)؛ داخل پوشهٔ داخلی کار کنید |
 | خطای اتصال SQL هنگام `run` | رشتهٔ اتصال در `appsettings.json` را چک کنید و مطمئن شوید SQL Server بالاست |
 | `dotnet-ef` شناخته نمی‌شود | گام پیش‌نیازها (نصب global) را انجام دهید |
-| خطای «رکورد ساختار پیکربندی» یا رشتهٔ اتصالِ خالی هنگام `run` | `Platform.App/appsettings.json` ساخته نشده؛ از `appsettings.json.example` کپی کنید |
-| میزبان نمونه را نمی‌خواهم | پوشهٔ `Platform.App/` را پاک کنید و خطش را از `*.slnx` بردارید و میزبان خودتان را با همان سه نقطهٔ اتصال وصل کنید |
+| خطای «رکورد ساختار پیکربندی» یا رشتهٔ اتصالِ خالی هنگام `run` | `Platform.Host/appsettings.json` ساخته نشده؛ از `appsettings.json.example` کپی کنید |
+| میزبان نمونه را نمی‌خواهم | پوشهٔ `Platform.Host/` را پاک کنید و خطش را از `*.slnx` بردارید و میزبان خودتان را با همان سه نقطهٔ اتصال وصل کنید |
 | وابستگی‌های NuGet گزارش `NU1510`/`NU1605` می‌دهند | نسخه‌ها را فقط از `Directory.Packages.props` عوض کنید و یک‌بار `dotnet restore` بگیرید |
 
 ## نگه‌داری نسخه‌ها (به‌روزرسانی وابستگی‌ها)
@@ -250,7 +299,7 @@ Get-ChildItem -Recurse -Filter *.csproj |
 ### ۳. Bootstrap و فایل‌های `wwwroot/lib` (حساس‌ترین)
 
 نسخهٔ فعلی Bootstrap: **۵.۳.۳** (داخل `wwwroot/lib/bootstrap` به‌صورت vendored کپی
-شده). فایل `Platform.App/libman.json` دقیقاً مشخص می‌کند هر کتابخانه از کجا آمده
+شده). فایل `Platform.Host/libman.json` دقیقاً مشخص می‌کند هر کتابخانه از کجا آمده
 و کدام فایل‌ها کپی شده‌اند — قبل از هر به‌روزرسانی اول آن را بخوانید.
 
 دو راه برای به‌روزرسانی هست — راه اول (LibMan) تمیزتر است:
@@ -261,7 +310,7 @@ Get-ChildItem -Recurse -Filter *.csproj |
 ۲. restore کنید تا فایل‌ها دوباره دانلود شوند:
 
 ```bash
-cd Platform.App
+cd Platform.Host
 dotnet tool install -g Microsoft.Web.LibraryManager.Cli
 libman restore
 ```
@@ -289,8 +338,8 @@ libman restore
 | .NET / TargetFramework | `net10.0` | `Directory.Build.props` |
 | همهٔ نسخه‌های NuGet | — | `Directory.Packages.props` (مدیریت متمرکز نسخه) |
 | EF Core / Identity / Extensions | ۱۰.۰.۱۲ | `Directory.Packages.props` + `dotnet-ef` |
-| Bootstrap | ۵.۳.۳ | `Platform.App/wwwroot/lib/bootstrap` |
-| bootstrap-icons | ۱.۱۱.۳ | `Platform.App/wwwroot/lib/bootstrap-icons` |
+| Bootstrap | ۵.۳.۳ | `Platform.Host/wwwroot/lib/bootstrap` |
+| bootstrap-icons | ۱.۱۱.۳ | `Platform.Host/wwwroot/lib/bootstrap-icons` |
 | QuestPDF | ۲۰۲۶.۹.۱ | `Directory.Packages.props` |
 | ClosedXML | ۰.۱۰۴.۲ | `Directory.Packages.props` |
 | WebPush | ۱.۰.۱۳ | `Directory.Packages.props` |

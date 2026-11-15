@@ -9,10 +9,10 @@ TestResults/
 DataProtection-Keys/
 Logs/
 AppData/
-Platform.App/AppData/
-Platform.App/Logs/
-Platform.App/appsettings.json
-Platform.App/appsettings.Development.json
+Platform.Host/AppData/
+Platform.Host/Logs/
+Platform.Host/appsettings.json
+Platform.Host/appsettings.Development.json
 *.user
 *.trx
 push.out.log
