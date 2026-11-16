@@ -52,4 +52,25 @@ public class PersianIdentityErrorDescriber : IdentityErrorDescriber
 
     public override IdentityError DefaultError() =>
         new() { Code = nameof(DefaultError), Description = "خطای ناشناخته‌ای رخ داد." };
+
+    public override IdentityError ConcurrencyFailure() =>
+        new() { Code = nameof(ConcurrencyFailure), Description = "تغییرات هم‌زمان تداخل داشت؛ لطفاً دوباره تلاش کنید." };
+
+    public override IdentityError InvalidRoleName(string? role) =>
+        new() { Code = nameof(InvalidRoleName), Description = $"نام نقش «{role}» معتبر نیست." };
+
+    public override IdentityError InvalidUserName(string? userName) =>
+        new() { Code = nameof(InvalidUserName), Description = $"نام کاربری «{userName}» معتبر نیست." };
+
+    public override IdentityError LoginAlreadyAssociated() =>
+        new() { Code = nameof(LoginAlreadyAssociated), Description = "این ورود خارجی قبلاً به کاربر دیگری متصل شده است." };
+
+    public override IdentityError RecoveryCodeRedemptionFailed() =>
+        new() { Code = nameof(RecoveryCodeRedemptionFailed), Description = "کد بازیابی معتبر نیست یا قبلاً استفاده شده است." };
+
+    public override IdentityError UserAlreadyInRole(string? role) =>
+        new() { Code = nameof(UserAlreadyInRole), Description = $"کاربر قبلاً نقش «{role}» را دارد." };
+
+    public override IdentityError UserNotInRole(string? role) =>
+        new() { Code = nameof(UserNotInRole), Description = $"کاربر نقش «{role}» را ندارد." };
 }

@@ -22,6 +22,8 @@
 
 #components-reconnect-modal {
     background-color: white;
+    /* پس‌زمینه ثابت سفید است؛ بدون رنگ صریح، متن در تم تاریک روشنِ ارثی می‌شود و دیده نمی‌شود */
+    color: #212529;
     width: 20rem;
     margin: 20vh auto;
     padding: 2rem;

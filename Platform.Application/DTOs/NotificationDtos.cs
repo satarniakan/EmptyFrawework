@@ -36,6 +36,6 @@ public class BroadcastDto
 
     public NotificationType Type { get; set; } = NotificationType.System;
 
-    [StringLength(300)]
+    [StringLength(300, ErrorMessage = "نشانی پیوند نمی‌تواند بیشتر از ۳۰۰ کاراکتر باشد.")]
     public string? LinkUrl { get; set; }
 }
