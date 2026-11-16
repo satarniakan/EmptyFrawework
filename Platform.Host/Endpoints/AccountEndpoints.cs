@@ -18,10 +18,10 @@ public static class AccountEndpoints
     {
         app.MapPost("/Account/Login", async (
             IAuthService authService,
-            [FromForm] string email,
+            [FromForm] string userName,
             [FromForm] string password) =>
         {
-            var result = await authService.LoginWithPasswordAsync(email, password);
+            var result = await authService.LoginWithPasswordAsync(userName, password);
 
             return result.Succeeded
                 ? Results.Redirect("/")
