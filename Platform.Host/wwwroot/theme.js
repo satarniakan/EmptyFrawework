@@ -3,8 +3,15 @@
     const KEY = 'platform-theme';
     const docEl = document.documentElement;
 
+    // دسترسی به حافظهٔ محلی در مرورگر با ذخیره‌سازی مسدود خطا می‌دهد؛ بدون این محافظ
+    // کل اسکریپت در همان خط اول می‌شکند و دکمهٔ تم برای همیشه بی‌اثر می‌ماند.
+    const storage = {
+        get() { try { return localStorage.getItem(KEY); } catch { return null; } },
+        set(value) { try { localStorage.setItem(KEY, value); } catch { /* تم بدون ماندگاری اعمال می‌شود */ } }
+    };
+
     // تم ذخیره‌شده یا تم سیستم‌عامل
-    const saved = localStorage.getItem(KEY);
+    const saved = storage.get();
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
     let currentTheme = saved === 'dark' || saved === 'light' ? saved : (systemDark.matches ? 'dark' : 'light');
 
@@ -38,7 +45,7 @@
 
     // اگر کاربر تم دستی انتخاب نکرده باشد، تغییر سیستم‌عامل زنده اعمال شود
     systemDark.addEventListener('change', (e) => {
-        const stored = localStorage.getItem(KEY);
+        const stored = storage.get();
         if (stored !== 'dark' && stored !== 'light') {
             apply(e.matches ? 'dark' : 'light');
         }
@@ -65,12 +72,12 @@
     window.themeInterop = {
         get: () => currentTheme,
         set: (theme) => {
-            localStorage.setItem(KEY, theme);
+            storage.set(theme);
             apply(theme);
             return theme;
         },
         reapply: () => {
-            apply(localStorage.getItem(KEY) || currentTheme);
+            apply(storage.get() || currentTheme);
             return currentTheme;
         },
         toggle: () => window.themeInterop.set(currentTheme === 'dark' ? 'light' : 'dark')
