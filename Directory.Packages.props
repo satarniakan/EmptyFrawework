@@ -20,7 +20,7 @@
     <PackageVersion Include="Platform.Infrastructure" Version="$(PlatformVersion)" />
 
     <!-- ایمیل (جایگزین SmtpClient قدیمی) -->
-    <PackageVersion Include="MailKit" Version="4.18.1" />
+    <PackageVersion Include="MailKit" Version="5.0.0" />
 
     <!-- خروجی اکسل/PDF -->
     <PackageVersion Include="ClosedXML" Version="0.104.2" />
